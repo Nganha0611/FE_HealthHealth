@@ -1,37 +1,43 @@
-import { NavigationProp } from '@react-navigation/native';
+import { NavigationProp, useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import React from 'react';
-import { View, Text, Button, Image, StyleSheet } from 'react-native';
+import { View, Text, Button, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import { BottomTabParamList } from '../../navigation/BottomTabs';
 
 type Props = {
-    
-    navigation: NavigationProp<any>;
-  };
-  const MedicineScreen : React.FC<Props> = ({ navigation }) => {
-    return (
-      <ScrollView>
-            <View style={styles.header}>  
-            <View style={styles.headerLeft}>
-              <FontAwesome 
-                    name="chevron-left"
-                    size={20}
-                    color="#432c81"
-                    style={{ marginRight: 15, marginTop: 17 }} 
-                    onPress={() => navigation.goBack()}
-                  />
-            <Text style={[styles.text, {fontSize: 30, marginTop: 5} ]}>Thuốc</Text>
-              </View>
-              <View style={styles.headerRight}>
-              <Image
+
+  navigation: NavigationProp<any>;
+};
+const MedicineScreen: React.FC<Props> = ({ navigation }) => {
+  const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
+
+  return (
+    <ScrollView>
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <FontAwesome
+            name="chevron-left"
+            size={20}
+            color="#432c81"
+            style={{ marginRight: 15, marginTop: 17 }}
+            onPress={() => navigation.goBack()}
+          />
+          <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>Thuốc</Text>
+        </View>
+        <View style={styles.headerRight}>
+          <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'SettingScreen' })}>
+            <Image
               style={styles.imgProfile}
               source={require('../../assets/avatar.jpg')}
-            />       
-             </View>
-              </View>
-              </ScrollView>
-    );
-  };
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+    </ScrollView>
+  );
+};
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
@@ -43,7 +49,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Roboto',
     color: '#432c81',
     fontWeight: 'bold',
-  
+
   },
   headerLeft: {
     marginLeft: 10,
@@ -63,4 +69,4 @@ const styles = StyleSheet.create({
     borderRadius: 30
   },
 })
-export default MedicineScreen ;
+export default MedicineScreen;

@@ -3,28 +3,34 @@ import { View, Text, Button, StyleSheet, Image, TouchableOpacity } from 'react-n
 import { StackNavigationProp } from '@react-navigation/stack';
 import { HomeStackParamList } from '../../navigation/HomeStack';
 import { ScrollView } from 'react-native-gesture-handler';
+import { useNavigation } from '@react-navigation/native';
+import { BottomTabParamList } from '../../navigation/BottomTabs';
 
 type Props = {
   navigation: StackNavigationProp<HomeStackParamList, 'Home'>;
+  
 };
 
 const HomeScreen: React.FC<Props> = ({ navigation }) => {
+  const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
+
   return (
     <ScrollView>
       <View style={styles.header}>  
       <View style={styles.headerLeft}>
       <Text style={[styles.text, {fontSize: 30, marginTop: 5} ]}>👋🏻Hi Thùy Trang</Text>
         </View>
-        <View style={styles.headerRight}>
-        <Image
+        <View style={styles.headerRight} >
+          <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'SettingScreen' })}>
+        <Image 
         style={styles.imgProfile}
         source={require('../../assets/avatar.jpg')}
-      />       
+      />       </TouchableOpacity>
        </View>
         </View>
           <TouchableOpacity style = {styles.boxFeature} onPress={() => navigation.navigate('HealthProfile')}>
           <Text style={[styles.text, styles.boxTitle]}>Hồ sơ sức khỏe</Text>
-          <Image
+          <Image 
         style={styles.boxImg}
         source={require('../../assets/pf.png')}
       />  

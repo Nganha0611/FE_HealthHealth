@@ -30,21 +30,12 @@ const LoginScreen : React.FC<Props> = ({ navigation }) => {
   const handleLogin = () => {
     if (email === "t" && password === "t") {
       login(); 
-      // navigation.replace("BottomTabs");
+      // navigation.replace("BottomTa
+      // bs");
     } else {
       Alert.alert("Sai email hoặc mật khẩu!");
     }
   };
-
-
-
-
-
-
-
-
-
-
 
   return (
     <View style={styles.container}>

@@ -5,6 +5,7 @@ import LoginScreen from "../screens/Auth/LoginScreen";
 import SignUpScreen from "../screens/Auth/SignUpScreen";
 import ForgotPasswordScreen from "../screens/Auth/ForgotPasswordScreen";
 import BottomTabs from "./BottomTabs";
+import SettingsScreen from "../screens/Setting/SettingsScreen";
 
 export type AuthStackParamList = {
   Welcome: undefined;
@@ -12,6 +13,7 @@ export type AuthStackParamList = {
   SignUp: undefined;
   ForgotPassword: undefined;
   BottomTabs: undefined;
+  Settings: undefined;
 };
 
 const Stack = createStackNavigator<AuthStackParamList>();
@@ -24,6 +26,8 @@ const AuthStack = () => {
       <Stack.Screen name="SignUp" component={SignUpScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <Stack.Screen name="BottomTabs" component={BottomTabs} />
+      <Stack.Screen name="Settings" component={SettingsScreen} />
+
     </Stack.Navigator>
   );
 };

@@ -1,10 +1,12 @@
-import { NavigationProp } from '@react-navigation/native';
+import { NavigationProp, useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useEffect, useState } from 'react';
-import { View, Text, Button, Image, StyleSheet } from 'react-native';
+import { View, Text, Button, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import Svg, { Circle } from 'react-native-svg';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { Colors } from 'react-native/Libraries/NewAppScreen';
+import { BottomTabParamList } from '../../navigation/BottomTabs';
 // import SamsungHealth from 'react-native-samsung-health';
 
 type Props = {
@@ -46,7 +48,9 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
 
   const steps = 8114;
   const minutes = 60;
-  const calories = 384
+  const calories = 384;
+    const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
+  
   return (
     <ScrollView>
       <View style={styles.header}>
@@ -61,10 +65,12 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={[styles.text1, { fontSize: 30, marginTop: 5 }]}>Hồ sơ sức khỏe</Text>
         </View>
         <View style={styles.headerRight}>
-          <Image
-            style={styles.imgProfile}
-            source={require('../../assets/avatar.jpg')}
-          />
+          <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'SettingScreen' })}>
+                  <Image 
+                  style={styles.imgProfile}
+                  source={require('../../assets/avatar.jpg')}
+                />    
+                   </TouchableOpacity>
         </View>
       </View>
       <View style={styles.mainIf}>

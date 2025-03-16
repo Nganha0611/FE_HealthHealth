@@ -8,8 +8,7 @@ import HomeStack from './HomeStack';
 export type BottomTabParamList = {
   HomeStack: undefined;
   NotifyStack: undefined;
-  SettingStack: undefined;
-  BottomTabs: undefined;
+  SettingStack: { screen?: string };
 };
 
 const Tab = createBottomTabNavigator<BottomTabParamList>();

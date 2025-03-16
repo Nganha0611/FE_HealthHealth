@@ -88,7 +88,7 @@ const ForgotScreen : React.FC<Props> = ({ navigation }) => {
       {/* Đăng ký */}
       <Text style={styles.signUpText}>
         Bạn chưa có tài khoản?{" "}
-        <Text style={styles.signUpLink} onPress={() => navigation.navigate('ForgotPassword')}>
+        <Text style={styles.signUpLink} onPress={() => navigation.navigate('SignUp')}>
           Đăng ký
         </Text>
       </Text>
