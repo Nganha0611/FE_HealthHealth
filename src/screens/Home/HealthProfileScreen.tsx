@@ -2,6 +2,7 @@ import { NavigationProp } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
 import { View, Text, Button, Image, StyleSheet } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
+import Svg, { Circle } from 'react-native-svg';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { Colors } from 'react-native/Libraries/NewAppScreen';
 // import SamsungHealth from 'react-native-samsung-health';
@@ -43,7 +44,7 @@ const HealthProfileScreen : React.FC<Props> = ({ navigation }) => {
 //     });
 //   }, []);
 
-const steps = 6114;
+const steps = 8114;
 const minutes = 60;
 const calories = 384
   return (
@@ -57,7 +58,7 @@ const calories = 384
                   style={{ marginRight: 15, marginTop: 17 }} 
                   onPress={() => navigation.goBack()}
                 />
-          <Text style={[styles.text, {fontSize: 30, marginTop: 5} ]}>Hồ sơ sức khỏe</Text>
+          <Text style={[styles.text1, {fontSize: 30, marginTop: 5} ]}>Hồ sơ sức khỏe</Text>
             </View>
             <View style={styles.headerRight}>
             <Image
@@ -67,6 +68,65 @@ const calories = 384
            </View>
             </View>
             <View style={styles.mainIf}>
+            <View style={styles.infoContainer}>
+              
+        <Text style={styles.text}>
+        <View style={styles.row}>
+  <Image style={styles.icon} source={require('../../assets/step.png')} />
+  <Text style={[styles.number, { color: '#3CB371' }]}>{steps.toLocaleString()} bước</Text>
+</View> 
+        </Text>
+        <Text style={styles.text}>
+        <View style={styles.row}>
+  <Image style={[styles.icon, {width: 23, height:23,marginLeft: 3, marginRight: 8}]} source={require('../../assets/time.png')} />
+  <Text style={[styles.number,{color : '#1E90FF'}]}>{minutes} phút</Text>  
+  </View> 
+        </Text>
+        <Text style={styles.text}>
+        <View style={styles.row}>
+  <Image style={[styles.icon, {width: 23, height:23,marginLeft: 3, marginRight: 8}]} source={require('../../assets/calo.png')} />
+  <Text style={[styles.number,{color : '#de46a0'}]}>{calories} kcal</Text>   </View> 
+         
+        </Text>
+      </View>
+
+      {/* Vẽ vòng tròn */}
+      <View style={styles.circleContainer}>
+        <Svg width={120} height={120} viewBox="0 0 120 120">
+          {/* Vòng ngoài cùng */}
+          {/* Vòng ngoài cùng */}
+<Circle
+  cx="60" cy="60" r="55"
+  stroke="#3CB371" strokeWidth="9"
+  fill="none"
+  strokeDasharray="345.6"
+  strokeDashoffset="80"
+  strokeLinecap="round"
+/>
+
+{/* Vòng giữa */}
+<Circle
+  cx="60" cy="60" r="45"
+  stroke="#1E90FF" strokeWidth="9"
+  fill="none"
+  strokeDasharray="282.6"
+  strokeDashoffset="90"
+  strokeLinecap="round"
+/>
+
+{/* Vòng trong cùng */}
+<Circle
+  cx="60" cy="60" r="35"
+  stroke="#de46a0" strokeWidth="9"
+  fill="none"
+  strokeDasharray="219.2"
+  strokeDashoffset="78"
+  strokeLinecap="round"
+/>
+        </Svg>
+      </View>
+
+
 
             </View>
             </ScrollView>
@@ -83,13 +143,42 @@ const styles = StyleSheet.create({
     marginTop: 20,
     justifyContent: 'space-between',
     alignItems: 'center',
+    padding: 15,
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 5,
+  },
+  row: {
+    flexDirection: 'row',  // Hiển thị nội dung trên một hàng ngang
+    alignItems: 'center',  // Căn giữa hình ảnh với chữ
+  },
+  icon:{
+    width: 29,
+    height: 29,
+    marginRight: 5,
+  },
+  infoContainer: {
+    flex: 1,
+  },
+  text: {
+    fontSize: 20,
+    color: "#444",
+    marginBottom: 5,
+  },
+  number: {
+    fontWeight: "bold",
+    fontSize: 25,
+  },
+  circleContainer: {
+    alignItems: "center",
+    justifyContent: "center",
   },
   header: {
     flexDirection: 'row',
     marginTop: 10,
     justifyContent: 'space-between'
   },
-  text: {
+  text1: {
     fontSize: 25,
     fontFamily: 'Roboto',
     color: '#432c81',
