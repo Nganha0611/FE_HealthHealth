@@ -9,6 +9,7 @@ export type BottomTabParamList = {
   HomeStack: undefined;
   NotifyStack: undefined;
   SettingStack: undefined;
+  BottomTabs: undefined;
 };
 
 const Tab = createBottomTabNavigator<BottomTabParamList>();

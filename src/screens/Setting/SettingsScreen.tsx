@@ -1,8 +1,33 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import { useAuth } from '../../contexts/AuthContext';
+import { useNavigation } from '@react-navigation/native';
+import { StackNavigationProp } from '@react-navigation/stack';
+import { AuthStackParamList } from '../../navigation/AuthStack';
+
+// Khai báo kiểu navigation
+type SettingsScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Settings'>;
 
 const SettingsScreen = () => {
+  const navigation = useNavigation<SettingsScreenNavigationProp>();
+  const { logout } = useAuth();
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Xác nhận",
+      "Bạn có chắc chắn muốn đăng xuất?",
+      [
+        { text: "Hủy", style: "cancel" },
+        {
+          text: "Đăng xuất",
+          onPress: () => {
+            logout(); 
+          },
+        },
+      ]
+    );
+  };
  return (
      <View style={styles.container}>
        <View style={styles.header}>
@@ -108,7 +133,7 @@ const SettingsScreen = () => {
   </View>
 </TouchableOpacity>
 
-<TouchableOpacity style={styles.listSetting}>
+<TouchableOpacity style={styles.listSetting} onPress={handleLogout}>
   <View style={styles.listSettingLeft}>
     <View style={styles.iconContainer}>
       <FontAwesome

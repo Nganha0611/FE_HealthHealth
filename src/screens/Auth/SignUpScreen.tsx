@@ -1,4 +1,5 @@
 import { Picker } from "@react-native-picker/picker";
+import { NavigationProp } from "@react-navigation/native";
 import React, { useState } from "react";
 
 import {
@@ -11,9 +12,12 @@ import {
 } from "react-native";
 import DatePicker from "react-native-date-picker";
 import DropDownPicker from "react-native-dropdown-picker";
+type Props = {
+    
+    navigation: NavigationProp<any>;
+  };
+const SignUpScreen : React.FC<Props> = ({ navigation }) => {
 
-const SignUpScreen
-    = ({ }) => {
         const [email, setEmail] = useState("");
         const [phone, setPhone] = useState("");
         const [name, setName] = useState("");
@@ -141,7 +145,7 @@ const SignUpScreen
                     </TouchableOpacity>
                 </View>
                 <View style={{ width: "100%", alignItems: "flex-end" }}>
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
                         <Text style={styles.forgotPasswordText}>Quên mật khẩu?</Text>
                     </TouchableOpacity>
                 </View>
@@ -150,10 +154,10 @@ const SignUpScreen
                     <Text style={styles.loginButtonText}>Đăng ký</Text>
                 </TouchableOpacity>
 
-                <Text style={styles.signUpText}>
+                <Text style={styles.signUpText} onPress={() => navigation.navigate('Login')}>
                     Bạn đã có tài khoản?{" "}
                     <Text style={styles.signUpLink}>
-                        Đăng ký
+                        Đăng nhập
                     </Text>
                 </Text>
             </View>

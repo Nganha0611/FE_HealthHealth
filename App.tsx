@@ -1,14 +1,12 @@
-import AppNavigator from './src/navigation/AppNavigator';
-import Welcome from './src/Account/Welcome';
-import LoginScreen from './src/Account/LoginScreen';
-import SignUpScreen from './src/Account/SignUpScreen';
-
-
-// const App = () => {
-//   return <AppNavigator/>;
-// };
+import React from "react";
+import { AuthProvider } from "../HealthHealth/src/contexts/AuthContext"; 
+import AppNavigator from "../HealthHealth/src/navigation/AppNavigator"; 
 const App = () => {
-  return <SignUpScreen />;
+  return (
+    <AuthProvider>
+      <AppNavigator />
+    </AuthProvider>
+  );
 };
 
 export default App;

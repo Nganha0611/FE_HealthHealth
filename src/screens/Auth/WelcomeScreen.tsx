@@ -1,22 +1,26 @@
+import { StackNavigationProp } from "@react-navigation/stack";
 import React from "react";
 import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
-
-const Welcome = ({  }) => {
+import { AuthStackParamList } from "../../navigation/AuthStack";
+type Props = {
+  navigation: StackNavigationProp<AuthStackParamList, 'Welcome'>;
+};
+const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
   return (
     <View style={styles.container}>
       <Text style={styles.welcomeText}>Chào mừng bạn đến với</Text>
       <Text style={styles.selfCareText}>Health Health</Text>
       <Image
-        source={require("../assets/login.png")} 
+        source={require("../../assets/login.png")} 
         style={styles.illustration}
       />
 
-      <TouchableOpacity style={styles.signUpButton}>
+      <TouchableOpacity style={styles.signUpButton} onPress={() => navigation.navigate('Login')}>
         <Text style={styles.signUpText}>Đăng nhập</Text>
       </TouchableOpacity>
 
       {/* Nút Login */}
-      <TouchableOpacity style={styles.loginButton}>
+      <TouchableOpacity style={styles.loginButton} onPress={() => navigation.navigate('SignUp')}>
         <Text style={styles.loginText}>Đăng ký</Text>
       </TouchableOpacity>
     </View>
@@ -83,4 +87,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Welcome;
+export default WelcomeScreen;
