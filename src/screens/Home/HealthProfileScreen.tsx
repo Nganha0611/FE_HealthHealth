@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, Button, Image, StyleSheet } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import { Colors } from 'react-native/Libraries/NewAppScreen';
 // import SamsungHealth from 'react-native-samsung-health';
 
 type Props = {
@@ -42,7 +43,9 @@ const HealthProfileScreen : React.FC<Props> = ({ navigation }) => {
 //     });
 //   }, []);
 
-
+const steps = 6114;
+const minutes = 60;
+const calories = 384
   return (
     <ScrollView>
           <View style={styles.header}>  
@@ -63,10 +66,24 @@ const HealthProfileScreen : React.FC<Props> = ({ navigation }) => {
           />       
            </View>
             </View>
+            <View style={styles.mainIf}>
+
+            </View>
             </ScrollView>
   );
 };
 const styles = StyleSheet.create({
+  mainIf: {
+    flexDirection: 'row',
+    width: 'auto',
+    height: 140,
+    backgroundColor: '#e0dee7',
+    marginHorizontal: 10,
+    borderRadius: 10,
+    marginTop: 20,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   header: {
     flexDirection: 'row',
     marginTop: 10,
