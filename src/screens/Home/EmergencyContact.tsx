@@ -27,7 +27,7 @@ const EmergencyContactScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>Liên hệ khẩn cấp</Text>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'SettingScreen' })}>
+          <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'Account' })}>
             <Image
               style={styles.imgProfile}
               source={require('../../assets/avatar.jpg')}

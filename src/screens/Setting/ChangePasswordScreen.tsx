@@ -10,7 +10,7 @@ type Props = {
 
   navigation: NavigationProp<any>;
 };
-const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
+const ChangePasswordScreen: React.FC<Props> = ({ navigation }) => {
   const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
 
   return (
@@ -24,10 +24,10 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
             style={{ marginRight: 15, marginTop: 17 }}
             onPress={() => navigation.goBack()}
           />
-          <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>Lịch</Text>
+          <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>Đổi mật khẩu</Text>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'Account' })}>
+          <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'SettingScreen' })}>
             <Image
               style={styles.imgProfile}
               source={require('../../assets/avatar.jpg')}
@@ -69,4 +69,4 @@ const styles = StyleSheet.create({
     borderRadius: 30
   },
 })
-export default ScheduleScreen;
+export default ChangePasswordScreen;

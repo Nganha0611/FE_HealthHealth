@@ -1,16 +1,22 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, Image, TouchableOpacity, Alert, Button } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { useAuth } from '../../contexts/AuthContext';
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { AuthStackParamList } from '../../navigation/AuthStack';
+import { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
+import { BottomTabParamList } from '../../navigation/BottomTabs';
+import { SettingStackParamList } from '../../navigation/SettingStack';
 
 // Khai báo kiểu navigation
-type SettingsScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Settings'>;
+type Props = {
+  navigation: StackNavigationProp<SettingStackParamList, 'Settings'>;
+  
+};
+const SettingsScreen: React.FC<Props> = ({ navigation }) => {
+  const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
 
-const SettingsScreen = () => {
-  const navigation = useNavigation<SettingsScreenNavigationProp>();
   const { logout } = useAuth();
 
   const handleLogout = () => {
@@ -29,6 +35,7 @@ const SettingsScreen = () => {
     );
   };
  return (
+
      <View style={styles.container}>
        <View style={styles.header}>
          <Text style={styles.headerText}>Cài đặt</Text>
@@ -49,7 +56,7 @@ const SettingsScreen = () => {
 
        </View>
 
-       <TouchableOpacity style={styles.listSetting}>
+       <TouchableOpacity style={styles.listSetting} onPress={() => navigation.navigate('Account')}>
   <View style={styles.listSettingLeft}>
     <View style={styles.iconContainer}>
       <FontAwesome
@@ -70,7 +77,8 @@ const SettingsScreen = () => {
   </View>
 </TouchableOpacity>
 
-<TouchableOpacity style={styles.listSetting}>
+<TouchableOpacity style={styles.listSetting}  onPress={() => navigationMain.navigate('NotifyStack', { screen: 'NotifyScreen' } as any)}
+>
   <View style={styles.listSettingLeft}>
     <View style={styles.iconContainer}>
       <FontAwesome
@@ -91,7 +99,7 @@ const SettingsScreen = () => {
   </View>
 </TouchableOpacity>    
 
-<TouchableOpacity style={styles.listSetting}>
+<TouchableOpacity style={styles.listSetting} onPress={() => navigation.navigate('Language')}>
   <View style={styles.listSettingLeft}>
     <View style={styles.iconContainer}>
       <FontAwesome
@@ -112,7 +120,7 @@ const SettingsScreen = () => {
   </View>
 </TouchableOpacity>
 
-<TouchableOpacity style={styles.listSetting}>
+<TouchableOpacity style={styles.listSetting} onPress={() => navigation.navigate('ChangePassword')}>
   <View style={styles.listSettingLeft}>
     <View style={styles.iconContainer}>
       <FontAwesome
@@ -137,7 +145,7 @@ const SettingsScreen = () => {
   <View style={styles.listSettingLeft}>
     <View style={styles.iconContainer}>
       <FontAwesome
-        name="sign-out"      // Đăng xuất (hoặc "sign-out-alt")
+        name="sign-out"   
         size={20}
         color="#432c81"
       />

@@ -27,7 +27,7 @@ const MedicineScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>Thuốc</Text>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'SettingScreen' })}>
+          <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'Account' })}>
             <Image
               style={styles.imgProfile}
               source={require('../../assets/avatar.jpg')}
@@ -35,6 +35,13 @@ const MedicineScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </View>
+      <TouchableOpacity style = {styles.boxFeature} onPress={() => navigation.navigate('Medicine')}> 
+                <Text style={[styles.text, styles.boxTitle]}>Thuốc</Text>
+                <Image
+              style={styles.boxImg}
+              source={require('../../assets/medicine.png')}
+            />  
+             </TouchableOpacity>
     </ScrollView>
   );
 };
@@ -68,5 +75,24 @@ const styles = StyleSheet.create({
     height: 45,
     borderRadius: 30
   },
+  boxFeature: {
+    flexDirection: 'row',
+    width: 'auto',
+    height: 140,
+    backgroundColor: '#e0dee7',
+    marginHorizontal: 10,
+    borderRadius: 10,
+    marginTop: 20,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  boxTitle: {
+    marginLeft: 25,
+  },
+  boxImg: {
+      width: 120,
+      height: 120,
+      marginRight: 30,
+  }
 })
 export default MedicineScreen;

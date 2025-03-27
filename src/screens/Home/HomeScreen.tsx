@@ -21,7 +21,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
       <Text style={[styles.text, {fontSize: 30, marginTop: 5} ]}>👋🏻Hi Thùy Trang</Text>
         </View>
         <View style={styles.headerRight} >
-          <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'SettingScreen' })}>
+          <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'Account' })}>
         <Image 
         style={styles.imgProfile}
         source={require('../../assets/avatar.jpg')}
@@ -49,7 +49,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         style={styles.boxImg}
         source={require('../../assets/lich.png')}
       />  
-       </TouchableOpacity>
+       {/* </TouchableOpacity>
        <TouchableOpacity style = {styles.boxFeature} onPress={() => navigation.navigate('EatingDiary')}> 
           <Text style={[styles.text, styles.boxTitle]}>Nhật ký ăn uống</Text>
           <Image
@@ -62,7 +62,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
           <Image
         style={styles.boxImg}
         source={require('../../assets/nutrition.png')}
-      />  
+      />   */}
        </TouchableOpacity>
        <TouchableOpacity style = {styles.boxFeature} onPress={() => navigation.navigate('MedicalHistory')}> 
           <Text style={[styles.text, styles.boxTitle]}>Lịch sử y tế</Text>
