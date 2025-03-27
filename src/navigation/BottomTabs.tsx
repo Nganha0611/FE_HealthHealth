@@ -18,6 +18,8 @@ const BottomTabs = () => {
     <Tab.Navigator
 
       screenOptions={({ route }) => ({
+        headerShown: false,
+
         tabBarStyle: {
           height: 70,        // Chiều cao của thanh
           backgroundColor: '#fff',
@@ -29,7 +31,6 @@ const BottomTabs = () => {
           // fontWeight: 'bold',
         },
         tabBarIcon: ({ color, size }) => {
-          headerShown: false;
           
           let iconName: string = 'question-circle'; // Icon mặc định nếu không tìm thấy
 

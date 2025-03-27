@@ -12,6 +12,8 @@ import {
 } from "react-native";
 import { AuthStackParamList } from "../../navigation/AuthStack";
 import { useAuth } from "../../contexts/AuthContext";
+import axios from "axios";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
 type LoginScreenRouteProp = RouteProp<AuthStackParamList, 'Login'>;
@@ -26,16 +28,26 @@ const LoginScreen : React.FC<Props> = ({ navigation }) => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const { login } = useAuth();
 
+const handleLogin = async () => {
+    try {
+        const response = await axios.post("http://172.20.10.2:8080/api/auth/login", {
+            email,
+            password,
+        });
 
-  const handleLogin = () => {
-    if (email === "t" && password === "t") {
-      login(); 
-      // navigation.replace("BottomTa
-      // bs");
-    } else {
-      Alert.alert("Sai email hoặc mật khẩu!");
+        if (response.data.result === "success") {
+            await login(); 
+        } else {
+            Alert.alert("Lỗi", response.data.message);
+        }
+    } catch (error) {
+        console.error("Lỗi đăng nhập:", error);
+        Alert.alert("Lỗi", "Có lỗi xảy ra, vui lòng thử lại!");
     }
-  };
+};
+
+
+
 
   return (
     <View style={styles.container}>

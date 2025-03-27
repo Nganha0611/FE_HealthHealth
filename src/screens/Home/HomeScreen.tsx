@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { View, Text, Button, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { HomeStackParamList } from '../../navigation/HomeStack';
@@ -14,12 +14,13 @@ type Props = {
 const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
 
+  
   return (
     <ScrollView>
       <View style={styles.header}>  
       <View style={styles.headerLeft}>
-      <Text style={[styles.text, {fontSize: 30, marginTop: 5} ]}>👋🏻Hi Thùy Trang</Text>
-        </View>
+      <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>
+      {'👋🏻 Hi Thùy Trang'}</Text>     </View>
         <View style={styles.headerRight} >
           <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'Account' })}>
         <Image 
@@ -28,13 +29,10 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
       />       </TouchableOpacity>
        </View>
         </View>
-          <TouchableOpacity style = {styles.boxFeature} onPress={() => navigation.navigate('HealthProfile')}>
-          <Text style={[styles.text, styles.boxTitle]}>Hồ sơ sức khỏe</Text>
-          <Image 
-        style={styles.boxImg}
-        source={require('../../assets/pf.png')}
-      />  
-       </TouchableOpacity>
+        <TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('HealthProfile')}>
+  <Text style={[styles.text, styles.boxTitle]}>Hồ sơ sức khỏe</Text>
+  <Image style={styles.boxImg} source={require('../../assets/pf.png')} />
+</TouchableOpacity>
        
        <TouchableOpacity style = {styles.boxFeature} onPress={() => navigation.navigate('Medicine')}> 
           <Text style={[styles.text, styles.boxTitle]}>Thuốc</Text>
@@ -49,20 +47,6 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         style={styles.boxImg}
         source={require('../../assets/lich.png')}
       />  
-       {/* </TouchableOpacity>
-       <TouchableOpacity style = {styles.boxFeature} onPress={() => navigation.navigate('EatingDiary')}> 
-          <Text style={[styles.text, styles.boxTitle]}>Nhật ký ăn uống</Text>
-          <Image
-        style={styles.boxImg}
-        source={require('../../assets/food_diary.png')}
-      />  
-       </TouchableOpacity>
-       <TouchableOpacity style = {styles.boxFeature} onPress={() => navigation.navigate('Nutrition')}> 
-          <Text style={[styles.text, styles.boxTitle]}>Dinh dưỡng</Text>
-          <Image
-        style={styles.boxImg}
-        source={require('../../assets/nutrition.png')}
-      />   */}
        </TouchableOpacity>
        <TouchableOpacity style = {styles.boxFeature} onPress={() => navigation.navigate('MedicalHistory')}> 
           <Text style={[styles.text, styles.boxTitle]}>Lịch sử y tế</Text>
