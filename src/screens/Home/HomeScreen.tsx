@@ -21,13 +21,15 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.headerLeft}>
           <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>
             👋🏻 Hi Thùy Trang</Text>     </View>
-        <View style={styles.headerRight} >
-          <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'Account' })}>
-            <Image
-              style={styles.imgProfile}
-              source={require('../../assets/avatar.jpg')}
-            />       </TouchableOpacity>
-        </View>
+            <View style={styles.headerRight}>
+  Some stray text
+  <TouchableOpacity>
+    <Image
+      style={styles.imgProfile}
+      source={require('../../assets/avatar.jpg')}
+    />
+  </TouchableOpacity>
+</View>
       </View>
       <TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('HealthProfile')}>
         <Text style={[styles.text, styles.boxTitle]}>Hồ sơ sức khỏe</Text>
