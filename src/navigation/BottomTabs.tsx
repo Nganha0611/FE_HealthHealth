@@ -21,10 +21,9 @@ const BottomTabs = () => {
         headerShown: false,
 
         tabBarStyle: {
-          height: 70,        // Chiều cao của thanh
+          height: 70,        
           backgroundColor: '#fff',
-          // borderTopWidth: 1, // Nếu muốn có đường viền
-          // borderTopColor: '#ccc',
+         
         },
         tabBarLabelStyle: {
           fontSize: 15,

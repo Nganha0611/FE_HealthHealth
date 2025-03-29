@@ -1,4 +1,5 @@
 import { NavigationProp } from "@react-navigation/native";
+import axios from "axios";
 import React, { useState } from "react";
 import {
   View,
@@ -7,6 +8,7 @@ import {
   Image,
   TouchableOpacity,
   StyleSheet,
+  Alert,
 } from "react-native";
 type Props = {
     
@@ -18,6 +20,38 @@ const ForgotScreen : React.FC<Props> = ({ navigation }) => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [rePassword, setRePassword] = useState("");
   const [isRePasswordVisible, setIsRePasswordVisible] = useState(false);
+
+  const handleForgotPassword = async () => {
+    if (!email || !password || !rePassword) {
+        Alert.alert("Lỗi", "Vui lòng nhập đầy đủ thông tin!");
+        return;
+    }
+
+    if (password !== rePassword) {
+        Alert.alert("Lỗi", "Mật khẩu nhập lại không khớp!");
+        return;
+    }
+
+    try {
+        const response = await axios.post("http://172.20.10.2:8080/api/auth/forgot-password", {
+            email,
+            newPassword: password, 
+        });
+
+        if (response.data.result === "success") {
+            Alert.alert("Thành công", "Mật khẩu đã được cập nhật!", [
+                { text: "OK", onPress: () => navigation.navigate("Login") },
+            ]);
+        } else {
+            Alert.alert("Lỗi", response.data.message);
+        }
+    } catch (error) {
+        console.error("Lỗi đổi mật khẩu:", error);
+        Alert.alert("Lỗi", "Có lỗi xảy ra, vui lòng thử lại!");
+    }
+};
+
+
   return (
     <View style={styles.container}>
       {/* Tiêu đề */}
@@ -81,7 +115,7 @@ const ForgotScreen : React.FC<Props> = ({ navigation }) => {
                       </View>
 
       {/* Nút Login */}
-      <TouchableOpacity style={styles.loginButton}>
+      <TouchableOpacity style={styles.loginButton} onPress={handleForgotPassword}>
         <Text style={styles.loginButtonText}>Đổi mật khẩu</Text>
       </TouchableOpacity>
 
