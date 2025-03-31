@@ -72,31 +72,35 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
             return;
         }
         if (!name || !email || !password || !birth || !gender || !numberPhone || !address) {
-                    Alert.alert("Lỗi", "Vui lòng điền đầy đủ thông tin!");
-                    return;
-                }
-                if (password !== rePassword) {
-                    Alert.alert("Lỗi", "Mật khẩu nhập lại không khớp!");
-                    return;
-                }
-                setLoading(true);
+            Alert.alert("Lỗi", "Vui lòng điền đầy đủ thông tin!");
+            return;
+        }
+        if (password !== rePassword) {
+            Alert.alert("Lỗi", "Mật khẩu nhập lại không khớp!");
+            return;
+        }
+    
+        setLoading(true);
+    
         try {
-            const response = await axios.post(`${API_BASE_URL}/api/otp/send?email=${email}`);
+            const response = await axios.post(`${API_BASE_URL}/api/otp/send`, null, {
+                params: { email }
+            });
     
-            console.log("Response status:", response.status);
-            console.log("Response data:", response.data);
-    
-            if (response.status === 200 ) {
-                Alert.alert("Thành công", "Mã OTP đã được gửi đến email của bạn!");
+            if (response.data.result === "success") {
+                Alert.alert("Thành công", response.data.message);
                 navigation.navigate("VerifyOTP", { email, name, password, birth, gender, numberPhone, address });
             } else {
+                // Handle API errors (like "Email đã tồn tại!")
                 Alert.alert("Lỗi", response.data.message || "Có lỗi xảy ra khi gửi OTP.");
             }
         } catch (error) {
-            console.error("Lỗi gửi OTP:", error);
-            Alert.alert("Lỗi", "Không thể gửi mã OTP, vui lòng thử lại!");
+            // Handle network or unexpected errors
+            const errorMessage = (error as any)?.response?.data?.message || "Không thể gửi mã OTP, vui lòng thử lại!";
+            Alert.alert("Lỗi", errorMessage);
+        } finally {
+            setLoading(false);
         }
-        setLoading(false);
     };
     
     
