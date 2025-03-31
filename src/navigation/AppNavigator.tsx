@@ -3,12 +3,12 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import AuthStack from "./AuthStack";
 import BottomTabs from "./BottomTabs";
-import { useAuth } from "../contexts/AuthContext"; // Import context để kiểm tra trạng thái đăng nhập
+import { useAuth } from "../contexts/AuthContext"; 
 
 const Stack = createStackNavigator();
 
 const AppNavigator = () => {
-  const { isLoggedIn } = useAuth(); // Lấy trạng thái đăng nhập từ context
+  const { isLoggedIn } = useAuth(); 
 
   return (
     <NavigationContainer>

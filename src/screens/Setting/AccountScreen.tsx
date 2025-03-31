@@ -22,12 +22,12 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
             size={20}
             color="#432c81"
             style={{ marginRight: 15, marginTop: 17 }}
-            onPress={() => navigation.goBack()}
+            onPress={() => navigationMain.navigate('SettingStack', { screen: 'Settings' })}
           />
           <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>Thông tin cá nhân</Text>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'SettingScreen' })}>
+          <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'Settings' })}>
             <Image
               style={styles.imgProfile}
               source={require('../../assets/avatar.jpg')}

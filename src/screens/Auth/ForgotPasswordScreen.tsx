@@ -10,6 +10,8 @@ import {
   StyleSheet,
   Alert,
 } from "react-native";
+import API_BASE_URL from "../../utils/config";
+
 type Props = {
     
     navigation: NavigationProp<any>;
@@ -33,7 +35,7 @@ const ForgotScreen : React.FC<Props> = ({ navigation }) => {
     }
 
     try {
-        const response = await axios.post("http://172.20.10.2:8080/api/auth/forgot-password", {
+        const response = await axios.post(`${API_BASE_URL}/api/auth/forgot-password`, {
             email,
             newPassword: password, 
         });

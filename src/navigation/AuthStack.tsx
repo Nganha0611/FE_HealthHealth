@@ -6,6 +6,7 @@ import SignUpScreen from "../screens/Auth/SignUpScreen";
 import ForgotPasswordScreen from "../screens/Auth/ForgotPasswordScreen";
 import BottomTabs from "./BottomTabs";
 import SettingsScreen from "../screens/Setting/SettingsScreen";
+import VerifyOTPScreen from "../screens/Auth/VerifyOTPScreen";
 
 export type AuthStackParamList = {
   Welcome: undefined;
@@ -14,6 +15,7 @@ export type AuthStackParamList = {
   ForgotPassword: undefined;
   BottomTabs: undefined;
   Settings: undefined;
+  VerifyOTP: undefined;
 };
 
 const Stack = createStackNavigator<AuthStackParamList>();
@@ -27,6 +29,7 @@ const AuthStack = () => {
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
       <Stack.Screen name="BottomTabs" component={BottomTabs} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen} />
 
     </Stack.Navigator>
   );

@@ -14,6 +14,9 @@ import { AuthStackParamList } from "../../navigation/AuthStack";
 import { useAuth } from "../../contexts/AuthContext";
 import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import API_BASE_URL from "../../utils/config";
+import Loading from "../../components/Loading";
+
 
 type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
 type LoginScreenRouteProp = RouteProp<AuthStackParamList, 'Login'>;
@@ -27,15 +30,18 @@ const LoginScreen : React.FC<Props> = ({ navigation }) => {
   const [password, setPassword] = useState("");
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const { login } = useAuth();
-
+  const [loading, setLoading] = useState<boolean>(false);
 const handleLogin = async () => {
+  setLoading(true);
     try {
-        const response = await axios.post("http://172.20.10.2:8080/api/auth/login", {
-            email,
+      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {  
+        email,
             password,
         });
 
         if (response.data.result === "success") {
+            Alert.alert("Thành công", "đăng nhap65thanh2 công!");
+          
             await login(); 
         } else {
             Alert.alert("Lỗi", response.data.message);
@@ -44,6 +50,8 @@ const handleLogin = async () => {
         console.error("Lỗi đăng nhập:", error);
         Alert.alert("Lỗi", "Có lỗi xảy ra, vui lòng thử lại!");
     }
+    setLoading(false);
+
 };
 
 
@@ -111,6 +119,7 @@ const handleLogin = async () => {
           Đăng ký
         </Text>
       </Text>
+      {loading && <Loading message="Đang đăng nhập..." />}
     </View>
   );
 };
