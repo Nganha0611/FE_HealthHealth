@@ -18,7 +18,7 @@ type Props = {
 };
 
 const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
-    const { email, name, password, birth, gender, numberPhone, address } = route.params;
+    const { email, name, password, birth, gender, numberPhone, address, otpAction } = route.params;
     const [otp, setOtp] = useState("");
     const [loading, setLoading] = useState<boolean>(false);
 
@@ -38,7 +38,11 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
 
             if (response.status === 200) {
                 Alert.alert("Thành công", "OTP hợp lệ!");
-                await handleSignUp();
+                if (otpAction === "register") {
+                    await handleSignUp();
+                } else if (otpAction === "forgotPassword") {
+                    await handleForgotPassword();
+                }
             }
         } catch (error) {
             console.error("Lỗi xác thực OTP:", error);
@@ -74,7 +78,27 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
         }
         setLoading(false);
     };
+    const handleForgotPassword = async () => {
+        setLoading(true);
+         try {
+        const response = await axios.post(`${API_BASE_URL}/api/auth/forgot-password`, {
+            email,
+            newPassword: password, 
+        });
 
+        if (response.data.result === "success") {
+            Alert.alert("Thành công", "Mật khẩu đã được cập nhật!", [
+                { text: "OK", onPress: () => navigation.navigate("Login") },
+            ]);
+        } else {
+            Alert.alert("Lỗi", response.data.message);
+        }
+    } catch (error) {
+        console.error("Lỗi đổi mật khẩu:", error);
+        Alert.alert("Lỗi", "Có lỗi xảy ra, vui lòng thử lại!");
+    }
+        setLoading(false);
+    };
     return (
         <View style={styles.container}>
             <Text style={styles.title}>Xác thực OTP</Text>

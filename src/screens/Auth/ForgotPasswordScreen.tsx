@@ -11,6 +11,7 @@ import {
   Alert,
 } from "react-native";
 import API_BASE_URL from "../../utils/config";
+import Loading from "../../components/Loading";
 
 type Props = {
     
@@ -22,6 +23,7 @@ const ForgotScreen : React.FC<Props> = ({ navigation }) => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [rePassword, setRePassword] = useState("");
   const [isRePasswordVisible, setIsRePasswordVisible] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false);
 
   const handleForgotPassword = async () => {
     if (!email || !password || !rePassword) {
@@ -33,24 +35,42 @@ const ForgotScreen : React.FC<Props> = ({ navigation }) => {
         Alert.alert("Lỗi", "Mật khẩu nhập lại không khớp!");
         return;
     }
+    setLoading(true);
 
     try {
-        const response = await axios.post(`${API_BASE_URL}/api/auth/forgot-password`, {
-            email,
-            newPassword: password, 
-        });
+      const response = await axios.post(`${API_BASE_URL}/api/otp/sendFP`, null, {
+          params: { email }
+      });
 
-        if (response.data.result === "success") {
-            Alert.alert("Thành công", "Mật khẩu đã được cập nhật!", [
-                { text: "OK", onPress: () => navigation.navigate("Login") },
-            ]);
-        } else {
-            Alert.alert("Lỗi", response.data.message);
-        }
-    } catch (error) {
-        console.error("Lỗi đổi mật khẩu:", error);
-        Alert.alert("Lỗi", "Có lỗi xảy ra, vui lòng thử lại!");
-    }
+      if (response.data.result === "success") {
+          Alert.alert("Thành công", response.data.message);
+          navigation.navigate("VerifyOTP", { email, password, otpAction: "forgotPassword" });
+      } else {
+          Alert.alert("Lỗi", response.data.message || "Có lỗi xảy ra khi gửi OTP.");
+      }
+  } catch (error) {
+      const errorMessage = (error as any)?.response?.data?.message || "Không thể gửi mã OTP, vui lòng thử lại!";
+      Alert.alert("Lỗi", errorMessage);
+  } finally {
+      setLoading(false);
+  }
+    // try {
+    //     const response = await axios.post(`${API_BASE_URL}/api/auth/forgot-password`, {
+    //         email,
+    //         newPassword: password, 
+    //     });
+
+    //     if (response.data.result === "success") {
+    //         Alert.alert("Thành công", "Mật khẩu đã được cập nhật!", [
+    //             { text: "OK", onPress: () => navigation.navigate("Login") },
+    //         ]);
+    //     } else {
+    //         Alert.alert("Lỗi", response.data.message);
+    //     }
+    // } catch (error) {
+    //     console.error("Lỗi đổi mật khẩu:", error);
+    //     Alert.alert("Lỗi", "Có lỗi xảy ra, vui lòng thử lại!");
+    // }
 };
 
 
@@ -128,6 +148,8 @@ const ForgotScreen : React.FC<Props> = ({ navigation }) => {
           Đăng ký
         </Text>
       </Text>
+      {loading && <Loading message="Đang xử lý..." />}
+
     </View>
   );
 };

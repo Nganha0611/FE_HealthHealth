@@ -19,10 +19,9 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     <ScrollView>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>
-            👋🏻 Hi Thùy Trang</Text>     </View>
+          <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}> 👋🏻 Hi Thùy Trang</Text> 
+              </View>
             <View style={styles.headerRight}>
-  Some stray text
   <TouchableOpacity>
     <Image
       style={styles.imgProfile}

@@ -27,13 +27,13 @@ const HomeStack = () => {
     <Stack.Navigator
     screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Home" component={HomeScreen} />
-      <Stack.Screen name="HealthProfile" component={HealthProfileScreen} /> 
+      {/* <Stack.Screen name="HealthProfile" component={HealthProfileScreen} /> 
       <Stack.Screen name="Medicine" component={MedicineScreen} />
       <Stack.Screen name="Schedule" component={ScheduleScreen} />
       <Stack.Screen name="EatingDiary" component={EatingDiaryScreen} />
       <Stack.Screen name="Nutrition" component={NutritionScreen} />
       <Stack.Screen name="MedicalHistory" component={MedicalHistoryScreen} />
-      <Stack.Screen name="EmergencyContact" component={EmergencyContactScreen} /> 
+      <Stack.Screen name="EmergencyContact" component={EmergencyContactScreen} />  */}
     </Stack.Navigator>
   );
 };
