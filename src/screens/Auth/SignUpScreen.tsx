@@ -26,15 +26,15 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
     const [isPasswordVisible, setIsPasswordVisible] = useState(false);
     const [rePassword, setRePassword] = useState("");
     const [isRePasswordVisible, setIsRePasswordVisible] = useState(false);
-    const [birth, setBirth] = useState(""); // Ngày sinh
+    const [birth, setBirth] = useState("");
     const [open, setOpen] = useState(false);
     const [openGender, setOpenGender] = useState(false);
     const [gender, setGender] = useState("");
     const [address, setAddress] = useState(""); // Địa chỉ
-    const { login } = useAuth(); 
+    const { login } = useAuth();
     const [loading, setLoading] = useState<boolean>(false);
     const [showPicker, setShowPicker] = useState(false);
-    
+
     // const handleSignUp = async () => {
     //     if (!name || !email || !password || !birth || !gender || !numberPhone || !address) {
     //         Alert.alert("Lỗi", "Vui lòng điền đầy đủ thông tin!");
@@ -67,6 +67,19 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
     //     }
     // };
     const handleSendOTP = async () => {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            Alert.alert("Lỗi", "Email không đúng định dạng!");
+            return;
+        }
+        const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        if (!passwordRegex.test(password)) {
+            Alert.alert(
+                "Lỗi",
+                "Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ in hoa, số và ký tự đặc biệt!"
+            );
+            return;
+        }
         if (!email) {
             Alert.alert("Lỗi", "Vui lòng nhập email!");
             return;
@@ -79,31 +92,29 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
             Alert.alert("Lỗi", "Mật khẩu nhập lại không khớp!");
             return;
         }
-    
+
         setLoading(true);
-    
+
         try {
             const response = await axios.post(`${API_BASE_URL}/api/otp/send`, null, {
                 params: { email }
             });
-    
+
             if (response.data.result === "success") {
                 Alert.alert("Thành công", response.data.message);
-                navigation.navigate("VerifyOTP", { email, name, password, birth, gender, numberPhone, address });
+                navigation.navigate("VerifyOTP", { email, name, password, birth, gender, numberPhone, address, otpAction: "register" });
             } else {
-                // Handle API errors (like "Email đã tồn tại!")
                 Alert.alert("Lỗi", response.data.message || "Có lỗi xảy ra khi gửi OTP.");
             }
         } catch (error) {
-            // Handle network or unexpected errors
             const errorMessage = (error as any)?.response?.data?.message || "Không thể gửi mã OTP, vui lòng thử lại!";
             Alert.alert("Lỗi", errorMessage);
         } finally {
             setLoading(false);
         }
     };
-    
-    
+
+
     return (
         <View style={styles.container}>
             <Text style={styles.welcomeText}>Chào mừng bạn đến với Health Health</Text>
@@ -136,26 +147,26 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
                 keyboardType="phone-pad"
             />
 
-<DropDownPicker
-    open={openGender}
-    setOpen={setOpenGender}
-    value={gender}
-    setValue={setGender}
-    items={[
-        { label: "Nam", value: "male" },
-        { label: "Nữ", value: "female" },
-        { label: "Khác", value: "other" },
-    ]}
-    containerStyle={{ width: "100%", marginBottom: 15 }}
-    style={[
-        { backgroundColor: "#fff", borderColor: "#ccc" },
-        loading && { opacity: 0.5 } // Làm mờ khi loading
-    ]}
-    dropDownContainerStyle={{ backgroundColor: "#fff" }}
-    placeholder="Chọn giới tính"
-    placeholderStyle={{ color: "#888", fontSize: 16 }}
-    disabled={loading} // Chặn mở khi loading
-/>
+            <DropDownPicker
+                open={openGender}
+                setOpen={setOpenGender}
+                value={gender}
+                setValue={setGender}
+                items={[
+                    { label: "Nam", value: "male" },
+                    { label: "Nữ", value: "female" },
+                    { label: "Khác", value: "other" },
+                ]}
+                containerStyle={{ width: "100%", marginBottom: 15 }}
+                style={[
+                    { backgroundColor: "#fff", borderColor: "#ccc" },
+                    loading && { opacity: 0.5 } // Làm mờ khi loading
+                ]}
+                dropDownContainerStyle={{ backgroundColor: "#fff" }}
+                placeholder="Chọn giới tính"
+                placeholderStyle={{ color: "#888", fontSize: 16 }}
+                disabled={loading} // Chặn mở khi loading
+            />
 
 
             <TouchableOpacity style={styles.input} onPress={() => setOpen(true)}>

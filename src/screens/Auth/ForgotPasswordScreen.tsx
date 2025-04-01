@@ -14,10 +14,10 @@ import API_BASE_URL from "../../utils/config";
 import Loading from "../../components/Loading";
 
 type Props = {
-    
-    navigation: NavigationProp<any>;
-  };
-const ForgotScreen : React.FC<Props> = ({ navigation }) => {
+
+  navigation: NavigationProp<any>;
+};
+const ForgotScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
@@ -27,51 +27,47 @@ const ForgotScreen : React.FC<Props> = ({ navigation }) => {
 
   const handleForgotPassword = async () => {
     if (!email || !password || !rePassword) {
-        Alert.alert("Lỗi", "Vui lòng nhập đầy đủ thông tin!");
-        return;
+      Alert.alert("Lỗi", "Vui lòng nhập đầy đủ thông tin!");
+      return;
     }
 
     if (password !== rePassword) {
-        Alert.alert("Lỗi", "Mật khẩu nhập lại không khớp!");
-        return;
+      Alert.alert("Lỗi", "Mật khẩu nhập lại không khớp!");
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      Alert.alert("Lỗi", "Email không đúng định dạng!");
+      return;
+    }
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(password)) {
+      Alert.alert(
+        "Lỗi",
+        "Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ in hoa, số và ký tự đặc biệt!"
+      );
+      return;
     }
     setLoading(true);
 
     try {
       const response = await axios.post(`${API_BASE_URL}/api/otp/sendFP`, null, {
-          params: { email }
+        params: { email }
       });
 
       if (response.data.result === "success") {
-          Alert.alert("Thành công", response.data.message);
-          navigation.navigate("VerifyOTP", { email, password, otpAction: "forgotPassword" });
+        Alert.alert("Thành công", response.data.message);
+        navigation.navigate("VerifyOTP", { email, password, otpAction: "forgotPassword" });
       } else {
-          Alert.alert("Lỗi", response.data.message || "Có lỗi xảy ra khi gửi OTP.");
+        Alert.alert("Lỗi", response.data.message || "Có lỗi xảy ra khi gửi OTP.");
       }
-  } catch (error) {
+    } catch (error) {
       const errorMessage = (error as any)?.response?.data?.message || "Không thể gửi mã OTP, vui lòng thử lại!";
       Alert.alert("Lỗi", errorMessage);
-  } finally {
+    } finally {
       setLoading(false);
-  }
-    // try {
-    //     const response = await axios.post(`${API_BASE_URL}/api/auth/forgot-password`, {
-    //         email,
-    //         newPassword: password, 
-    //     });
-
-    //     if (response.data.result === "success") {
-    //         Alert.alert("Thành công", "Mật khẩu đã được cập nhật!", [
-    //             { text: "OK", onPress: () => navigation.navigate("Login") },
-    //         ]);
-    //     } else {
-    //         Alert.alert("Lỗi", response.data.message);
-    //     }
-    // } catch (error) {
-    //     console.error("Lỗi đổi mật khẩu:", error);
-    //     Alert.alert("Lỗi", "Có lỗi xảy ra, vui lòng thử lại!");
-    // }
-};
+    }
+  };
 
 
   return (
@@ -82,7 +78,7 @@ const ForgotScreen : React.FC<Props> = ({ navigation }) => {
 
       {/* Hình minh họa */}
       <Image
-        source={require("../../assets/login.png")} 
+        source={require("../../assets/login.png")}
         style={styles.illustration}
       />
 
@@ -98,43 +94,43 @@ const ForgotScreen : React.FC<Props> = ({ navigation }) => {
       />
 
       <View style={styles.passwordContainer}>
-                          <TextInput
-                              style={styles.input1}
-                              placeholder="Mật khẩu mới"
-                              placeholderTextColor="#888"
-                              value={password}
-                              onChangeText={setPassword}
-                              secureTextEntry={!isPasswordVisible}
-                          />
-      
-                          <TouchableOpacity
-                              onPressIn={() => setIsPasswordVisible(true)}
-                              onPressOut={() => setIsPasswordVisible(false)}
-                              style={styles.eyeIcon}
-                          >
-                              <Text style={{ fontSize: 18 }}>{isPasswordVisible ? "👁️" : "🙈"}</Text>
-                          </TouchableOpacity>
-                      </View>
-      
-                      {/* Nhập lại mật khẩu */}
-                      <View style={styles.passwordContainer}>
-                          <TextInput
-                              style={styles.input1}
-                              placeholder="Nhập lại mật khẩu mới"
-                              placeholderTextColor="#888"
-                              value={rePassword}
-                              onChangeText={setRePassword}
-                              secureTextEntry={!isRePasswordVisible}
-                          />
-      
-                          <TouchableOpacity
-                              onPressIn={() => setIsRePasswordVisible(true)}
-                              onPressOut={() => setIsRePasswordVisible(false)}
-                              style={styles.eyeIcon}
-                          >
-                              <Text style={{ fontSize: 18 }}>{isRePasswordVisible ? "👁️" : "🙈"}</Text>
-                          </TouchableOpacity>
-                      </View>
+        <TextInput
+          style={styles.input1}
+          placeholder="Mật khẩu mới"
+          placeholderTextColor="#888"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry={!isPasswordVisible}
+        />
+
+        <TouchableOpacity
+          onPressIn={() => setIsPasswordVisible(true)}
+          onPressOut={() => setIsPasswordVisible(false)}
+          style={styles.eyeIcon}
+        >
+          <Text style={{ fontSize: 18 }}>{isPasswordVisible ? "👁️" : "🙈"}</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Nhập lại mật khẩu */}
+      <View style={styles.passwordContainer}>
+        <TextInput
+          style={styles.input1}
+          placeholder="Nhập lại mật khẩu mới"
+          placeholderTextColor="#888"
+          value={rePassword}
+          onChangeText={setRePassword}
+          secureTextEntry={!isRePasswordVisible}
+        />
+
+        <TouchableOpacity
+          onPressIn={() => setIsRePasswordVisible(true)}
+          onPressOut={() => setIsRePasswordVisible(false)}
+          style={styles.eyeIcon}
+        >
+          <Text style={{ fontSize: 18 }}>{isRePasswordVisible ? "👁️" : "🙈"}</Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Nút Login */}
       <TouchableOpacity style={styles.loginButton} onPress={handleForgotPassword}>
