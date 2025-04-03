@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, Image, TouchableOpacity, Alert, Button } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { useAuth } from '../../contexts/AuthContext';
@@ -8,6 +8,7 @@ import { AuthStackParamList } from '../../navigation/AuthStack';
 import { BottomTabBarButtonProps } from '@react-navigation/bottom-tabs';
 import { BottomTabParamList } from '../../navigation/BottomTabs';
 import { SettingStackParamList } from '../../navigation/SettingStack';
+import Notification from "../../components/Notification";
 
 // Khai báo kiểu navigation
 type Props = {
@@ -18,7 +19,27 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
   const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
 
   const { logout } = useAuth();
+ /////////////////////////////////////////////////// Xử lý thông báo
+ const [notification, setNotification] = useState({
+  message: "",
+  type: "success" as "success" | "error" | "warning",
+  visible: false,
+  buttonText: "",
+  onPress: () => {},
+});
 
+// Hàm hiển thị thông báo với nút
+const showNotification = (message: string, type: "success" | "error" | "warning", buttonText?: string, onPress?: () => void) => {
+  setNotification({
+      message,
+      type,
+      visible: true,
+      buttonText: buttonText || "",
+      onPress: onPress || (() => setNotification((prev) => ({ ...prev, visible: false }))),
+  });
+};
+
+//////////////////////////////////////////////////////
   const handleLogout = () => {
     Alert.alert(
       "Xác nhận",
@@ -162,7 +183,12 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
   </View>
 </TouchableOpacity>
 
-
+<Notification
+                message={notification.message}
+                type={notification.type}
+                visible={notification.visible}
+                onClose={() => setNotification((prev) => ({ ...prev, visible: false }))}
+            />
      </View>
    );
  };

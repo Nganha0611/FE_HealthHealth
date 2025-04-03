@@ -14,6 +14,8 @@ import DropDownPicker from "react-native-dropdown-picker";
 import { useAuth } from "../../contexts/AuthContext";
 import API_BASE_URL from "../../utils/config";
 import Loading from "../../components/Loading";
+import Notification from "../../components/Notification";
+
 type Props = {
     navigation: NavigationProp<any>;
 };
@@ -34,7 +36,27 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
     const { login } = useAuth();
     const [loading, setLoading] = useState<boolean>(false);
     const [showPicker, setShowPicker] = useState(false);
+ /////////////////////////////////////////////////// Xử lý thông báo
+  const [notification, setNotification] = useState({
+    message: "",
+    type: "success" as "success" | "error" | "warning",
+    visible: false,
+    buttonText: "",
+    onPress: () => {},
+});
 
+// Hàm hiển thị thông báo với nút
+const showNotification = (message: string, type: "success" | "error" | "warning", buttonText?: string, onPress?: () => void) => {
+    setNotification({
+        message,
+        type,
+        visible: true,
+        buttonText: buttonText || "",
+        onPress: onPress || (() => setNotification((prev) => ({ ...prev, visible: false }))),
+    });
+};
+
+//////////////////////////////////////////////////////
     // const handleSignUp = async () => {
     //     if (!name || !email || !password || !birth || !gender || !numberPhone || !address) {
     //         Alert.alert("Lỗi", "Vui lòng điền đầy đủ thông tin!");
@@ -67,29 +89,26 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
     //     }
     // };
     const handleSendOTP = async () => {
+        if (!name || !email || !password || !birth || !gender || !numberPhone || !address) {
+            showNotification("Vui lòng điền đầy đủ thông tin", "error");
+
+            return;
+        }
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         if (!emailRegex.test(email)) {
-            Alert.alert("Lỗi", "Email không đúng định dạng!");
+            showNotification("Email không đúng định dạng!", "error");
             return;
         }
         const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
         if (!passwordRegex.test(password)) {
-            Alert.alert(
-                "Lỗi",
-                "Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ in hoa, số và ký tự đặc biệt!"
-            );
+            showNotification("Mật khẩu phải bao gồm 8 ký tự bao gồm cả chữ in hoa,số và kí tự đặt biệt", "error");
+
             return;
         }
-        if (!email) {
-            Alert.alert("Lỗi", "Vui lòng nhập email!");
-            return;
-        }
-        if (!name || !email || !password || !birth || !gender || !numberPhone || !address) {
-            Alert.alert("Lỗi", "Vui lòng điền đầy đủ thông tin!");
-            return;
-        }
+       
         if (password !== rePassword) {
-            Alert.alert("Lỗi", "Mật khẩu nhập lại không khớp!");
+            showNotification("Mật khẩu nhập lại không khợp", "error");
+
             return;
         }
 
@@ -101,14 +120,15 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
             });
 
             if (response.data.result === "success") {
-                Alert.alert("Thành công", response.data.message);
+                showNotification("response.data.message", "success");
+
                 navigation.navigate("VerifyOTP", { email, name, password, birth, gender, numberPhone, address, otpAction: "register" });
             } else {
-                Alert.alert("Lỗi", response.data.message || "Có lỗi xảy ra khi gửi OTP.");
+                showNotification(response.data.message || "Có lỗi xảy ra khi gửi OTP", "error");
+
             }
         } catch (error) {
             const errorMessage = (error as any)?.response?.data?.message || "Không thể gửi mã OTP, vui lòng thử lại!";
-            Alert.alert("Lỗi", errorMessage);
         } finally {
             setLoading(false);
         }
@@ -242,6 +262,12 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
                 Bạn đã có tài khoản? <Text style={styles.signUpLink}>Đăng nhập</Text>
             </Text>
             {loading && <Loading message="Đang gửi OTP xác thực.." />}
+            <Notification
+    message={notification.message}
+    type={notification.type}
+    visible={notification.visible}
+    onClose={() => setNotification((prev) => ({ ...prev, visible: false }))}
+/>
         </View>
     );
 };

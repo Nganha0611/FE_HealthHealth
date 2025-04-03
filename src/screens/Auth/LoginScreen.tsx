@@ -16,7 +16,7 @@ import axios from "axios";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import API_BASE_URL from "../../utils/config";
 import Loading from "../../components/Loading";
-
+import Notification from "../../components/Notification";
 
 type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
 type LoginScreenRouteProp = RouteProp<AuthStackParamList, 'Login'>;
@@ -31,28 +31,51 @@ const LoginScreen : React.FC<Props> = ({ navigation }) => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const { login } = useAuth();
   const [loading, setLoading] = useState<boolean>(false);
-const handleLogin = async () => {
-  setLoading(true);
-    try {
-      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {  
-        email,
-            password,
-        });
+  /////////////////////////////////////////////////// Xử lý thông báo
+  const [notification, setNotification] = useState({
+    message: "",
+    type: "success" as "success" | "error" | "warning",
+    visible: false,
+    buttonText: "",
+    onPress: () => {},
+});
 
-        if (response.data.result === "success") {
-            Alert.alert("Thành công", "đăng nhap65thanh2 công!");
-          
-            await login(); 
-        } else {
-            Alert.alert("Lỗi", response.data.message);
-        }
-    } catch (error) {
-        console.error("Lỗi đăng nhập:", error);
-        Alert.alert("Lỗi", "Có lỗi xảy ra, vui lòng thử lại!");
-    }
-    setLoading(false);
-
+// Hàm hiển thị thông báo với nút
+const showNotification = (message: string, type: "success" | "error" | "warning", buttonText?: string, onPress?: () => void) => {
+    setNotification({
+        message,
+        type,
+        visible: true,
+        buttonText: buttonText || "",
+        onPress: onPress || (() => setNotification((prev) => ({ ...prev, visible: false }))),
+    });
 };
+
+//////////////////////////////////////////////////////
+const handleLogin = async () => {
+  if(!email || !password) {
+    showNotification("Vui lòng nhập email và mật khẩu!", "error");
+    return;
+  }
+  setLoading(true);
+  try {
+      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {  
+          email,
+          password,
+      });
+
+      if (response.data.result === "success") {
+        showNotification("Đăng nhập thành công!", "success");
+          await login(); 
+      } else {
+        showNotification("Có lỗi xảy ra, vui lòng thử lại!", "error");
+     }
+  } catch (error) {
+    showNotification("Email hoặc mật khẩu không chính xác!", "error");
+  }
+  setLoading(false);
+};
+
 
 
 
@@ -120,6 +143,13 @@ const handleLogin = async () => {
         </Text>
       </Text>
       {loading && <Loading message="Đang đăng nhập..." />}
+      <Notification
+    message={notification.message}
+    type={notification.type}
+    visible={notification.visible}
+    onClose={() => setNotification((prev) => ({ ...prev, visible: false }))}
+/>
+
     </View>
   );
 };

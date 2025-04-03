@@ -12,6 +12,7 @@ import {
 import API_BASE_URL from "../../utils/config";
 import Loading from "../../components/Loading";
 import { useEffect, useRef } from "react"; // Thêm useEffect và useRef
+import Notification from "../../components/Notification";
 
 type Props = {
     navigation: NavigationProp<any>;
@@ -25,6 +26,28 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
     const [countdown, setCountdown] = useState(300);
     const [isResendDisabled, setIsResendDisabled] = useState(true);
     const countdownRef = useRef<NodeJS.Timeout | null>(null); // Lưu interval
+  /////////////////////////////////////////////////// Xử lý thông báo
+  const [notification, setNotification] = useState({
+    message: "",
+    type: "success" as "success" | "error" | "warning",
+    visible: false,
+    buttonText: "",
+    onPress: () => {},
+});
+
+// Hàm hiển thị thông báo với nút
+const showNotification = (message: string, type: "success" | "error" | "warning", buttonText?: string, onPress?: () => void) => {
+    setNotification({
+        message,
+        type,
+        visible: true,
+        buttonText: buttonText || "",
+        onPress: onPress || (() => setNotification((prev) => ({ ...prev, visible: false }))),
+    });
+};
+
+//////////////////////////////////////////////////////
+
     useEffect(() => {
         startCountdown();
         return () => {
@@ -57,10 +80,12 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
             });
 
             if (response.data.result === "success") {
-                Alert.alert("Thành công", response.data.message);
+                showNotification(response.data.message, "success");
+
                 startCountdown();
             } else {
-                Alert.alert("Lỗi", response.data.message || "Có lỗi xảy ra khi gửi OTP.");
+                showNotification(response.data.message || "Có lỗi xảy ra khi gửi OTP.", "error");
+
             }
         } catch (error) {
             const errorMessage = (error as any)?.response?.data?.message || "Không thể gửi mã OTP, vui lòng thử lại!";
@@ -70,10 +95,11 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
         }
         setLoading(false);
     };
-    
+
     const handleVerifyOTP = async () => {
         if (!otp.trim()) {
-            Alert.alert("Lỗi", "Vui lòng nhập mã OTP!");
+            showNotification("Vui lòng nhập mã OTP", "error");
+
             return;
         }
 
@@ -86,7 +112,10 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
             console.log("Response:", response.data);
 
             if (response.status === 200) {
-                Alert.alert("Thành công", "OTP hợp lệ!");
+                showNotification(
+                    response.data.message || "Xác thực thành công!",
+                    "success"
+                );
                 if (otpAction === "register") {
                     await handleSignUp();
                 } else if (otpAction === "forgotPassword") {
@@ -94,10 +123,9 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
                 }
             }
         } catch (error) {
-            console.error("Lỗi xác thực OTP:", error);
-            let errorMessage = "OTP không đúng hoặc đã hết hạn.";
+            let errorMessage = "Sai mã OTP hoặc hết hạn.";
+            showNotification(errorMessage, "error");
 
-            Alert.alert("Lỗi", errorMessage);
         }
         setLoading(false);
     };
@@ -114,19 +142,26 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
                 numberPhone,
                 address,
             });
-
+    
             if (response.data.result === "success") {
-                Alert.alert("Thành công", "Đăng ký thành công!");
-                navigation.navigate("Login");
+                showNotification(
+                    "Đăng ký thành công!",
+                    "success",
+                    "OK",
+                    () => {
+                        setNotification((prev) => ({ ...prev, visible: false })); // Ẩn thông báo trước khi điều hướng
+                        navigation.navigate("Login");
+                    }
+                );
             } else {
-                Alert.alert("Lỗi", response.data.message);
+                showNotification(response.data.message, "error");
             }
         } catch (error) {
-            console.error("Lỗi đăng ký:", error);
-            Alert.alert("Lỗi", "Có lỗi xảy ra khi đăng ký, vui lòng thử lại!");
+            showNotification("Có lỗi xảy ra vui lòng đăng ký lại!!!", "error");
         }
         setLoading(false);
     };
+    
     const handleForgotPassword = async () => {
         setLoading(true);
         try {
@@ -136,15 +171,19 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
             });
 
             if (response.data.result === "success") {
-                Alert.alert("Thành công", "Mật khẩu đã được cập nhật!", [
-                    { text: "OK", onPress: () => navigation.navigate("Login") },
-                ]);
+                showNotification(
+                    "Đổi mật khẩu thành công!",
+                    "success",
+                    "OK",
+                    () => navigation.navigate("Login") 
+                );
             } else {
-                Alert.alert("Lỗi", response.data.message);
+                showNotification(response.data.message, "error");
+
             }
         } catch (error) {
-            console.error("Lỗi đổi mật khẩu:", error);
-            Alert.alert("Lỗi", "Có lỗi xảy ra, vui lòng thử lại!");
+            showNotification("Có lỗi xảy ra vui lòng thử lại", "error");
+
         }
         setLoading(false);
     };
@@ -161,7 +200,7 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
                 keyboardType="number-pad"
                 maxLength={6}
             />
-          <TouchableOpacity
+            <TouchableOpacity
                 style={[styles.resendButton, isResendDisabled && { opacity: 0.5 }]}
                 onPress={handleResendOTP}
                 disabled={isResendDisabled}
@@ -175,6 +214,15 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Text style={styles.verifyButtonText}>Xác thực</Text>
             </TouchableOpacity>
             {loading && <Loading message="Đang xử lý..." />}
+            <Notification
+    message={notification.message}
+    type={notification.type}
+    visible={notification.visible}
+    onClose={() => setNotification((prev) => ({ ...prev, visible: false }))}
+    buttonText={notification.buttonText}
+    onPressButton={notification.onPress}
+/>
+
         </View>
     );
 };
@@ -192,7 +240,7 @@ const styles = StyleSheet.create({
         color: "#FFFFFF",
         fontSize: 14,
         fontWeight: "bold",
-    },    
+    },
     container: {
         flex: 1,
         backgroundColor: "#F9FBFF",
