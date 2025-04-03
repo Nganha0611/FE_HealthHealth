@@ -1,5 +1,6 @@
 import React, { useEffect } from "react";
 import { View, Text, StyleSheet, Animated, TouchableOpacity } from "react-native";
+import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 type NotificationProps = {
     message: string;
@@ -36,15 +37,35 @@ const Notification: React.FC<NotificationProps> = ({
             }, buttonText ? 5000 : 3000); 
                 
             return () => clearTimeout(autoHide);
+        } else {
+            Animated.timing(fadeAnim, {
+                toValue: 0,
+                duration: 300,
+                useNativeDriver: true,
+            }).start();
         }
     }, [visible]);
 
     if (!visible) return null;
 
     return (
-        <Animated.View style={[styles.container, styles[type], buttonText ? styles.centered : styles.top]}>
+        <Animated.View 
+            style={[
+                styles.container, 
+                styles[type], 
+                buttonText ? styles.centered : styles.top,
+                { opacity: fadeAnim }
+            ]}
+        >
+            {/* Nút đóng (X) */}
+            <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+                <FontAwesome name="times" size={18} color="#fff" />
+            </TouchableOpacity>
+
+            {/* Nội dung thông báo */}
             <Text style={styles.text}>{message}</Text>
 
+            {/* Nút hành động (nếu có) */}
             {buttonText && onPressButton && (
                 <TouchableOpacity style={styles.button} onPress={onPressButton}>
                     <Text style={styles.buttonText}>{buttonText}</Text>
@@ -57,17 +78,18 @@ const Notification: React.FC<NotificationProps> = ({
 const styles = StyleSheet.create({
     container: {
         width: "90%",
-        padding: 15,
-        borderRadius: 10,
-        elevation: 5,
+        padding: 20,
+        borderRadius: 12,
+        elevation: 8,
         shadowColor: "#000",
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.2,
-        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 3 },
+        shadowOpacity: 0.3,
+        shadowRadius: 6,
         zIndex: 1000,
         alignSelf: "center",
         alignItems: "center",
         position: "absolute",
+        backgroundColor: "#fff", // Nền trắng mặc định, sẽ bị ghi đè bởi type
     },
     top: {
         top: 50,
@@ -79,11 +101,18 @@ const styles = StyleSheet.create({
     success: { backgroundColor: "#4CAF50" },
     error: { backgroundColor: "#F44336" },
     warning: { backgroundColor: "#FFC107" },
+    closeButton: {
+        position: "absolute",
+        top: 10,
+        right: 10,
+        padding: 5,
+    },
     text: {
         color: "#fff",
         fontSize: 16,
         fontWeight: "bold",
         textAlign: "center",
+        marginTop: 10,
         marginBottom: 5,
     },
     button: {

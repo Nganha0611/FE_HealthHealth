@@ -172,10 +172,13 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
 
             if (response.data.result === "success") {
                 showNotification(
-                    "Đổi mật khẩu thành công!",
+                    "Đăng ký thành công!",
                     "success",
                     "OK",
-                    () => navigation.navigate("Login") 
+                    () => {
+                        setNotification((prev) => ({ ...prev, visible: false })); // Ẩn thông báo trước khi điều hướng
+                        navigation.navigate("Login");
+                    }
                 );
             } else {
                 showNotification(response.data.message, "error");

@@ -66,6 +66,7 @@ const handleLogin = async () => {
 
       if (response.data.result === "success") {
         showNotification("Đăng nhập thành công!", "success");
+        
           await login(); 
       } else {
         showNotification("Có lỗi xảy ra, vui lòng thử lại!", "error");
