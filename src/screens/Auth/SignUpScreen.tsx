@@ -269,6 +269,7 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
     onClose={() => setNotification((prev) => ({ ...prev, visible: false }))}
 />
         </View>
+        
     );
 };
 

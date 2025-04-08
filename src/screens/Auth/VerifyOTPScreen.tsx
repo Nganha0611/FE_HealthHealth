@@ -121,6 +121,8 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
                 } else if (otpAction === "forgotPassword") {
                     await handleForgotPassword();
                 }
+            } else {
+                showNotification("OTP không chính xác!", "error");
             }
         } catch (error) {
             let errorMessage = "Sai mã OTP hoặc hết hạn.";
@@ -172,7 +174,7 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
 
             if (response.data.result === "success") {
                 showNotification(
-                    "Đăng ký thành công!",
+                    "Đổi mật khẩu thành công!",
                     "success",
                     "OK",
                     () => {

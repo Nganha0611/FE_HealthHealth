@@ -68,11 +68,16 @@ const handleLogin = async () => {
         showNotification("Đăng nhập thành công!", "success");
         
           await login(); 
-      } else {
-        showNotification("Có lỗi xảy ra, vui lòng thử lại!", "error");
+      } else  if (response.data.result === "wrongPassword") {
+        showNotification(response.data.message ||"Mật khẩu không chính xác!!!", "success");
+        
+          await login(); 
+      }  else if (response.data.result === "emailNotExist") {
+        showNotification(response.data.message || "Email không tồn tại!", "error");
      }
+
   } catch (error) {
-    showNotification("Email hoặc mật khẩu không chính xác!", "error");
+    showNotification("Có lỗi xảy ra vui lòng kiểm tra lại!", "error");
   }
   setLoading(false);
 };
