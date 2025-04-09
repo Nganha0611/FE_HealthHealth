@@ -8,6 +8,11 @@ import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { Colors } from 'react-native/Libraries/NewAppScreen';
 import { BottomTabParamList } from '../../navigation/BottomTabs';
 import { Alert, TextInput, Modal, Pressable } from 'react-native';
+import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
+import Notification from "../../components/Notification";
+import axios from 'axios';
+import API_BASE_URL from '../../utils/config';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Props = {
   navigation: NavigationProp<any>;
@@ -20,16 +25,81 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   const [typeSelectModalVisible, setTypeSelectModalVisible] = useState(false);
   const [sysValue, setSysValue] = useState('');
   const [diaValue, setDiaValue] = useState('');
+  const handleMeasureBloodPressure = async () => {
+    try {
+      await axios.post(`${API_BASE_URL}/api/blood-pressures/measure`, {
+        userId,
+        systolic: parseInt(sysValue),    
+        diastolic: parseInt(diaValue),  
+      });
+      
+      Alert.alert('Thành công', 'Đã lưu huyết áp!');
+      // setSysValue('');
+      // setDiaValue('');
+    } catch (error) {
+      Alert.alert('Lỗi', 'Không thể lưu dữ liệu huyết áp.');
+      console.error(error);
+    }
+  };
+  
+  const [userId, setUserId] = useState<string>(''); 
+useEffect(() => {
+  const fetchUser = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('user');
+      if (userData) {
+        const user = JSON.parse(userData);
+        setUserId(user.id); // Gán tên từ user object
+      }
+    } catch (error) {
+      console.error('Lỗi khi lấy thông tin người dùng:', error);
+    }
+  };
 
+  fetchUser();
+}, []);
   const handleMeasurePress = () => {
     setTypeSelectModalVisible(true);
   };
+  const [heartRate, setHeartRate] = useState('');
 
-  const steps = 8114;
+const handleMeasureHeartRate = async () => {
+  try {
+    await axios.post(`${API_BASE_URL}/api/heart-rates/measure`, {
+      userId,
+      heartRate: parseInt(inputValue)
+    });
+    Alert.alert('Thành công', 'Đã lưu nhịp tim!');
+    setHeartRate(inputValue);
+  } catch (error) {
+    Alert.alert('Lỗi', 'Không thể lưu dữ liệu.');
+  }
+};
+
+  const steps = 1114;
   const heart_rate = 75;
   const blood_pressure = "120/80"
   const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
-    
+   const [notification, setNotification] = useState({
+    message: "",
+    type: "success" as "success" | "error" | "warning",
+    visible: false,
+    buttonText: "",
+    onPress: () => {},
+});
+
+const showNotification = (message: string, type: "success" | "error" | "warning", buttonText?: string, onPress?: () => void) => {
+    setNotification({
+        message,
+        type,
+        visible: true,
+        buttonText: buttonText || "",
+        onPress: onPress || (() => setNotification((prev) => ({ ...prev, visible: false }))),
+    });
+};
+
+
+
   return (
     <ScrollView>
       <View style={styles.header}>
@@ -55,7 +125,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
       
       <TouchableOpacity style={styles.measureContainer} onPress={handleMeasurePress}>
         <View style={styles.measureContent}>
-          <FontAwesome name="stethoscope" size={26} color="#432c81" style={styles.measureIcon} />
+          <FontAwesome5 name="stethoscope" size={26} color="#432c81" style={styles.measureIcon} />
           <View>
             <Text style={styles.measureTitle}>ĐO CHỈ SỐ</Text>
             <Text style={styles.measureSubtitle}>Nhấn để đo chỉ số sức khỏe</Text>
@@ -75,13 +145,13 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
           <View style={styles.textContainer}>
             <View style={styles.row}>
               <Image style={[styles.icon, { width: 23, height: 23, marginLeft: 3, marginRight: 8 }]} source={require('../../assets/heart_rate.png')} />
-              <Text style={[styles.number, { color: '#ed1b24' }]}>{heart_rate} lần/phút</Text>
+              <Text style={[styles.number, { color: '#ed1b24' }]}>{heartRate} lần/phút</Text>
             </View>
           </View>
           <View style={styles.textContainer}>
             <View style={styles.row}>
               <Image style={[styles.icon, { width: 23, height: 23, marginLeft: 3, marginRight: 8 }]} source={require('../../assets/blood_pressure.png')} />
-              <Text style={[styles.number, { color: '#2577f7' }]}>{blood_pressure} {"mmHg"}</Text> 
+              <Text style={[styles.number, { color: '#2577f7' }]}>{sysValue}/{diaValue} {"mmHg"}</Text> 
             </View>
           </View>
         </View>
@@ -115,16 +185,58 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
           </Svg>
         </View>
       </View>
-      <TouchableOpacity style={styles.measureContainer} onPress={handleMeasurePress}>
-        <View style={styles.measureContent}>
-          <FontAwesome name="stethoscope" size={26} color="#432c81" style={styles.measureIcon} />
-          <View>
-            <Text style={styles.measureTitle}>ĐO CHỈ SỐ</Text>
-            <Text style={styles.measureSubtitle}>Nhấn để đo chỉ số sức khỏe</Text>
-          </View>
-        </View>
-        <FontAwesome name="chevron-right" size={22} color="#432c81" />
-      </TouchableOpacity>
+
+
+
+
+      <TouchableOpacity style={styles.stepContainer} onPress={handleMeasurePress}>
+  <View style={styles.stepContent}>
+    <FontAwesome5 name="shoe-prints" size={26} color="#432c81" style={styles.stepIcon} />
+
+    <View>
+      <Text style={styles.stepTitle}>{steps}</Text>
+      <Text style={styles.stepSubtitle}>/6000</Text>
+    </View>
+  </View>
+
+  {/* Phần hiển thị phần trăm và thanh tiến độ */}
+  <View style={styles.progressWrapper}>
+    <Text style={styles.progressText}>
+      {Math.min(Math.round((steps / 6000) * 100), 100)}%
+    </Text>
+    <View style={styles.progressBar}>
+      <View style={[styles.progressFill, { width: `${Math.min((steps / 6000) * 100, 100)}%` }]} />
+    </View>
+  </View>
+</TouchableOpacity>
+
+
+
+<TouchableOpacity style={styles.heartRateContainer} onPress={handleMeasurePress}>
+  <View style={styles.stepContent}>
+    <FontAwesome5 name="heartbeat" size={26} color="#ed1b24" style={styles.heartRateIcon} />
+
+    <View>
+      <Text style={styles.heartRateTitle}>{heartRate}</Text>
+      <Text style={styles.heartRateSubtitle}>/phút</Text>
+    </View>
+  </View>
+
+  {/* Phần hiển thị phần trăm và thanh tiến độ */}
+  <View style={styles.heartRateProgressWrapper}>
+    <Text style={styles.heartRateProgressText}>
+      {/* {Math.min(Math.round((heart_rate / 100) * 100), 100)}% */}
+      !
+    </Text>
+    <View style={styles.heartRateProgressBar}>
+      <View style={[styles.heartRateProgressFill, { width: `${Math.min((parseInt(heartRate) / 100) * 100, 100)}%` }]} />
+    </View>
+  </View>
+</TouchableOpacity>
+
+
+
+
       <Modal
         animationType="slide"
         transparent={true}
@@ -170,13 +282,18 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         </View>
       </Modal>
 
-      {/* Input Modal - Enhanced for elderly users */}
       <Modal
         animationType="slide"
         transparent={true}
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
+        <Notification
+    message={notification.message}
+    type={notification.type}
+    visible={notification.visible}
+    onClose={() => setNotification((prev) => ({ ...prev, visible: false }))}
+/>
         <View style={styles.modalBackground}>
           <View style={styles.enhancedModalContainer}>
             <Text style={styles.enhancedModalTitle}>
@@ -245,15 +362,26 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
                 style={[styles.actionButton, { backgroundColor: '#3CB371' }]}
                 onPress={() => {
                   if (selectedMeasurement === 'blood_pressure') {
-                    console.log("✅ Huyết áp:", sysValue + "/" + diaValue + " mmHg");
+                    if(!sysValue || !diaValue) {
+                      showNotification("Vui lòng nhập đầy đủ thông tin!", "error");
+                      return;
+                    } else {
+                      handleMeasureBloodPressure()
+                    }
                   } else {
-                    console.log("✅ Nhịp tim:", inputValue + " lần/phút");
+                    if(inputValue === "") {
+                      showNotification("Vui lòng nhập đầy đủ thông tin!", "error");
+                      return;
+                    } else {
+                      handleMeasureHeartRate()
+
+                    }
                   }
 
                   setModalVisible(false);
                   setInputValue('');
-                  setSysValue('');
-                  setDiaValue('');
+                  // setSysValue('');
+                  // setDiaValue('');
                 }}
               >
                 <Text style={styles.actionButtonText}>Lưu</Text>
@@ -262,6 +390,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
           </View>
         </View>
       </Modal>
+      
     </ScrollView>
   );
 };
@@ -467,6 +596,132 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     fontSize: 20,
   },
+  stepContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  stepIcon: {
+    marginRight: 15,
+    color: '#3CB371',
+  },
+  stepTitle: {
+    fontSize: 30,
+    fontWeight: 'bold',
+    color: '#3CB371',
+  },
+  stepSubtitle: {
+    fontSize: 17,
+    color: '#3CB371',
+    marginTop: 3,
+    fontStyle: 'italic',
+  },
+  stepContainer: {
+    flexDirection: 'row',
+    width: 'auto',
+    height: 100,
+    backgroundColor: '#e0dee7',
+    marginHorizontal: 10,
+    borderRadius: 20,
+    marginTop: 20,
+    marginBottom: 10,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 15,
+    paddingHorizontal: 20,
+    // shadowColor: "#000",
+    // shadowOpacity: 0.1,
+    // shadowRadius: 5,
+    // elevation: 10,
+  },
+  progressWrapper: {
+    alignItems: 'flex-end', // Căn phải cho thanh tiến độ
+  },
+  
+  progressText: {
+    color: '#3CB371',
+    fontSize: 14,
+    marginBottom: 4,
+    fontWeight: '500'
+  },
+  
+  progressBar: {
+    width: 100,
+    height: 10,
+    backgroundColor: 'white',
+    borderRadius: 5,
+    overflow: 'hidden',
+    marginBottom: 20,
+  },
+  
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#3CB371',
+    borderRadius: 5,
+  },
+  heartRateContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  heartRateIcon: {
+    marginRight: 15,
+    color: '#ed1b24',
+  },
+  heartRateTitle: {
+    fontSize: 30,
+    fontWeight: 'bold',
+    color: '#ed1b24',
+  },
+  heartRateSubtitle: {
+    fontSize: 17,
+    color: '#ed1b24',
+    marginTop: 3,
+    fontStyle: 'italic',
+  },
+  heartRateContainer: {
+    flexDirection: 'row',
+    width: 'auto',
+    height: 100,
+    backgroundColor: '#e0dee7',
+    marginHorizontal: 10,
+    borderRadius: 20,
+    marginTop: 10,
+    marginBottom: 10,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 15,
+    paddingHorizontal: 20,
+    // shadowColor: "#000",
+    // shadowOpacity: 0.1,
+    // shadowRadius: 5,
+    // elevation: 10,
+  },
+  heartRateProgressWrapper: {
+    alignItems: 'flex-end', // Căn phải cho thanh tiến độ
+  },
+  
+  heartRateProgressText: {
+    color: '#ed1b24',
+    fontSize: 14,
+    marginBottom: 4,
+    fontWeight: '500'
+  },
+  
+  heartRateProgressBar: {
+    width: 100,
+    height: 10,
+    backgroundColor: 'white',
+    borderRadius: 5,
+    overflow: 'hidden',
+    marginBottom: 20,
+  },
+  
+  heartRateProgressFill: {
+    height: '100%',
+    backgroundColor: '#ed1b24',
+    borderRadius: 5,
+  },
+  
+  
 });
 
 export default HealthProfileScreen;

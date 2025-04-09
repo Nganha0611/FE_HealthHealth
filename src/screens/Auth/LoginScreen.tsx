@@ -53,34 +53,43 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
 
 //////////////////////////////////////////////////////
 const handleLogin = async () => {
-  if(!email || !password) {
+  if (!email || !password) {
     showNotification("Vui lòng nhập email và mật khẩu!", "error");
     return;
   }
+
   setLoading(true);
+
   try {
-      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {  
-          email,
-          password,
-      });
+    const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+      email,
+      password,
+    });
 
-      if (response.data.result === "success") {
-        showNotification("Đăng nhập thành công!", "success");
-        
-          await login(); 
-      } else  if (response.data.result === "wrongPassword") {
-        showNotification(response.data.message ||"Mật khẩu không chính xác!!!", "success");
-        
-          await login(); 
-      }  else if (response.data.result === "emailNotExist") {
-        showNotification(response.data.message || "Email không tồn tại!", "error");
-     }
+    const { result, message, token, user } = response.data;
 
+    if (result === "success") {
+      showNotification("Đăng nhập thành công!", "success");
+
+      // Lưu token và user vào AsyncStorage
+      await AsyncStorage.setItem('token', token);
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+
+      // Gọi hàm login sau khi lưu
+      await login();
+    } else if (result === "wrongPassword") {
+      showNotification(message || "Mật khẩu không chính xác!", "error");
+    } else if (result === "emailNotExist") {
+      showNotification(message || "Email không tồn tại!", "error");
+    }
   } catch (error) {
-    showNotification("Có lỗi xảy ra vui lòng kiểm tra lại!", "error");
+    console.error("Lỗi khi đăng nhập:", error);
+    showNotification("Có lỗi xảy ra. Vui lòng kiểm tra lại!", "error");
   }
+
   setLoading(false);
 };
+
 
 
 

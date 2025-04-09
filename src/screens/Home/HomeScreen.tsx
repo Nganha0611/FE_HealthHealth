@@ -1,10 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, Button, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import { HomeStackParamList } from '../../navigation/HomeStack';
 import { ScrollView } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import { BottomTabParamList } from '../../navigation/BottomTabs';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Props = {
   navigation: StackNavigationProp<HomeStackParamList, 'Home'>;
@@ -13,13 +14,28 @@ type Props = {
 
 const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
+  const [userName, setUserName] = useState<string>(''); // tên mặc định
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('user');
+        if (userData) {
+          const user = JSON.parse(userData);
+          setUserName(user.name); // Gán tên từ user object
+        }
+      } catch (error) {
+        console.error('Lỗi khi lấy thông tin người dùng:', error);
+      }
+    };
 
+    fetchUser();
+  }, []);
 
   return (
     <ScrollView>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}> 👋🏻 Hi Thùy Trang</Text> 
+          <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>  👋🏻 Hi {userName || 'bạn'}</Text> 
               </View>
             <View style={styles.headerRight}>
   <TouchableOpacity>
