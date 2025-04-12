@@ -6,6 +6,7 @@ import { ScrollView } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import { BottomTabParamList } from '../../navigation/BottomTabs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+// import i18n from '../../locales/i18n';
 
 type Props = {
   navigation: StackNavigationProp<HomeStackParamList, 'Home'>;
@@ -14,7 +15,7 @@ type Props = {
 
 const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
-  const [userName, setUserName] = useState<string>(''); // tên mặc định
+  const [userName, setUserName] = useState<string>(''); 
   useEffect(() => {
     const fetchUser = async () => {
       try {
