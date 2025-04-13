@@ -16,6 +16,7 @@ import { BottomTabParamList } from '../../navigation/BottomTabs';
 import axios from 'axios';
 import API_BASE_URL from '../../utils/config';
 import Loading from '../../components/Loading';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   navigation: NavigationProp<any>;
@@ -23,6 +24,7 @@ type Props = {
 
 const ChangePasswordScreen: React.FC<Props> = ({ navigation }) => {
   const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
+  const { t } = useTranslation();
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [reNewPassword, setReNewPassword] = useState("");
@@ -33,21 +35,18 @@ const ChangePasswordScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !reNewPassword) {
-      Alert.alert("Lỗi", "Vui lòng nhập đầy đủ thông tin!");
+      Alert.alert(t("errorEmptyFields"));
       return;
     }
 
     if (newPassword !== reNewPassword) {
-      Alert.alert("Lỗi", "Mật khẩu nhập lại không khớp!");
+      Alert.alert(t("errorPasswordMismatch"));
       return;
     }
 
     const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(newPassword)) {
-      Alert.alert(
-        "Lỗi",
-        "Mật khẩu mới phải có ít nhất 8 ký tự, bao gồm chữ in hoa, số và ký tự đặc biệt!"
-      );
+      Alert.alert(t("errorPasswordInvalid"));
       return;
     }
 
@@ -60,15 +59,15 @@ const ChangePasswordScreen: React.FC<Props> = ({ navigation }) => {
       });
 
       if (response.data.result === "success") {
-        Alert.alert("Thành công", "Mật khẩu đã được thay đổi thành công!");
+        Alert.alert(t("successPasswordChanged"));
         navigation.goBack();
       } else {
-        Alert.alert("Lỗi", response.data.message || "Có lỗi xảy ra khi đổi mật khẩu.");
+        Alert.alert(t("errorGeneric"));
       }
     } catch (error) {
       const errorMessage =
-        (error as any)?.response?.data?.message || "Không thể đổi mật khẩu, vui lòng thử lại!";
-      Alert.alert("Lỗi", errorMessage);
+        (error as any)?.response?.data?.message || t("errorCannotChange");
+      Alert.alert(t("errorCannotChange"), errorMessage);
     } finally {
       setLoading(false);
     }
@@ -86,7 +85,7 @@ const ChangePasswordScreen: React.FC<Props> = ({ navigation }) => {
             style={{ marginRight: 15, marginTop: 17 }}
             onPress={() => navigation.goBack()}
           />
-          <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>Đổi mật khẩu</Text>
+          <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>{t("changePassword")}</Text>
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'SettingScreen' })}>
@@ -104,7 +103,7 @@ const ChangePasswordScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.passwordContainer}>
           <TextInput
             style={styles.input}
-            placeholder="Mật khẩu hiện tại"
+            placeholder={t("currentPassword")}
             placeholderTextColor="#888"
             value={currentPassword}
             onChangeText={setCurrentPassword}
@@ -123,7 +122,7 @@ const ChangePasswordScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.passwordContainer}>
           <TextInput
             style={styles.input}
-            placeholder="Mật khẩu mới"
+            placeholder={t("newPassword")}
             placeholderTextColor="#888"
             value={newPassword}
             onChangeText={setNewPassword}
@@ -142,7 +141,7 @@ const ChangePasswordScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.passwordContainer}>
           <TextInput
             style={styles.input}
-            placeholder="Nhập lại mật khẩu mới"
+            placeholder={t("reNewPassword")}
             placeholderTextColor="#888"
             value={reNewPassword}
             onChangeText={setReNewPassword}
@@ -159,42 +158,40 @@ const ChangePasswordScreen: React.FC<Props> = ({ navigation }) => {
 
         {/* Nút Đổi mật khẩu */}
         <TouchableOpacity style={styles.changeButton} onPress={handleChangePassword}>
-          <Text style={styles.buttonText}>Đổi mật khẩu</Text>
+          <Text style={styles.buttonText}>{t("changePasswordButton")}</Text>
         </TouchableOpacity>
       </View>
 
-      {loading && <Loading message="Đang xử lý..." />}
+      {loading && <Loading message={t("processing")} />}
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  scrollContainer: {
+  scrollContainer:  {
     padding: 15,
-    backgroundColor: '#F9FBFF',
+    backgroundColor: '#f5f5f5',
   },
   header: {
     flexDirection: 'row',
-    marginTop: 10,
     justifyContent: 'space-between',
+    alignItems: 'center',
   },
-  text: {
-    fontSize: 25,
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 28,
     fontFamily: 'Roboto',
     color: '#432c81',
     fontWeight: 'bold',
-  },
-  headerLeft: {
     marginLeft: 10,
-    marginTop: 5,
-    flexDirection: 'row',
-    justifyContent: 'flex-start',
   },
   headerRight: {
-    marginRight: 15,
     backgroundColor: '#e0dee7',
-    borderRadius: 30,
-    padding: 7,
+    borderRadius: 25,
+    padding: 5,
   },
   imgProfile: {
     width: 45,
@@ -222,7 +219,7 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 16,
     color: '#333',
-    paddingRight: 40, // Chừa chỗ cho icon
+    paddingRight: 40,
   },
   eyeIcon: {
     position: 'absolute',
@@ -241,6 +238,12 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#FFFFFF',
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  text: {
+    fontSize: 25,
+    fontFamily: 'Roboto',
+    color: '#432c81',
     fontWeight: 'bold',
   },
 });

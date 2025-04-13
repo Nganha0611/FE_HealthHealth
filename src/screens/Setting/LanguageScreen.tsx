@@ -1,13 +1,14 @@
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, Image, StyleSheet, TouchableOpacity, Alert } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { BottomTabParamList } from '../../navigation/BottomTabs';
-// import { setLocale } from '../../locales/i18n';
-import i18n from 'i18n-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Loading from '../../components/Loading';
+import i18n, { changeLanguage } from '../../locales/i18n';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   navigation: NavigationProp<any>;
@@ -16,50 +17,65 @@ type Props = {
 const LanguageScreen: React.FC<Props> = ({ navigation }) => {
   const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
   const [selectedLanguage, setSelectedLanguage] = useState<string>('vi');
-  const [refresh, setRefresh] = useState(false); // Sử dụng để làm mới component
+  const [loading, setLoading] = useState<boolean>(false);
+  const { t } = useTranslation();
 
-  // useEffect(() => {
-  //   const loadCurrentLanguage = async () => {
-  //     try {
-  //       const currentLang = await AsyncStorage.getItem('language') || 'vi';
-  //       setSelectedLanguage(currentLang);
-  //       setLocale(currentLang); // Đặt ngôn ngữ trong i18n
-  //     } catch (error) {
-  //       console.error('Lỗi khi tải ngôn ngữ:', error);
-  //     }
-  //   };
-    
-  //   loadCurrentLanguage();
-  // }, []);
-
-  // const handleLanguageSelect = async (language: string) => {
-  //   setSelectedLanguage(language);
+  useEffect(() => {
+    const loadCurrentLanguage = async () => {
+      try {
+        const currentLang = await AsyncStorage.getItem('language') || 'vi';
+        setSelectedLanguage(currentLang);
+      } catch (error) {
+        console.error('Lỗi khi tải ngôn ngữ:', error);
+      }
+    };
   
-  //   setLocale(language);
+    loadCurrentLanguage();
+  }, []);
+
+  const handleLanguageSelect = async (language: string) => {
+    if (language === selectedLanguage) return;
     
-  //   await AsyncStorage.setItem('language', language);
-    
-  //   setRefresh(!refresh);
-  // };
+    try {
+      setLoading(true);
+      const success = await changeLanguage(language);
+      
+      if (success) {
+        setSelectedLanguage(language);
+        
+        // Short delay to show loading and give time for language to apply
+        setTimeout(() => {
+          setLoading(false);
+        }, 500);
+      } else {
+        setLoading(false);
+        Alert.alert(
+          t('error'),
+          t('language_change_error'),
+          [{ text: t('ok'), onPress: () => {} }]
+        );
+      }
+    } catch (error) {
+      console.error('Error in handleLanguageSelect:', error);
+      setLoading(false);
+    }
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
-      {/* Phần còn lại giống như code của bạn */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <FontAwesome
             name="chevron-left"
             size={20}
             color="#432c81"
-
             style={{ marginRight: 15, marginTop: 17 }}
             onPress={() => navigation.goBack()}
           />
           <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>
-      {(i18n as any).t('language')}
-    </Text>
+            {t('language')}
+          </Text>
         </View>
-        {/* ... */}
       </View>
 
       <View style={styles.languageContainer}>
@@ -69,13 +85,13 @@ const LanguageScreen: React.FC<Props> = ({ navigation }) => {
             styles.languageOption,
             selectedLanguage === 'vi' && styles.selectedOption,
           ]}
-          // onPress={() => handleLanguageSelect('vi')}
+          onPress={() => handleLanguageSelect('vi')}
         >
           <Image
             source={require('../../assets/vietnam-flag.png')}
             style={styles.flag}
           />
-          <Text style={styles.languageText}>{(i18n as any).t('vietnamese')}</Text>
+          <Text style={styles.languageText}>{t('vietnamese')}</Text>
           {selectedLanguage === 'vi' && (
             <FontAwesome name="check" size={20} color="#4D2D7D" style={styles.checkIcon} />
           )}
@@ -87,31 +103,33 @@ const LanguageScreen: React.FC<Props> = ({ navigation }) => {
             styles.languageOption,
             selectedLanguage === 'en' && styles.selectedOption,
           ]}
-          // onPress={() => handleLanguageSelect('en')}
+          onPress={() => handleLanguageSelect('en')}
         >
           <Image
             source={require('../../assets/uk-flag.png')}
             style={styles.flag}
           />
-          <Text style={styles.languageText}>{(i18n as any).t('english')}</Text>
+          <Text style={styles.languageText}>{t('english')}</Text>
           {selectedLanguage === 'en' && (
             <FontAwesome name="check" size={20} color="#4D2D7D" style={styles.checkIcon} />
           )}
         </TouchableOpacity>
       </View>
+      
+      {loading && <Loading message={t('loading')} />}
     </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
   scrollContainer: {
-    backgroundColor: '#F9FBFF', // Giữ màu nền
+    backgroundColor: '#F9FBFF',
   },
   header: {
     flexDirection: 'row',
-    marginTop: 0, // Đặt marginTop về 0 để sát trên cùng
+    marginTop: 0,
     justifyContent: 'space-between',
-    paddingTop: 10, // Chỉ thêm padding nhẹ để không sát quá mép trên
+    paddingTop: 10,
   },
   text: {
     fontSize: 25,

@@ -32,12 +32,11 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         systolic: parseInt(sysValue),    
         diastolic: parseInt(diaValue),  
       });
-      
-      Alert.alert('Thành công', 'Đã lưu huyết áp!');
+      showNotification('Đo huyết áp thành công', 'success');
       // setSysValue('');
       // setDiaValue('');
     } catch (error) {
-      Alert.alert('Lỗi', 'Không thể lưu dữ liệu huyết áp.');
+      showNotification('Có lỗi xảy ra vui lòng thử lại', 'error');
       console.error(error);
     }
   };
@@ -69,7 +68,7 @@ const handleMeasureHeartRate = async () => {
       userId,
       heartRate: parseInt(inputValue)
     });
-    Alert.alert('Thành công', 'Đã lưu nhịp tim!');
+    showNotification('Đo nhịp tim thành công', 'success');
     setHeartRate(inputValue);
   } catch (error) {
     Alert.alert('Lỗi', 'Không thể lưu dữ liệu.');
@@ -97,8 +96,6 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
         onPress: onPress || (() => setNotification((prev) => ({ ...prev, visible: false }))),
     });
 };
-
-
 
   return (
     <ScrollView>
@@ -377,7 +374,6 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
 
                     }
                   }
-
                   setModalVisible(false);
                   setInputValue('');
                   // setSysValue('');
@@ -390,7 +386,6 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
           </View>
         </View>
       </Modal>
-      
     </ScrollView>
   );
 };

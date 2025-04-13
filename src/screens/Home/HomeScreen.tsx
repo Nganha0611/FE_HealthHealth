@@ -6,16 +6,17 @@ import { ScrollView } from 'react-native-gesture-handler';
 import { useNavigation } from '@react-navigation/native';
 import { BottomTabParamList } from '../../navigation/BottomTabs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-// import i18n from '../../locales/i18n';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   navigation: StackNavigationProp<HomeStackParamList, 'Home'>;
-
 };
 
 const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
+  const { t } = useTranslation();  // Hook từ react-i18next
   const [userName, setUserName] = useState<string>(''); 
+
   useEffect(() => {
     const fetchUser = async () => {
       try {
@@ -36,54 +37,40 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     <ScrollView>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>  👋🏻 Hi {userName || 'bạn'}</Text> 
-              </View>
-            <View style={styles.headerRight}>
-  <TouchableOpacity>
-    <Image
-      style={styles.imgProfile}
-      source={require('../../assets/avatar.jpg')}
-    />
-  </TouchableOpacity>
-</View>
+          <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>
+            {t('greeting', { name: userName || 'bạn' })}
+          </Text>
+        </View>
       </View>
+
       <TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('HealthProfile')}>
-        <Text style={[styles.text, styles.boxTitle]}>Hồ sơ sức khỏe</Text>
+        <Text style={[styles.text, styles.boxTitle]}>{t('healthProfile')}</Text>
         <Image style={styles.boxImg} source={require('../../assets/pf.png')} />
       </TouchableOpacity>
 
       <TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
-        <Text style={[styles.text, styles.boxTitle]}>Thuốc</Text>
-        <Image
-          style={styles.boxImg}
-          source={require('../../assets/medicine.png')}
-        />
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Schedule')}>
-        <Text style={[styles.text, styles.boxTitle]}>Lịch</Text>
-        <Image
-          style={styles.boxImg}
-          source={require('../../assets/lich.png')}
-        />
-      </TouchableOpacity>
-      <TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('MedicalHistory')}>
-        <Text style={[styles.text, styles.boxTitle]}>Lịch sử y tế</Text>
-        <Image
-          style={styles.boxImg}
-          source={require('../../assets/medical_history.png')}
-        />
-      </TouchableOpacity>
-      <TouchableOpacity style={[styles.boxFeature, { marginBottom: 10 }]} onPress={() => navigation.navigate('EmergencyContact')}>
-        <Text style={[styles.text, styles.boxTitle]}>Liên hệ khẩn cấp</Text>
-        <Image
-          style={styles.boxImg}
-          source={require('../../assets/warning.png')}
-        />
+        <Text style={[styles.text, styles.boxTitle]}>{t('medicine')}</Text>
+        <Image style={styles.boxImg} source={require('../../assets/medicine.png')} />
       </TouchableOpacity>
 
+      <TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Schedule')}>
+        <Text style={[styles.text, styles.boxTitle]}>{t('schedule')}</Text>
+        <Image style={styles.boxImg} source={require('../../assets/lich.png')} />
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('MedicalHistory')}>
+        <Text style={[styles.text, styles.boxTitle]}>{t('medicalHistory')}</Text>
+        <Image style={styles.boxImg} source={require('../../assets/medical_history.png')} />
+      </TouchableOpacity>
+
+      <TouchableOpacity style={[styles.boxFeature, { marginBottom: 10 }]} onPress={() => navigation.navigate('EmergencyContact')}>
+        <Text style={[styles.text, styles.boxTitle]}>{t('emergencyContact')}</Text>
+        <Image style={styles.boxImg} source={require('../../assets/warning.png')} />
+      </TouchableOpacity>
     </ScrollView>
   );
 };
+
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
@@ -95,7 +82,6 @@ const styles = StyleSheet.create({
     fontFamily: 'Roboto',
     color: '#432c81',
     fontWeight: 'bold',
-
   },
   headerLeft: {
     marginLeft: 10,
@@ -132,4 +118,5 @@ const styles = StyleSheet.create({
     marginRight: 30,
   }
 });
+
 export default HomeScreen;

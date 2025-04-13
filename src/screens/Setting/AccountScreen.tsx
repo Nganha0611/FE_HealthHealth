@@ -5,6 +5,7 @@ import { View, Text, TextInput, Button, Image, StyleSheet, TouchableOpacity } fr
 import { ScrollView } from 'react-native-gesture-handler';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { BottomTabParamList } from '../../navigation/BottomTabs';
+import { useTranslation } from 'react-i18next'; // Import useTranslation hook
 
 const user = {
   name: "Nguyễn Văn A",
@@ -22,6 +23,8 @@ type Props = {
 const AccountScreen: React.FC<Props> = ({ navigation }) => {
   const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
   const [formData, setFormData] = useState(user);
+
+  const { t } = useTranslation(); // Use the translation hook
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prevState) => ({
@@ -45,32 +48,28 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
             color="#432c81"
             onPress={() => navigationMain.navigate('SettingStack', { screen: 'Settings' })}
           />
-          <Text style={styles.headerTitle}>Thông tin cá nhân</Text>
+          <Text style={styles.headerTitle}>{t('personalInformation')}</Text> 
         </View>
-      
       </View>
 
-<View style={styles.avatar}>
-       <View style={styles.boxImage}> 
-        <Image
-                style={styles.imgProfile}
-                source={require('../../assets/avatar.jpg')}
-              />  
-              <Image
-                style={styles.editImage}
-                source={require('../../assets/edit.png')}
-              /> 
-       </View>
-
-
-       </View>
-
+      <View style={styles.avatar}>
+        <View style={styles.boxImage}>
+          <Image
+            style={styles.imgProfile}
+            source={require('../../assets/avatar.jpg')}
+          />
+          <Image
+            style={styles.editImage}
+            source={require('../../assets/edit.png')}
+          />
+        </View>
+      </View>
 
       {/* Form Container */}
       <View style={styles.formContainer}>
         {Object.keys(user).map((key) => (
           <View key={key} style={styles.inputRow}>
-            <Text style={styles.label}>{key.charAt(0).toUpperCase() + key.slice(1)}:</Text>
+            <Text style={styles.label}>{t(key)}:</Text> 
             <TextInput
               style={styles.input}
               value={formData[key as keyof typeof formData]}
@@ -82,7 +81,7 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
 
       {/* Save Button */}
       <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-        <Text style={styles.buttonText}>Lưu</Text>
+        <Text style={styles.buttonText}>{t('save')}</Text> 
       </TouchableOpacity>
     </ScrollView>
   );
@@ -154,8 +153,8 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
-  },boxImage: {
-    
+  },
+  boxImage: {
     position: 'relative',
     padding: 10,
     marginRight: 15,
@@ -163,7 +162,6 @@ const styles = StyleSheet.create({
     borderRadius: 75,
     width: 140,
     height: 140,
-
   },
   avatar: {
     justifyContent: 'center',

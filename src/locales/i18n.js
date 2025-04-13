@@ -1,20 +1,60 @@
-// import I18n from 'i18n-js';
-// import * as Localization from 'expo-localization';
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import vi from './vi.json';
+import en from './en.json';
 
-// import en from './en.json';
-// import vi from './vi.json';
+const initializeI18n = async () => {
+  try {
+    const savedLanguage = await AsyncStorage.getItem('language') || 'vi';
+    
+    await i18n
+      .use(initReactI18next)
+      .init({
+        compatibilityJSON: 'v3',
+        lng: savedLanguage,
+        fallbackLng: 'en',
+        resources: {
+          vi: { translation: vi },
+          en: { translation: en },
+        },
+        interpolation: {
+          escapeValue: false,
+        },
+      });
+      
+  } catch (error) {
+    console.error('Error initializing i18n:', error);
+    
+    i18n
+      .use(initReactI18next)
+      .init({
+        compatibilityJSON: 'v3',
+        lng: 'vi',
+        fallbackLng: 'en',
+        resources: {
+          vi: { translation: vi },
+          en: { translation: en },
+        },
+        interpolation: {
+          escapeValue: false,
+        },
+      });
+  }
+};
 
-// I18n.translations = {
-//   en,
-//   vi,
-// };
+// Initialze i18n
+initializeI18n();
 
-// I18n.defaultLocale = 'vi';
-// I18n.locale = Localization.locale || 'vi';
-// I18n.fallbacks = true;
+export const changeLanguage = async (language) => {
+  try {
+    await i18n.changeLanguage(language);
+    await AsyncStorage.setItem('language', language);
+    return true;
+  } catch (error) {
+    console.error('Error changing language:', error);
+    return false;
+  }
+};
 
-// export const setLocale = (locale) => {
-//   I18n.locale = locale;
-// };
-
-// export default I18n;
+export default i18n;

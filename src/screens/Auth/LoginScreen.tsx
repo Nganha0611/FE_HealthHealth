@@ -71,11 +71,9 @@ const handleLogin = async () => {
     if (result === "success") {
       showNotification("Đăng nhập thành công!", "success");
 
-      // Lưu token và user vào AsyncStorage
       await AsyncStorage.setItem('token', token);
       await AsyncStorage.setItem('user', JSON.stringify(user));
 
-      // Gọi hàm login sau khi lưu
       await login();
     } else if (result === "wrongPassword") {
       showNotification(message || "Mật khẩu không chính xác!", "error");
