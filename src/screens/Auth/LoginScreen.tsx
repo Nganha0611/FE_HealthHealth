@@ -53,6 +53,7 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
 
 //////////////////////////////////////////////////////
 const handleLogin = async () => {
+  // Kiểm tra email và password trước khi gọi API
   if (!email || !password) {
     showNotification("Vui lòng nhập email và mật khẩu!", "error");
     return;
@@ -61,6 +62,7 @@ const handleLogin = async () => {
   setLoading(true);
 
   try {
+    // Gửi yêu cầu đăng nhập đến API
     const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
       email,
       password,
@@ -68,25 +70,43 @@ const handleLogin = async () => {
 
     const { result, message, token, user } = response.data;
 
-    if (result === "success") {
+    // Kiểm tra kết quả trả về từ API
+    if (result === "success" && token && user) {
       showNotification("Đăng nhập thành công!", "success");
-
+      
+      // Lưu token và thông tin người dùng vào AsyncStorage
       await AsyncStorage.setItem('token', token);
       await AsyncStorage.setItem('user', JSON.stringify(user));
 
-      await login();
-    } else if (result === "wrongPassword") {
-      showNotification(message || "Mật khẩu không chính xác!", "error");
-    } else if (result === "emailNotExist") {
-      showNotification(message || "Email không tồn tại!", "error");
+      // Gọi hàm login từ context để cập nhật trạng thái đăng nhập
+      await login(token, user);
+    } else {
+      // Xử lý khi kết quả trả về không hợp lệ
+      showNotification(message || "Lỗi đăng nhập!", "error");
     }
   } catch (error) {
-    console.error("Lỗi khi đăng nhập:", error);
-    showNotification("Có lỗi xảy ra. Vui lòng kiểm tra lại!", "error");
-  }
+    if (axios.isAxiosError(error) && error.response) {
+      // Xử lý các lỗi trả về từ API
+      const { status, data } = error.response;
 
-  setLoading(false);
+      if (status === 401 && data.result === "wrongPassword") {
+        showNotification(data.message || "Mật khẩu không chính xác!", "error");
+      } else if (status === 404 && data.result === "emailNotExist") {
+        showNotification(data.message || "Email không tồn tại!", "error");
+      } else {
+        showNotification("Lỗi xác thực không xác định!", "error");
+      }
+    } else {
+      // Xử lý lỗi không phải từ API (lỗi mạng, lỗi không xác định...)
+      console.error("Lỗi không xác định:", error);
+      showNotification("Có lỗi xảy ra. Vui lòng thử lại!", "error");
+    }
+  } finally {
+    setLoading(false); // Đảm bảo rằng loading được tắt sau khi xử lý xong
+  }
 };
+
+
 
 
 

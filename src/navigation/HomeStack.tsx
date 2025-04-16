@@ -1,13 +1,14 @@
 import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import HomeScreen from '../screens/Home/HomeScreen';
-import HealthProfileScreen from '../screens/Home/HealthProfileScreen';
+import HealthProfileScreen from '../screens/Home/HealthProfileScreens/HealthProfileScreen';
 import MedicineScreen from '../screens/Home/MedicineScreen';
 import ScheduleScreen from '../screens/Home/ScheduleScreen';
 import EatingDiaryScreen from '../screens/Home/EatingDiaryScreen';
 import NutritionScreen from '../screens/Home/NutritionScreen';
 import MedicalHistoryScreen from '../screens/Home/MedicalHistoryScreen';
 import EmergencyContactScreen from '../screens/Home/EmergencyContact';
+import HeartRateScreen from '../screens/Home/HealthProfileScreens/HeartRateScreen';
 
 export type HomeStackParamList = {
   Home: undefined;
@@ -18,6 +19,8 @@ export type HomeStackParamList = {
   Nutrition: undefined;
   MedicalHistory: undefined;
   EmergencyContact : undefined;
+  HeartRate : undefined;
+  BloodPressure : undefined;
 };
 
 const Stack = createStackNavigator<HomeStackParamList>();
@@ -34,6 +37,8 @@ const HomeStack = () => {
       <Stack.Screen name="Nutrition" component={NutritionScreen} />
       <Stack.Screen name="MedicalHistory" component={MedicalHistoryScreen} />
       <Stack.Screen name="EmergencyContact" component={EmergencyContactScreen} /> 
+      <Stack.Screen name="HeartRate" component={HeartRateScreen} />
+      <Stack.Screen name="BloodPressure" component={HealthProfileScreen} />
     </Stack.Navigator>
   );
 };

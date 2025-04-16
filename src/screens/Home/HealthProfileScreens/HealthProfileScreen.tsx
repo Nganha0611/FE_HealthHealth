@@ -6,12 +6,12 @@ import { ScrollView } from 'react-native-gesture-handler';
 import Svg, { Circle } from 'react-native-svg';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { Colors } from 'react-native/Libraries/NewAppScreen';
-import { BottomTabParamList } from '../../navigation/BottomTabs';
+import { BottomTabParamList } from '../../../navigation/BottomTabs';
 import { Alert, TextInput, Modal, Pressable } from 'react-native';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
-import Notification from "../../components/Notification";
+import Notification from "../../../components/Notification";
 import axios from 'axios';
-import API_BASE_URL from '../../utils/config';
+import API_BASE_URL from '../../../utils/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Props = {
@@ -20,11 +20,11 @@ type Props = {
 
 const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   const [selectedMeasurement, setSelectedMeasurement] = useState<string | null>(null);
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState('77');
   const [modalVisible, setModalVisible] = useState(false);
   const [typeSelectModalVisible, setTypeSelectModalVisible] = useState(false);
-  const [sysValue, setSysValue] = useState('');
-  const [diaValue, setDiaValue] = useState('');
+  const [sysValue, setSysValue] = useState('120');
+  const [diaValue, setDiaValue] = useState('80');
   const handleMeasureBloodPressure = async () => {
     try {
       await axios.post(`${API_BASE_URL}/api/blood-pressures/measure`, {
@@ -60,7 +60,7 @@ useEffect(() => {
   const handleMeasurePress = () => {
     setTypeSelectModalVisible(true);
   };
-  const [heartRate, setHeartRate] = useState('');
+  const [heartRate, setHeartRate] = useState('77');
 
 const handleMeasureHeartRate = async () => {
   try {
@@ -114,7 +114,9 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
           <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'Account' })}>
             <Image 
               style={styles.imgProfile}
-              source={require('../../assets/avatar.jpg')}
+              // source={require('../../assets/ avatar.jpg')}
+              source={require('../../../assets/avatar.jpg')} 
+
             />    
           </TouchableOpacity>
         </View>
@@ -135,19 +137,20 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
         <View style={styles.infoContainer}>
           <View style={styles.textContainer}>
             <View style={styles.row}>
-              <Image style={styles.icon} source={require('../../assets/step.png')} />
+              <Image style={styles.icon} source={require('../../../assets/step.png')} 
+              />
               <Text style={[styles.number, { color: '#3CB371' }]}>{steps.toLocaleString()} bước</Text>
             </View>
           </View>
           <View style={styles.textContainer}>
             <View style={styles.row}>
-              <Image style={[styles.icon, { width: 23, height: 23, marginLeft: 3, marginRight: 8 }]} source={require('../../assets/heart_rate.png')} />
+              <Image style={[styles.icon, { width: 23, height: 23, marginLeft: 3, marginRight: 8 }]} source={require('../../../assets/heart_rate.png')} />
               <Text style={[styles.number, { color: '#ed1b24' }]}>{heartRate} lần/phút</Text>
             </View>
           </View>
           <View style={styles.textContainer}>
             <View style={styles.row}>
-              <Image style={[styles.icon, { width: 23, height: 23, marginLeft: 3, marginRight: 8 }]} source={require('../../assets/blood_pressure.png')} />
+              <Image style={[styles.icon, { width: 23, height: 23, marginLeft: 3, marginRight: 8 }]} source={require('../../../assets/blood_pressure.png')} />
               <Text style={[styles.number, { color: '#2577f7' }]}>{sysValue}/{diaValue} {"mmHg"}</Text> 
             </View>
           </View>
@@ -186,7 +189,7 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
 
 
 
-      <TouchableOpacity style={styles.stepContainer} onPress={handleMeasurePress}>
+      <TouchableOpacity style={styles.stepContainer} onPress={() => navigation.navigate('StepScreen')}>
   <View style={styles.stepContent}>
     <FontAwesome5 name="shoe-prints" size={26} color="#432c81" style={styles.stepIcon} />
 
@@ -209,7 +212,7 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
 
 
 
-<TouchableOpacity style={styles.heartRateContainer} onPress={handleMeasurePress}>
+<TouchableOpacity style={styles.heartRateContainer} onPress={() => navigation.navigate('HeartRate')}>
   <View style={styles.stepContent}>
     <FontAwesome5 name="heartbeat" size={26} color="#ed1b24" style={styles.heartRateIcon} />
 
@@ -232,7 +235,27 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
 </TouchableOpacity>
 
 
+<TouchableOpacity style={styles.bloodPressureContainer} onPress={handleMeasurePress}>
+  <View style={styles.stepContent}>
+    <FontAwesome5 name="heartbeat" size={26} color="#ed1b24" style={styles.bloodPressureIcon} />
 
+    <View>
+      <Text style={styles.bloodPressureTitle}>{sysValue}</Text>
+      <Text style={styles.bloodPressureSubtitle}>/{diaValue}</Text>
+    </View>
+  </View>
+
+  {/* Phần hiển thị phần trăm và thanh tiến độ */}
+  <View style={styles.bloodPressureProgressWrapper}>
+    <Text style={styles.bloodPressureProgressText}>
+      {/* {Math.min(Math.round((heart_rate / 100) * 100), 100)}% */}
+      !
+    </Text>
+    <View style={styles.bloodPressureProgressBar}>
+      <View style={[styles.bloodPressureProgressFill, { width: `${Math.min((parseInt(heartRate) / 100) * 100, 100)}%` }]} />
+    </View>
+  </View>
+</TouchableOpacity>
 
       <Modal
         animationType="slide"
@@ -715,6 +738,68 @@ const styles = StyleSheet.create({
     backgroundColor: '#ed1b24',
     borderRadius: 5,
   },
+  bloodPressureContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  bloodPressureIcon: {
+    marginRight: 15,
+    color: '#2577f7',
+  },
+  bloodPressureTitle: {
+    fontSize: 30,
+    fontWeight: 'bold',
+    color: '#2577f7',
+  },
+  bloodPressureSubtitle: {
+    fontSize: 17,
+    color: '#2577f7',
+    marginTop: 3,
+    fontStyle: 'italic',
+  },
+  bloodPressureContainer: {
+    flexDirection: 'row',
+    width: 'auto',
+    height: 100,
+    backgroundColor: '#e0dee7',
+    marginHorizontal: 10,
+    borderRadius: 20,
+    marginTop: 10,
+    marginBottom: 10,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 15,
+    paddingHorizontal: 20,
+    // shadowColor: "#000",
+    // shadowOpacity: 0.1,
+    // shadowRadius: 5,
+    // elevation: 10,
+  },
+  bloodPressureProgressWrapper: {
+    alignItems: 'flex-end', // Căn phải cho thanh tiến độ
+  },
+  
+  bloodPressureProgressText: {
+    color: '#ed1b24',
+    fontSize: 14,
+    marginBottom: 4,
+    fontWeight: '500'
+  },
+  
+  bloodPressureProgressBar: {
+    width: 100,
+    height: 10,
+    backgroundColor: 'white',
+    borderRadius: 5,
+    overflow: 'hidden',
+    marginBottom: 20,
+  },
+  
+  bloodPressureProgressFill: {
+    height: '100%',
+    backgroundColor: '#2577f7',
+    borderRadius: 5,
+  }
   
   
 });

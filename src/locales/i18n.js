@@ -4,51 +4,54 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import vi from './vi.json';
 import en from './en.json';
 
-const initializeI18n = async () => {
+// Khởi tạo i18n trước khi export
+const i18nInstance = i18n.use(initReactI18next);
+
+i18nInstance.init({
+  compatibilityJSON: 'v3',
+  fallbackLng: 'vi',
+  resources: {
+    vi: {
+      translation: vi
+    },
+    en: {
+      translation: en
+    }
+  },
+  interpolation: {
+    escapeValue: false,
+  },
+  react: {
+    useSuspense: false,
+  },
+});
+
+// Hàm phát hiện ngôn ngữ
+const detectLanguage = async () => {
   try {
-    const savedLanguage = await AsyncStorage.getItem('language') || 'vi';
-    
-    await i18n
-      .use(initReactI18next)
-      .init({
-        compatibilityJSON: 'v3',
-        lng: savedLanguage,
-        fallbackLng: 'en',
-        resources: {
-          vi: { translation: vi },
-          en: { translation: en },
-        },
-        interpolation: {
-          escapeValue: false,
-        },
-      });
-      
+    const savedLanguage = await AsyncStorage.getItem('language');
+    if (savedLanguage) {
+      await i18nInstance.changeLanguage(savedLanguage);
+    } else {
+      await AsyncStorage.setItem('language', 'vi');
+      await i18nInstance.changeLanguage('vi');
+    }
   } catch (error) {
-    console.error('Error initializing i18n:', error);
-    
-    i18n
-      .use(initReactI18next)
-      .init({
-        compatibilityJSON: 'v3',
-        lng: 'vi',
-        fallbackLng: 'en',
-        resources: {
-          vi: { translation: vi },
-          en: { translation: en },
-        },
-        interpolation: {
-          escapeValue: false,
-        },
-      });
+    console.error('Error detecting/setting language:', error);
   }
 };
 
-// Initialze i18n
-initializeI18n();
+// Gọi hàm phát hiện ngôn ngữ
+detectLanguage();
 
 export const changeLanguage = async (language) => {
   try {
-    await i18n.changeLanguage(language);
+    if (language !== 'vi' && language !== 'en') {
+      console.error('Unsupported language:', language);
+      return false;
+    }
+    
+    await i18nInstance.changeLanguage(language);
     await AsyncStorage.setItem('language', language);
     return true;
   } catch (error) {
@@ -57,4 +60,4 @@ export const changeLanguage = async (language) => {
   }
 };
 
-export default i18n;
+export default i18nInstance;

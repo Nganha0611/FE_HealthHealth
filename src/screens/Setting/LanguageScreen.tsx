@@ -23,10 +23,11 @@ const LanguageScreen: React.FC<Props> = ({ navigation }) => {
   useEffect(() => {
     const loadCurrentLanguage = async () => {
       try {
-        const currentLang = await AsyncStorage.getItem('language') || 'vi';
-        setSelectedLanguage(currentLang);
+        const currentLang = await AsyncStorage.getItem('language');
+        setSelectedLanguage(currentLang || 'vi');
       } catch (error) {
         console.error('Lỗi khi tải ngôn ngữ:', error);
+        setSelectedLanguage('vi'); // Fallback khi có lỗi
       }
     };
   
@@ -34,19 +35,23 @@ const LanguageScreen: React.FC<Props> = ({ navigation }) => {
   }, []);
 
   const handleLanguageSelect = async (language: string) => {
+    // Nếu đang chọn ngôn ngữ hiện tại thì không làm gì
     if (language === selectedLanguage) return;
     
     try {
       setLoading(true);
+      
+      // Thực hiện đổi ngôn ngữ
       const success = await changeLanguage(language);
       
       if (success) {
+        // Cập nhật state
         setSelectedLanguage(language);
         
-        // Short delay to show loading and give time for language to apply
+        // Short delay để hiển thị loading và cho phép ngôn ngữ được áp dụng
         setTimeout(() => {
           setLoading(false);
-        }, 500);
+        }, 800); // Tăng thời gian delay
       } else {
         setLoading(false);
         Alert.alert(
@@ -58,6 +63,13 @@ const LanguageScreen: React.FC<Props> = ({ navigation }) => {
     } catch (error) {
       console.error('Error in handleLanguageSelect:', error);
       setLoading(false);
+      
+      // Hiển thị thông báo lỗi chi tiết hơn
+      Alert.alert(
+        t('error'),
+        `${t('language_change_error')}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        [{ text: t('ok'), onPress: () => {} }]
+      );
     }
   };
 
@@ -124,6 +136,7 @@ const LanguageScreen: React.FC<Props> = ({ navigation }) => {
 const styles = StyleSheet.create({
   scrollContainer: {
     backgroundColor: '#F9FBFF',
+    flexGrow: 1,
   },
   header: {
     flexDirection: 'row',
