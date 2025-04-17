@@ -15,6 +15,7 @@ import { useAuth } from "../../contexts/AuthContext";
 import API_BASE_URL from "../../utils/config";
 import Loading from "../../components/Loading";
 import Notification from "../../components/Notification";
+import { useTranslation } from "react-i18next";
 
 type Props = {
     navigation: NavigationProp<any>;
@@ -22,6 +23,8 @@ type Props = {
 
 const SignUpScreen: React.FC<Props> = ({ navigation }) => {
     const [name, setName] = useState("");
+    const { t } = useTranslation();
+
     const [email, setEmail] = useState("");
     const [numberPhone, setNumberPhone] = useState("");
     const [password, setPassword] = useState("");
@@ -56,221 +59,181 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
     });
 };
 
-//////////////////////////////////////////////////////
-    // const handleSignUp = async () => {
-    //     if (!name || !email || !password || !birth || !gender || !numberPhone || !address) {
-    //         Alert.alert("Lỗi", "Vui lòng điền đầy đủ thông tin!");
-    //         return;
-    //     }
-    //     if (password !== rePassword) {
-    //         Alert.alert("Lỗi", "Mật khẩu nhập lại không khớp!");
-    //         return;
-    //     }
-    //     try {
-    //         const response = await axios.post("http://172.20.10.2:8080/api/auth/register", {
-    //             name,
-    //             email,
-    //             password,
-    //             birth,
-    //             sex: gender,
-    //             numberPhone,
-    //             address,
-    //         });
 
-    //         if (response.data.result === "success") {
-    //             Alert.alert("Thành công", "Đăng ký thành công!");
-    //             navigation.navigate("Login");
-    //         } else {
-    //             Alert.alert("Lỗi", response.data.message);
-    //         }
-    //     } catch (error) {
-    //         console.error(error);
-    //         Alert.alert("Lỗi", "Có lỗi xảy ra, vui lòng thử lại!");
-    //     }
-    // };
-    const handleSendOTP = async () => {
-        if (!name || !email || !password || !birth || !gender || !numberPhone || !address) {
-            showNotification("Vui lòng điền đầy đủ thông tin", "error");
+const handleSendOTP = async () => {
+    if (!name || !email || !password || !birth || !gender || !numberPhone || !address) {
+        showNotification(t("complete_form"), "error");
+        return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        showNotification(t("invalid_email"), "error");
+        return;
+    }
+    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!passwordRegex.test(password)) {
+        showNotification(t("password_requirements"), "error");
+        return;
+    }
 
-            return;
+    if (password !== rePassword) {
+        showNotification(t("password_mismatch"), "error");
+        return;
+    }
+
+    setLoading(true);
+
+    try {
+        const response = await axios.post(`${API_BASE_URL}/api/otp/send`, null, {
+            params: { email }
+        });
+
+        if (response.data.result === "success") {
+            showNotification(t("otp_sent_success"), "success");
+            navigation.navigate("VerifyOTP", { email, name, password, birth, gender, numberPhone, address, otpAction: "register" });
+        } else {
+            showNotification(response.data.message || t("otp_send_error"), "error");
         }
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            showNotification("Email không đúng định dạng!", "error");
-            return;
-        }
-        const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-        if (!passwordRegex.test(password)) {
-            showNotification("Mật khẩu phải bao gồm 8 ký tự bao gồm cả chữ in hoa,số và kí tự đặt biệt", "error");
+    } catch (error) {
+        const errorMessage = (error as any)?.response?.data?.message || t("otp_send_error");
+        showNotification(errorMessage, "error");
+    } finally {
+        setLoading(false);
+    }
+};
 
-            return;
-        }
-       
-        if (password !== rePassword) {
-            showNotification("Mật khẩu nhập lại không khợp", "error");
+return (
+    <View style={styles.container}>
+        <Text style={styles.welcomeText}>{t("welcome_message")}</Text>
+        <Text style={styles.loginText}>{t("sign_up")}</Text>
 
-            return;
-        }
+        <TextInput
+            style={styles.input}
+            placeholder={t("full_name_placeholder")}
+            value={name}
+            onChangeText={setName}
+            placeholderTextColor="#888"
+        />
 
-        setLoading(true);
+        <TextInput
+            style={styles.input}
+            placeholder={t("email_placeholder")}
+            value={email}
+            onChangeText={setEmail}
+            placeholderTextColor="#888"
+            keyboardType="email-address"
+        />
 
-        try {
-            const response = await axios.post(`${API_BASE_URL}/api/otp/send`, null, {
-                params: { email }
-            });
+        <TextInput
+            style={styles.input}
+            placeholder={t("phone_number_placeholder")}
+            value={numberPhone}
+            onChangeText={setNumberPhone}
+            placeholderTextColor="#888"
+            keyboardType="phone-pad"
+        />
 
-            if (response.data.result === "success") {
-                showNotification("response.data.message", "success");
+        <DropDownPicker
+            open={openGender}
+            setOpen={setOpenGender}
+            value={gender}
+            setValue={setGender}
+            items={[
+                { label: t("male"), value: "male" },
+                { label: t("female"), value: "female" },
+                { label: t("other"), value: "other" },
+            ]}
+            containerStyle={{ width: "100%", marginBottom: 15 }}
+            style={[
+                { backgroundColor: "#fff", borderColor: "#ccc" },
+                loading && { opacity: 0.5 }
+            ]}
+            dropDownContainerStyle={{ backgroundColor: "#fff" }}
+            placeholder={t("gender_placeholder")}
+            placeholderStyle={{ color: "#888", fontSize: 16 }}
+            disabled={loading}
+        />
 
-                navigation.navigate("VerifyOTP", { email, name, password, birth, gender, numberPhone, address, otpAction: "register" });
-            } else {
-                showNotification(response.data.message || "Có lỗi xảy ra khi gửi OTP", "error");
-
-            }
-        } catch (error) {
-            const errorMessage = (error as any)?.response?.data?.message || "Không thể gửi mã OTP, vui lòng thử lại!";
-        } finally {
-            setLoading(false);
-        }
-    };
-
-
-    return (
-        <View style={styles.container}>
-            <Text style={styles.welcomeText}>Chào mừng bạn đến với Health Health</Text>
-            <Text style={styles.loginText}>Đăng ký</Text>
-
-            <TextInput
-                style={styles.input}
-                placeholder="Họ & Tên"
-                value={name}
-                onChangeText={setName}
-                placeholderTextColor="#888"
-            />
-
-            <TextInput
-                style={styles.input}
-                placeholder="Email"
-                value={email}
-                onChangeText={setEmail}
-                placeholderTextColor="#888"
-                keyboardType="email-address"
-            />
-
-            <TextInput
-                style={styles.input}
-                placeholder="Số điện thoại"
-
-                value={numberPhone}
-                onChangeText={setNumberPhone}
-                placeholderTextColor="#888"
-                keyboardType="phone-pad"
-            />
-
-            <DropDownPicker
-                open={openGender}
-                setOpen={setOpenGender}
-                value={gender}
-                setValue={setGender}
-                items={[
-                    { label: "Nam", value: "male" },
-                    { label: "Nữ", value: "female" },
-                    { label: "Khác", value: "other" },
-                ]}
-                containerStyle={{ width: "100%", marginBottom: 15 }}
-                style={[
-                    { backgroundColor: "#fff", borderColor: "#ccc" },
-                    loading && { opacity: 0.5 } // Làm mờ khi loading
-                ]}
-                dropDownContainerStyle={{ backgroundColor: "#fff" }}
-                placeholder="Chọn giới tính"
-                placeholderStyle={{ color: "#888", fontSize: 16 }}
-                disabled={loading} // Chặn mở khi loading
-            />
-
-
-            <TouchableOpacity style={styles.input} onPress={() => setOpen(true)}>
-                <Text style={{ color: birth ? "#333" : "#888", fontSize: 16 }}>
-                    {birth || "Chọn ngày sinh"}
-                </Text>
-            </TouchableOpacity>
-
-            <DatePicker
-                modal
-                open={open}
-                date={new Date()}
-                mode="date"
-                locale="vi"
-                onConfirm={(selectedDate) => {
-                    setOpen(false);
-                    setBirth(selectedDate.toISOString().split("T")[0]); // Định dạng YYYY-MM-DD
-                }}
-                onCancel={() => setOpen(false)}
-            />
-
-            <TextInput
-                style={styles.input}
-                placeholder="Địa chỉ"
-                value={address}
-                onChangeText={setAddress}
-                placeholderTextColor="#888"
-            />
-
-            <View style={styles.passwordContainer}>
-                <TextInput
-                    style={styles.input1}
-                    placeholder="Mật khẩu"
-                    placeholderTextColor="#888"
-                    value={password}
-                    onChangeText={setPassword}
-                    secureTextEntry={!isPasswordVisible}
-                />
-
-                <TouchableOpacity
-                    onPressIn={() => setIsPasswordVisible(true)}
-                    onPressOut={() => setIsPasswordVisible(false)}
-                    style={styles.eyeIcon}
-                >
-                    <Text style={{ fontSize: 18 }}>{isPasswordVisible ? "👁️" : "🙈"}</Text>
-                </TouchableOpacity>
-            </View>
-
-            <View style={styles.passwordContainer}>
-                <TextInput
-                    style={styles.input1}
-                    placeholder="Nhập lại mật khẩu"
-                    placeholderTextColor="#888"
-                    value={rePassword}
-                    onChangeText={setRePassword}
-                    secureTextEntry={!isRePasswordVisible}
-                />
-
-                <TouchableOpacity
-                    onPressIn={() => setIsRePasswordVisible(true)}
-                    onPressOut={() => setIsRePasswordVisible(false)}
-                    style={styles.eyeIcon}
-                >
-                    <Text style={{ fontSize: 18 }}>{isRePasswordVisible ? "👁️" : "🙈"}</Text>
-                </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity style={styles.loginButton} onPress={handleSendOTP}>
-                <Text style={styles.loginButtonText}>Đăng ký</Text>
-            </TouchableOpacity>
-
-            <Text style={styles.signUpText} onPress={() => navigation.navigate("Login")}>
-                Bạn đã có tài khoản? <Text style={styles.signUpLink}>Đăng nhập</Text>
+        <TouchableOpacity style={styles.input} onPress={() => setOpen(true)}>
+            <Text style={{ color: birth ? "#333" : "#888", fontSize: 16 }}>
+                {birth || t("select_birth_date")}
             </Text>
-            {loading && <Loading message="Đang gửi OTP xác thực.." />}
-            <Notification
-    message={notification.message}
-    type={notification.type}
-    visible={notification.visible}
-    onClose={() => setNotification((prev) => ({ ...prev, visible: false }))}
-/>
+        </TouchableOpacity>
+
+        <DatePicker
+            modal
+            open={open}
+            date={new Date()}
+            mode="date"
+            locale="vi"
+            onConfirm={(selectedDate) => {
+                setOpen(false);
+                setBirth(selectedDate.toISOString().split("T")[0]);
+            }}
+            onCancel={() => setOpen(false)}
+        />
+
+        <TextInput
+            style={styles.input}
+            placeholder={t("address_placeholder")}
+            value={address}
+            onChangeText={setAddress}
+            placeholderTextColor="#888"
+        />
+
+        <View style={styles.passwordContainer}>
+            <TextInput
+                style={styles.input1}
+                placeholder={t("password_placeholder")}
+                placeholderTextColor="#888"
+                value={password}
+                onChangeText={setPassword}
+                secureTextEntry={!isPasswordVisible}
+            />
+            <TouchableOpacity
+                onPressIn={() => setIsPasswordVisible(true)}
+                onPressOut={() => setIsPasswordVisible(false)}
+                style={styles.eyeIcon}
+            >
+                <Text style={{ fontSize: 18 }}>{isPasswordVisible ? "👁️" : "🙈"}</Text>
+            </TouchableOpacity>
         </View>
-        
-    );
+
+        <View style={styles.passwordContainer}>
+            <TextInput
+                style={styles.input1}
+                placeholder={t("repassword_placeholder")}
+                placeholderTextColor="#888"
+                value={rePassword}
+                onChangeText={setRePassword}
+                secureTextEntry={!isRePasswordVisible}
+            />
+            <TouchableOpacity
+                onPressIn={() => setIsRePasswordVisible(true)}
+                onPressOut={() => setIsRePasswordVisible(false)}
+                style={styles.eyeIcon}
+            >
+                <Text style={{ fontSize: 18 }}>{isRePasswordVisible ? "👁️" : "🙈"}</Text>
+            </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity style={styles.loginButton} onPress={handleSendOTP}>
+            <Text style={styles.loginButtonText}>{t("sign_up_button")}</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.signUpText} onPress={() => navigation.navigate("Login")}>
+            {t("already_have_account")} <Text style={styles.signUpLink}>{t("login")}</Text>
+        </Text>
+
+        {loading && <Loading message={t("loading_message")} />}
+        <Notification
+            message={notification.message}
+            type={notification.type}
+            visible={notification.visible}
+            onClose={() => setNotification((prev) => ({ ...prev, visible: false }))}
+        />
+    </View>
+);
 };
 
 const styles = StyleSheet.create({

@@ -1,6 +1,6 @@
 import { NavigationProp } from "@react-navigation/native";
 import axios from "axios";
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
     View,
     Text,
@@ -11,8 +11,8 @@ import {
 } from "react-native";
 import API_BASE_URL from "../../utils/config";
 import Loading from "../../components/Loading";
-import { useEffect, useRef } from "react"; // Thêm useEffect và useRef
 import Notification from "../../components/Notification";
+import { useTranslation } from "react-i18next"; // Import i18n hook
 
 type Props = {
     navigation: NavigationProp<any>;
@@ -20,33 +20,31 @@ type Props = {
 };
 
 const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
+    const { t } = useTranslation(); // Initialize translation hook
     const { email, name, password, birth, gender, numberPhone, address, otpAction } = route.params;
     const [otp, setOtp] = useState("");
     const [loading, setLoading] = useState<boolean>(false);
     const [countdown, setCountdown] = useState(300);
     const [isResendDisabled, setIsResendDisabled] = useState(true);
     const countdownRef = useRef<NodeJS.Timeout | null>(null); // Lưu interval
-  /////////////////////////////////////////////////// Xử lý thông báo
+
   const [notification, setNotification] = useState({
     message: "",
     type: "success" as "success" | "error" | "warning",
     visible: false,
     buttonText: "",
     onPress: () => {},
-});
+  });
 
-// Hàm hiển thị thông báo với nút
-const showNotification = (message: string, type: "success" | "error" | "warning", buttonText?: string, onPress?: () => void) => {
+  const showNotification = (message: string, type: "success" | "error" | "warning", buttonText?: string, onPress?: () => void) => {
     setNotification({
-        message,
-        type,
-        visible: true,
-        buttonText: buttonText || "",
-        onPress: onPress || (() => setNotification((prev) => ({ ...prev, visible: false }))),
+      message,
+      type,
+      visible: true,
+      buttonText: buttonText || "",
+      onPress: onPress || (() => setNotification((prev) => ({ ...prev, visible: false }))),
     });
-};
-
-//////////////////////////////////////////////////////
+  };
 
     useEffect(() => {
         startCountdown();
@@ -54,11 +52,12 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
             if (countdownRef.current) clearInterval(countdownRef.current);
         };
     }, []);
+
     const startCountdown = () => {
         setCountdown(300);
         setIsResendDisabled(true);
 
-        if (countdownRef.current) clearInterval(countdownRef.current); // Xóa interval cũ trước khi tạo mới
+        if (countdownRef.current) clearInterval(countdownRef.current);
 
         countdownRef.current = setInterval(() => {
             setCountdown((prev) => {
@@ -80,26 +79,22 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
             });
 
             if (response.data.result === "success") {
-                showNotification(response.data.message, "success");
-
+                showNotification(t('verifyOTP.notification.otpSentSuccess'), "success");
                 startCountdown();
             } else {
-                showNotification(response.data.message || "Có lỗi xảy ra khi gửi OTP.", "error");
-
+                showNotification(response.data.message || t('verifyOTP.notification.otpSentError'), "error");
             }
         } catch (error) {
-            const errorMessage = (error as any)?.response?.data?.message || "Không thể gửi mã OTP, vui lòng thử lại!";
-            Alert.alert("Lỗi", errorMessage);
+            const errorMessage = (error as any)?.response?.data?.message || t('verifyOTP.notification.otpSentError');
+            Alert.alert("Error", errorMessage);
         } finally {
             setLoading(false);
         }
-        setLoading(false);
     };
 
     const handleVerifyOTP = async () => {
         if (!otp.trim()) {
-            showNotification("Vui lòng nhập mã OTP", "error");
-
+            showNotification(t('verifyOTP.notification.otpInvalid'), "error");
             return;
         }
 
@@ -109,25 +104,18 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
                 params: { email, otp },
             });
 
-            console.log("Response:", response.data);
-
             if (response.status === 200) {
-                showNotification(
-                    response.data.message || "Xác thực thành công!",
-                    "success"
-                );
+                showNotification(response.data.message || t('verifyOTP.notification.otpSentSuccess'), "success");
                 if (otpAction === "register") {
                     await handleSignUp();
                 } else if (otpAction === "forgotPassword") {
                     await handleForgotPassword();
                 }
             } else {
-                showNotification("OTP không chính xác!", "error");
+                showNotification(t('verifyOTP.notification.otpInvalid'), "error");
             }
         } catch (error) {
-            let errorMessage = "Sai mã OTP hoặc hết hạn.";
-            showNotification(errorMessage, "error");
-
+            showNotification(t('verifyOTP.notification.otpExpired'), "error");
         }
         setLoading(false);
     };
@@ -146,24 +134,18 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
             });
     
             if (response.data.result === "success") {
-                showNotification(
-                    "Đăng ký thành công!",
-                    "success",
-                    "OK",
-                    () => {
-                        setNotification((prev) => ({ ...prev, visible: false })); // Ẩn thông báo trước khi điều hướng
-                        navigation.navigate("Login");
-                    }
-                );
+                showNotification(t('verifyOTP.notification.otpSentSuccess'), "success", "OK", () => {
+                    navigation.navigate("Login");
+                });
             } else {
                 showNotification(response.data.message, "error");
             }
         } catch (error) {
-            showNotification("Có lỗi xảy ra vui lòng đăng ký lại!!!", "error");
+            showNotification(t('verifyOTP.notification.otpSentError'), "error");
         }
         setLoading(false);
     };
-    
+
     const handleForgotPassword = async () => {
         setLoading(true);
         try {
@@ -173,32 +155,25 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
             });
 
             if (response.data.result === "success") {
-                showNotification(
-                    "Đổi mật khẩu thành công!",
-                    "success",
-                    "OK",
-                    () => {
-                        setNotification((prev) => ({ ...prev, visible: false })); // Ẩn thông báo trước khi điều hướng
-                        navigation.navigate("Login");
-                    }
-                );
+                showNotification(t('verifyOTP.notification.otpSentSuccess'), "success", "OK", () => {
+                    navigation.navigate("Login");
+                });
             } else {
                 showNotification(response.data.message, "error");
-
             }
         } catch (error) {
-            showNotification("Có lỗi xảy ra vui lòng thử lại", "error");
-
+            showNotification(t('verifyOTP.notification.otpSentError'), "error");
         }
         setLoading(false);
     };
+
     return (
         <View style={styles.container}>
-            <Text style={styles.title}>Xác thực OTP</Text>
-            <Text style={styles.subtitle}>Nhập mã OTP đã được gửi đến email của bạn</Text>
+            <Text style={styles.title}>{t('verifyOTP.title')}</Text>
+            <Text style={styles.subtitle}>{t('verifyOTP.subtitle')}</Text>
             <TextInput
                 style={styles.input}
-                placeholder="Nhập mã OTP"
+                placeholder={t('verifyOTP.otpPlaceholder')}
                 value={otp}
                 onChangeText={setOtp}
                 placeholderTextColor="#888"
@@ -211,23 +186,22 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
                 disabled={isResendDisabled}
             >
                 <Text style={styles.resendButtonText}>
-                    {isResendDisabled ? `Gửi lại sau ${countdown}s` : "Gửi lại mã OTP"}
+                    {isResendDisabled ? `${t('verifyOTP.resendAfter', { seconds: countdown })}` : t('verifyOTP.resendButton')}
                 </Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.verifyButton} onPress={handleVerifyOTP}>
-                <Text style={styles.verifyButtonText}>Xác thực</Text>
+                <Text style={styles.verifyButtonText}>{t('verifyOTP.verifyButton')}</Text>
             </TouchableOpacity>
-            {loading && <Loading message="Đang xử lý..." />}
+            {loading && <Loading message={t('verifyOTP.loadingMessage')} />}
             <Notification
-    message={notification.message}
-    type={notification.type}
-    visible={notification.visible}
-    onClose={() => setNotification((prev) => ({ ...prev, visible: false }))}
-    buttonText={notification.buttonText}
-    onPressButton={notification.onPress}
-/>
-
+                message={notification.message}
+                type={notification.type}
+                visible={notification.visible}
+                onClose={() => setNotification((prev) => ({ ...prev, visible: false }))}
+                buttonText={notification.buttonText}
+                onPressButton={notification.onPress}
+            />
         </View>
     );
 };

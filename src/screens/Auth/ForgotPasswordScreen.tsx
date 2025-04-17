@@ -13,61 +13,67 @@ import {
 import API_BASE_URL from "../../utils/config";
 import Loading from "../../components/Loading";
 import Notification from "../../components/Notification";
+import { useTranslation } from "react-i18next";
 
 type Props = {
-
   navigation: NavigationProp<any>;
 };
+
 const ForgotScreen: React.FC<Props> = ({ navigation }) => {
+  const { t } = useTranslation();
+  
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const [rePassword, setRePassword] = useState("");
   const [isRePasswordVisible, setIsRePasswordVisible] = useState(false);
   const [loading, setLoading] = useState<boolean>(false);
-  /////////////////////////////////////////////////// Xử lý thông báo
+
+  // Xử lý thông báo
   const [notification, setNotification] = useState({
     message: "",
     type: "success" as "success" | "error" | "warning",
     visible: false,
     buttonText: "",
     onPress: () => {},
-});
+  });
 
-// Hàm hiển thị thông báo với nút
-const showNotification = (message: string, type: "success" | "error" | "warning", buttonText?: string, onPress?: () => void) => {
+  // Hàm hiển thị thông báo với nút
+  const showNotification = (message: string, type: "success" | "error" | "warning", buttonText?: string, onPress?: () => void) => {
     setNotification({
-        message,
-        type,
-        visible: true,
-        buttonText: buttonText || "",
-        onPress: onPress || (() => setNotification((prev) => ({ ...prev, visible: false }))),
+      message,
+      type,
+      visible: true,
+      buttonText: buttonText || "",
+      onPress: onPress || (() => setNotification((prev) => ({ ...prev, visible: false }))),
     });
-};
+  };
 
-//////////////////////////////////////////////////////
+  // Xử lý quên mật khẩu
   const handleForgotPassword = async () => {
     if (!email || !password || !rePassword) {
-      showNotification("Vui lòng nhập đầy đủ thông tin!!", "error");
+      showNotification(t("forgotPassword.notification.emptyFields"), "error");
       return;
     }
+
     const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(password)) {
-      showNotification("Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ in hoa, số và ký tự đặc biệt!", "error");
+      showNotification(t("forgotPassword.notification.invalidPassword"), "error");
       return;
     }
-    if (password !== rePassword) {
-      Alert.alert("Lỗi", "Mật khẩu nhập lại không khớp!");
-      showNotification("Mật khẩu nhập lại không khớp!", "error");
 
+    if (password !== rePassword) {
+      Alert.alert(t("Lỗi"), t("forgotPassword.notification.passwordMismatch"));
+      showNotification(t("forgotPassword.notification.passwordMismatch"), "error");
       return;
     }
+
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
-      showNotification("Email không đúng định dạng!", "error");
+      showNotification(t("forgotPassword.notification.invalidEmail"), "error");
       return;
     }
-   
+
     setLoading(true);
 
     try {
@@ -75,36 +81,27 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
         params: { email }
       });
 
-      if (response.data.result === "success") {        
-        // navigation.navigate("VerifyOTP", { email, password, otpAction: "forgotPassword" });
-
-        showNotification(
-          response.data.message,
-          "success",
-          "OK",
-          () => {
-              setNotification((prev) => ({ ...prev, visible: false })); 
-              navigation.navigate("VerifyOTP", { email, password, otpAction: "forgotPassword" });
-          }
-      );
+      if (response.data.result === "success") {
+        showNotification(t("forgotPassword.notification.otpSendSuccess"), "success", "OK", () => {
+          setNotification((prev) => ({ ...prev, visible: false }));
+          navigation.navigate("VerifyOTP", { email, password, otpAction: "forgotPassword" });
+        });
       } else {
-        showNotification(response.data.message || "Có lỗi xảy ra khi gửi OTP.", "error");
-
+        showNotification(t("forgotPassword.notification.otpSendError"), "error");
       }
     } catch (error) {
-      const errorMessage = (error as any)?.response?.data?.message || "Không thể gửi mã OTP, vui lòng thử lại!";
+      const errorMessage = (error as any)?.response?.data?.message || t("forgotPassword.notification.generalError");
       showNotification(errorMessage, "error");
     } finally {
       setLoading(false);
     }
   };
 
-
   return (
     <View style={styles.container}>
       {/* Tiêu đề */}
-      <Text style={styles.welcomeText}>Đặt lại mật khẩu nào !!!</Text>
-      <Text style={styles.loginText}>Quên mật khẩu</Text>
+      <Text style={styles.welcomeText}>{t("forgotPassword.title")}</Text>
+      <Text style={styles.loginText}>{t("forgotPassword.subtitle")}</Text>
 
       {/* Hình minh họa */}
       <Image
@@ -115,7 +112,7 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
       {/* Ô nhập Email */}
       <TextInput
         style={styles.input}
-        placeholder="Email hoặc Số điện thoại"
+        placeholder={t("forgotPassword.emailPlaceholder")}
         value={email}
         onChangeText={setEmail}
         placeholderTextColor="#888"
@@ -126,7 +123,7 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
       <View style={styles.passwordContainer}>
         <TextInput
           style={styles.input1}
-          placeholder="Mật khẩu mới"
+          placeholder={t("forgotPassword.newPasswordPlaceholder")}
           placeholderTextColor="#888"
           value={password}
           onChangeText={setPassword}
@@ -146,7 +143,7 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
       <View style={styles.passwordContainer}>
         <TextInput
           style={styles.input1}
-          placeholder="Nhập lại mật khẩu mới"
+          placeholder={t("forgotPassword.rePasswordPlaceholder")}
           placeholderTextColor="#888"
           value={rePassword}
           onChangeText={setRePassword}
@@ -162,25 +159,27 @@ const showNotification = (message: string, type: "success" | "error" | "warning"
         </TouchableOpacity>
       </View>
 
-      {/* Nút Login */}
+      {/* Nút Đổi mật khẩu */}
       <TouchableOpacity style={styles.loginButton} onPress={handleForgotPassword}>
-        <Text style={styles.loginButtonText}>Đổi mật khẩu</Text>
+        <Text style={styles.loginButtonText}>{t("forgotPassword.resetPasswordButton")}</Text>
       </TouchableOpacity>
 
       {/* Đăng ký */}
       <Text style={styles.signUpText}>
-        Bạn chưa có tài khoản?{" "}
+        {t("forgotPassword.noAccount")}{" "}
         <Text style={styles.signUpLink} onPress={() => navigation.navigate('SignUp')}>
-          Đăng ký
+          {t("forgotPassword.signUp")}
         </Text>
       </Text>
-      {loading && <Loading message="Đang xử lý..." />}
+
+      {loading && <Loading message={t("forgotPassword.loadingMessage")} />}
+      
       <Notification
-    message={notification.message}
-    type={notification.type}
-    visible={notification.visible}
-    onClose={() => setNotification((prev) => ({ ...prev, visible: false }))}
-/>
+        message={notification.message}
+        type={notification.type}
+        visible={notification.visible}
+        onClose={() => setNotification((prev) => ({ ...prev, visible: false }))}
+      />
     </View>
   );
 };

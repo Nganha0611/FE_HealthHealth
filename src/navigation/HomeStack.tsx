@@ -9,6 +9,8 @@ import NutritionScreen from '../screens/Home/NutritionScreen';
 import MedicalHistoryScreen from '../screens/Home/MedicalHistoryScreen';
 import EmergencyContactScreen from '../screens/Home/EmergencyContact';
 import HeartRateScreen from '../screens/Home/HealthProfileScreens/HeartRateScreen';
+import BloodPressureScreen from '../screens/Home/HealthProfileScreens/BloodPressureScreen';
+import StepScreen from '../screens/Home/HealthProfileScreens/StepScreen';
 
 export type HomeStackParamList = {
   Home: undefined;
@@ -21,6 +23,7 @@ export type HomeStackParamList = {
   EmergencyContact : undefined;
   HeartRate : undefined;
   BloodPressure : undefined;
+  Step : undefined;
 };
 
 const Stack = createStackNavigator<HomeStackParamList>();
@@ -38,7 +41,8 @@ const HomeStack = () => {
       <Stack.Screen name="MedicalHistory" component={MedicalHistoryScreen} />
       <Stack.Screen name="EmergencyContact" component={EmergencyContactScreen} /> 
       <Stack.Screen name="HeartRate" component={HeartRateScreen} />
-      <Stack.Screen name="BloodPressure" component={HealthProfileScreen} />
+      <Stack.Screen name="BloodPressure" component={BloodPressureScreen} />
+      <Stack.Screen name="Step" component={StepScreen} />
     </Stack.Navigator>
   );
 };

@@ -2,26 +2,34 @@ import { StackNavigationProp } from "@react-navigation/stack";
 import React from "react";
 import { View, Text, Image, TouchableOpacity, StyleSheet } from "react-native";
 import { AuthStackParamList } from "../../navigation/AuthStack";
+import { useTranslation } from "react-i18next";
 type Props = {
   navigation: StackNavigationProp<AuthStackParamList, 'Welcome'>;
 };
 const WelcomeScreen: React.FC<Props> = ({ navigation }) => {
+  const { t } = useTranslation();
   return (
     <View style={styles.container}>
-      <Text style={styles.welcomeText}>Chào mừng bạn đến với</Text>
-      <Text style={styles.selfCareText}>Health Health</Text>
+      <Text style={styles.welcomeText}>{t('welcomeMessage')}</Text>
+      <Text style={styles.selfCareText}>{t('appName')}</Text>
       <Image
         source={require("../../assets/login.png")} 
         style={styles.illustration}
       />
 
-      <TouchableOpacity style={styles.signUpButton} onPress={() => navigation.navigate('Login')}>
-        <Text style={styles.signUpText}>Đăng nhập</Text>
+      <TouchableOpacity
+        style={styles.signUpButton}
+        onPress={() => navigation.navigate('Login')}
+      >
+        <Text style={styles.signUpText}>{t('login')}</Text>
       </TouchableOpacity>
 
-      {/* Nút Login */}
-      <TouchableOpacity style={styles.loginButton} onPress={() => navigation.navigate('SignUp')}>
-        <Text style={styles.loginText}>Đăng ký</Text>
+      {/* Nút Đăng ký */}
+      <TouchableOpacity
+        style={styles.loginButton}
+        onPress={() => navigation.navigate('SignUp')}
+      >
+        <Text style={styles.loginText}>{t('signUp')}</Text>
       </TouchableOpacity>
     </View>
   );

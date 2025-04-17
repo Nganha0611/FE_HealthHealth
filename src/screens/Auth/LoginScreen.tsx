@@ -17,6 +17,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import API_BASE_URL from "../../utils/config";
 import Loading from "../../components/Loading";
 import Notification from "../../components/Notification";
+import { useTranslation } from "react-i18next";
 
 type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
 type LoginScreenRouteProp = RouteProp<AuthStackParamList, 'Login'>;
@@ -25,12 +26,15 @@ type Props = {
   navigation: LoginScreenNavigationProp;
   route: LoginScreenRouteProp;
 };
-const LoginScreen : React.FC<Props> = ({ navigation }) => {
+
+const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
   const { login } = useAuth();
   const [loading, setLoading] = useState<boolean>(false);
+  const { t } = useTranslation();
+
   /////////////////////////////////////////////////// Xử lý thông báo
   const [notification, setNotification] = useState({
     message: "",
@@ -38,97 +42,94 @@ const LoginScreen : React.FC<Props> = ({ navigation }) => {
     visible: false,
     buttonText: "",
     onPress: () => {},
-});
+  });
 
-// Hàm hiển thị thông báo với nút
-const showNotification = (message: string, type: "success" | "error" | "warning", buttonText?: string, onPress?: () => void) => {
+  // Hàm hiển thị thông báo với nút
+  const showNotification = (
+    message: string,
+    type: "success" | "error" | "warning",
+    buttonText?: string,
+    onPress?: () => void
+  ) => {
     setNotification({
-        message,
-        type,
-        visible: true,
-        buttonText: buttonText || "",
-        onPress: onPress || (() => setNotification((prev) => ({ ...prev, visible: false }))),
+      message,
+      type,
+      visible: true,
+      buttonText: buttonText || "",
+      onPress: onPress || (() => setNotification((prev) => ({ ...prev, visible: false }))),
     });
-};
+  };
 
-//////////////////////////////////////////////////////
-const handleLogin = async () => {
-  // Kiểm tra email và password trước khi gọi API
-  if (!email || !password) {
-    showNotification("Vui lòng nhập email và mật khẩu!", "error");
-    return;
-  }
-
-  setLoading(true);
-
-  try {
-    // Gửi yêu cầu đăng nhập đến API
-    const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
-      email,
-      password,
-    });
-
-    const { result, message, token, user } = response.data;
-
-    // Kiểm tra kết quả trả về từ API
-    if (result === "success" && token && user) {
-      showNotification("Đăng nhập thành công!", "success");
-      
-      // Lưu token và thông tin người dùng vào AsyncStorage
-      await AsyncStorage.setItem('token', token);
-      await AsyncStorage.setItem('user', JSON.stringify(user));
-
-      // Gọi hàm login từ context để cập nhật trạng thái đăng nhập
-      await login(token, user);
-    } else {
-      // Xử lý khi kết quả trả về không hợp lệ
-      showNotification(message || "Lỗi đăng nhập!", "error");
+  const handleLogin = async () => {
+    // Kiểm tra email và password trước khi gọi API
+    if (!email || !password) {
+      showNotification(t("error.emailPasswordRequired"), "error");
+      return;
     }
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      // Xử lý các lỗi trả về từ API
-      const { status, data } = error.response;
 
-      if (status === 401 && data.result === "wrongPassword") {
-        showNotification(data.message || "Mật khẩu không chính xác!", "error");
-      } else if (status === 404 && data.result === "emailNotExist") {
-        showNotification(data.message || "Email không tồn tại!", "error");
+    setLoading(true);
+
+    try {
+      // Gửi yêu cầu đăng nhập đến API
+      const response = await axios.post(`${API_BASE_URL}/api/auth/login`, {
+        email,
+        password,
+      });
+
+      const { result, message, token, user } = response.data;
+
+      // Kiểm tra kết quả trả về từ API
+      if (result === "success" && token && user) {
+        showNotification(t("success.loginSuccess"), "success");
+
+        // Lưu token và thông tin người dùng vào AsyncStorage
+        await AsyncStorage.setItem("token", token);
+        await AsyncStorage.setItem("user", JSON.stringify(user));
+
+        // Gọi hàm login từ context để cập nhật trạng thái đăng nhập
+        await login(token, user);
       } else {
-        showNotification("Lỗi xác thực không xác định!", "error");
+        // Xử lý khi kết quả trả về không hợp lệ
+        showNotification(message || t("error.loginFailed"), "error");
       }
-    } else {
-      // Xử lý lỗi không phải từ API (lỗi mạng, lỗi không xác định...)
-      console.error("Lỗi không xác định:", error);
-      showNotification("Có lỗi xảy ra. Vui lòng thử lại!", "error");
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        // Xử lý các lỗi trả về từ API
+        const { status, data } = error.response;
+
+        if (status === 401 && data.result === "wrongPassword") {
+          showNotification(data.message || t("error.incorrectPassword"), "error");
+        } else if (status === 404 && data.result === "emailNotExist") {
+          showNotification(data.message || t("error.emailNotFound"), "error");
+        } else {
+          showNotification(t("error.authError"), "error");
+        }
+      } else {
+        // Xử lý lỗi không phải từ API (lỗi mạng, lỗi không xác định...)
+        console.error("Lỗi không xác định:", error);
+        showNotification(t("error.generalError"), "error");
+      }
+    } finally {
+      setLoading(false); // Đảm bảo rằng loading được tắt sau khi xử lý xong
     }
-  } finally {
-    setLoading(false); // Đảm bảo rằng loading được tắt sau khi xử lý xong
-  }
-};
-
-
-
-
-
-
-
+  };
 
   return (
     <View style={styles.container}>
       {/* Tiêu đề */}
-      <Text style={styles.welcomeText}>Chào mừng bạn trở lại</Text>
-      <Text style={styles.loginText}>Đăng nhập</Text>
+      <Text style={styles.welcomeText}>{t("welcomeBackMessage")}</Text>
+      <Text style={styles.loginText}>{t("login")}</Text>
 
       {/* Hình minh họa */}
       <Image
-        source={require("../../assets/login.png")} 
+        source={require("../../assets/login.png")}
         style={styles.illustration}
       />
 
       {/* Ô nhập Email */}
       <TextInput
         style={styles.input}
-        placeholder="Email hoặc Số điện thoại"
+        placeholder={t("placeholder.emailOrPhone")}
         value={email}
         onChangeText={setEmail}
         placeholderTextColor="#888"
@@ -140,7 +141,7 @@ const handleLogin = async () => {
       <View style={styles.passwordContainer}>
         <TextInput
           style={styles.input1}
-          placeholder="Mật khẩu"
+          placeholder={t("placeholder.password")}
           placeholderTextColor="#888"
           value={password}
           onChangeText={setPassword}
@@ -158,31 +159,28 @@ const handleLogin = async () => {
 
       {/* Forgot Password */}
       <View style={{ width: "100%", alignItems: "flex-end" }}>
-        <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')}>
-          <Text style={styles.forgotPasswordText}>Quên mật khẩu?</Text>
+        <TouchableOpacity onPress={() => navigation.navigate("ForgotPassword")}>
+          <Text style={styles.forgotPasswordText}>{t("forgotPassword.subtitle")}</Text>
         </TouchableOpacity>
       </View>
 
       {/* Nút Login */}
       <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
-        <Text style={styles.loginButtonText}>Đăng nhập</Text>
+        <Text style={styles.loginButtonText}>{t("loginButton")}</Text>
       </TouchableOpacity>
 
       {/* Đăng ký */}
-      <Text style={styles.signUpText} onPress={() => navigation.navigate('SignUp')}>
-        Bạn chưa có tài khoản?{" "}
-        <Text style={styles.signUpLink}>
-          Đăng ký
-        </Text>
+      <Text style={styles.signUpText} onPress={() => navigation.navigate("SignUp")}>
+        {t("noAccount")}{" "}
+        <Text style={styles.signUpLink}>{t("signUp")}</Text>
       </Text>
-      {loading && <Loading message="Đang đăng nhập..." />}
+      {loading && <Loading message={t("loading.login")} />}
       <Notification
-    message={notification.message}
-    type={notification.type}
-    visible={notification.visible}
-    onClose={() => setNotification((prev) => ({ ...prev, visible: false }))}
-/>
-
+        message={notification.message}
+        type={notification.type}
+        visible={notification.visible}
+        onClose={() => setNotification((prev) => ({ ...prev, visible: false }))}
+      />
     </View>
   );
 };
