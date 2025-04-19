@@ -14,7 +14,7 @@ import { ScrollView } from 'react-native-gesture-handler';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { BottomTabParamList } from '../../navigation/BottomTabs';
 import axios from 'axios';
-import API_BASE_URL from '../../utils/config';
+import {API_BASE_URL} from '../../utils/config';
 import Loading from '../../components/Loading';
 import { useTranslation } from 'react-i18next';
 

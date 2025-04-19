@@ -136,5 +136,8 @@
   "password_mismatch": "Passwords do not match",
   "otp_sent_success": "OTP sent successfully",
   "otp_send_error": "Error sending OTP",
-  "loading_message": "Sending OTP verification..."
+  "loading_message": "Sending OTP verification...",
+  "successUpdate": "Update successful!",
+  "errorUpdate": "An error occurred during the update!",
+  "loginSuccess": "Login successful!"
 }

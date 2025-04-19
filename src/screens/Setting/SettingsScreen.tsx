@@ -9,6 +9,7 @@ import { BottomTabParamList } from '../../navigation/BottomTabs';
 import { SettingStackParamList } from '../../navigation/SettingStack';
 import Notification from "../../components/Notification";
 import { useTranslation } from 'react-i18next';
+import { useNotification } from '../../contexts/NotificationContext';
 
 // Khai báo kiểu navigation
 type Props = {
@@ -18,30 +19,11 @@ type Props = {
 const SettingsScreen: React.FC<Props> = ({ navigation }) => {
   const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
   const { t } = useTranslation();
-  
   const { logout } = useAuth();
+  const { showNotification } = useNotification();
+  
 
-  /////////////////////////////////////////////////// Xử lý thông báo
-  const [notification, setNotification] = useState({
-    message: "",
-    type: "success" as "success" | "error" | "warning",
-    visible: false,
-    buttonText: "",
-    onPress: () => {},
-  });
 
-  // Hàm hiển thị thông báo với nút
-  const showNotification = (message: string, type: "success" | "error" | "warning", buttonText?: string, onPress?: () => void) => {
-    setNotification({
-        message,
-        type,
-        visible: true,
-        buttonText: buttonText || "",
-        onPress: onPress || (() => setNotification((prev) => ({ ...prev, visible: false }))),
-    });
-  };
-
-  ////////////////////////////////////////////////////////
   const handleLogout = () => {
     Alert.alert(
       t('confirmation'),
@@ -182,13 +164,6 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
           />
         </View>
       </TouchableOpacity>
-
-      <Notification
-        message={notification.message}
-        type={notification.type}
-        visible={notification.visible}
-        onClose={() => setNotification((prev) => ({ ...prev, visible: false }))}
-      />
     </View>
   );
 };

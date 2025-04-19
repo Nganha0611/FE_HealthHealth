@@ -8,8 +8,9 @@ type NotificationProps = {
     visible: boolean;
     onClose: () => void;
     buttonText?: string;
-    onPressButton?: () => void;
-};
+    onPress?: () => void;
+  };
+  
 
 const Notification: React.FC<NotificationProps> = ({ 
     message, 
@@ -17,7 +18,7 @@ const Notification: React.FC<NotificationProps> = ({
     visible, 
     onClose, 
     buttonText, 
-    onPressButton 
+    onPress 
 }) => {
     const fadeAnim = new Animated.Value(visible ? 1 : 0);
 
@@ -28,14 +29,12 @@ const Notification: React.FC<NotificationProps> = ({
                 duration: 300,
                 useNativeDriver: true,
             }).start();
-
+    
+            // Auto hide sau 3-5s, không gọi onPress ở đây
             const autoHide = setTimeout(() => {
-                if (buttonText && onPressButton) {
-                    onPressButton(); 
-                }
                 onClose();
             }, buttonText ? 5000 : 3000); 
-                
+    
             return () => clearTimeout(autoHide);
         } else {
             Animated.timing(fadeAnim, {
@@ -45,8 +44,7 @@ const Notification: React.FC<NotificationProps> = ({
             }).start();
         }
     }, [visible]);
-
-    if (!visible) return null;
+    
 
     return (
         <Animated.View 
@@ -66,8 +64,8 @@ const Notification: React.FC<NotificationProps> = ({
             <Text style={styles.text}>{message}</Text>
 
             {/* Nút hành động (nếu có) */}
-            {buttonText && onPressButton && (
-                <TouchableOpacity style={styles.button} onPress={onPressButton}>
+            {buttonText && onPress && (
+                <TouchableOpacity style={styles.button} onPress={onPress}>
                     <Text style={styles.buttonText}>{buttonText}</Text>
                 </TouchableOpacity>
             )}
@@ -89,7 +87,7 @@ const styles = StyleSheet.create({
         alignSelf: "center",
         alignItems: "center",
         position: "absolute",
-        backgroundColor: "#fff", // Nền trắng mặc định, sẽ bị ghi đè bởi type
+        backgroundColor: "#fff", 
     },
     top: {
         top: 50,

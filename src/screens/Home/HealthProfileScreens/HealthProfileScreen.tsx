@@ -9,11 +9,11 @@ import { Colors } from 'react-native/Libraries/NewAppScreen';
 import { BottomTabParamList } from '../../../navigation/BottomTabs';
 import { Alert, TextInput, Modal, Pressable } from 'react-native';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
-import Notification from "../../../components/Notification";
 import axios from 'axios';
-import API_BASE_URL from '../../../utils/config';
+import {API_BASE_URL} from '../../../utils/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
+import { useNotification } from '../../../contexts/NotificationContext';
 
 type Props = {
   navigation: NavigationProp<any>;
@@ -27,7 +27,12 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   const [sysValue, setSysValue] = useState('120');
   const [diaValue, setDiaValue] = useState('60');
   const { t } = useTranslation();
-
+  const steps = 1114;
+  const heart_rate = 75;
+  const blood_pressure = "120/80"
+  const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
+  const { showNotification } = useNotification();
+  
   const handleMeasureBloodPressure = async () => {
     try {
       await axios.post(`${API_BASE_URL}/api/blood-pressures/measure`, {
@@ -36,8 +41,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         diastolic: parseInt(diaValue),
       });
       showNotification('Đo huyết áp thành công', 'success');
-      // setSysValue('');
-      // setDiaValue('');
+ 
     } catch (error) {
       showNotification('Có lỗi xảy ra vui lòng thử lại', 'error');
       console.error(error);
@@ -74,32 +78,13 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
       showNotification('Đo nhịp tim thành công', 'success');
       setHeartRate(inputValue);
     } catch (error) {
-      Alert.alert('Lỗi', 'Không thể lưu dữ liệu.');
+      
+      showNotification('errorUpdate', 'error');
     }
   };
 
-  const steps = 1114;
-  const heart_rate = 75;
-  const blood_pressure = "120/80"
-  const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
-  const [notification, setNotification] = useState({
-    message: "",
-    type: "success" as "success" | "error" | "warning",
-    visible: false,
-    buttonText: "",
-    onPress: () => { },
-  });
-
-  const showNotification = (message: string, type: "success" | "error" | "warning", buttonText?: string, onPress?: () => void) => {
-    setNotification({
-      message,
-      type,
-      visible: true,
-      buttonText: buttonText || "",
-      onPress: onPress || (() => setNotification((prev) => ({ ...prev, visible: false }))),
-    });
-  };
-
+  
+  
   return (
     <ScrollView>
       <View style={styles.header}>
@@ -202,7 +187,6 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   </View>
   <View style={styles.heartRateProgressWrapper}>
     <Text style={styles.heartRateProgressText}>
-      {/* Placeholder or future percentage */}
       !
     </Text>
     <View style={styles.heartRateProgressBar}>
@@ -289,12 +273,6 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   visible={modalVisible}
   onRequestClose={() => setModalVisible(false)}
 >
-  <Notification
-    message={notification.message}
-    type={notification.type}
-    visible={notification.visible}
-    onClose={() => setNotification((prev) => ({ ...prev, visible: false }))}
-  />
   <View style={styles.modalBackground}>
     <View style={styles.enhancedModalContainer}>
       <Text style={styles.enhancedModalTitle}>
