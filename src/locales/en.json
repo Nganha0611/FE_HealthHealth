@@ -1,13 +1,16 @@
 {
-    "language": "Language",
-    "vietnamese": "Vietnamese",
-    "english": "English",
-    "settings": "Setting",
-    "account": "Account",
-    "notifications": "Notifications",
-    "changePassword": "Change Password",
-    "logout": "Logout",
-    "personalInformation": "Information",
+  "areYouSureLogout": "Are you sure you want to log out?",
+  "confirmation": "Confirmation",
+  "loading": "Processing...",
+  "language": "Language",
+  "vietnamese": "Vietnamese",
+  "english": "English",
+  "settings": "Setting",
+  "account": "Account",
+  "notifications": "Notifications",
+  "changePassword": "Change Password",
+  "logout": "Logout",
+  "personalInformation": "Information",
   "save": "Save",
   "name": "Name",
   "email": "Email",
@@ -36,11 +39,11 @@
   "medicalHistory": "Medical History",
   "emergencyContact": "Emergency Contact",
   "measureTitle": "MEASURE",
-"measureSubtitle": "Tap to measure your health index",
-"stepsUnit": "steps",
-"bpm": "bpm",
-"mmHg": "mmHg",
-"measureSelection": "What would you like to measure?",
+  "measureSubtitle": "Tap to measure your health index",
+  "stepsUnit": "steps",
+  "bpm": "bpm",
+  "mmHg": "mmHg",
+  "measureSelection": "What would you like to measure?",
   "measureBloodPressure": "Measure blood pressure",
   "measureHeartRate": "Measure heart rate",
   "close": "Close",
@@ -134,7 +137,4 @@
   "otp_sent_success": "OTP sent successfully",
   "otp_send_error": "Error sending OTP",
   "loading_message": "Sending OTP verification..."
-  
-
-  }
-  
+}

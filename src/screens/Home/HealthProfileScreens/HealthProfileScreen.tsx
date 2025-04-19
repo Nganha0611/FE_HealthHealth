@@ -25,7 +25,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   const [modalVisible, setModalVisible] = useState(false);
   const [typeSelectModalVisible, setTypeSelectModalVisible] = useState(false);
   const [sysValue, setSysValue] = useState('120');
-  const [diaValue, setDiaValue] = useState('80');
+  const [diaValue, setDiaValue] = useState('60');
   const { t } = useTranslation();
 
   const handleMeasureBloodPressure = async () => {
@@ -219,12 +219,22 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
       <Text style={styles.bloodPressureSubtitle}>/{diaValue}</Text>
     </View>
   </View>
+  <View style={{   }}>
   <View style={styles.bloodPressureProgressWrapper}>
     <Text style={styles.bloodPressureProgressText}>
-      !
+      SYS
     </Text>
     <View style={styles.bloodPressureProgressBar}>
-      <View style={[styles.bloodPressureProgressFill, { width: `${Math.min((parseInt(heartRate) / 100) * 100, 100)}%` }]} />
+      <View style={[styles.bloodPressureProgressFill, { width: `${Math.min((parseInt(sysValue) / 140) * 100, 100)}%` }]} />
+    </View>
+  </View>
+  <View style={styles.bloodPressureProgressWrapper}>
+    <Text style={styles.bloodPressureProgressText}>
+      DIA
+    </Text>
+    <View style={styles.bloodPressureProgressBar}>
+      <View style={[styles.bloodPressureProgressFill, { width: `${Math.min((parseInt(diaValue) / 90) * 100, 100)}%` }]} />
+    </View>
     </View>
   </View>
 </TouchableOpacity>
@@ -745,11 +755,11 @@ const styles = StyleSheet.create({
     // elevation: 10,
   },
   bloodPressureProgressWrapper: {
-    alignItems: 'flex-end', // Căn phải cho thanh tiến độ
+    alignItems: 'center', 
   },
 
   bloodPressureProgressText: {
-    color: '#ed1b24',
+    color: '#2577f7',
     fontSize: 14,
     marginBottom: 4,
     fontWeight: '500'
@@ -761,7 +771,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'white',
     borderRadius: 5,
     overflow: 'hidden',
-    marginBottom: 20,
+    marginBottom: 10,
   },
 
   bloodPressureProgressFill: {

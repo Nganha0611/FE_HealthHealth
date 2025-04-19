@@ -128,7 +128,7 @@ const LanguageScreen: React.FC<Props> = ({ navigation }) => {
         </TouchableOpacity>
       </View>
       
-      {loading && <Loading message={t('loading')} />}
+      {loading && <Loading message={t('processing')} />}
     </ScrollView>
   );
 };

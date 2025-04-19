@@ -1,4 +1,6 @@
 {
+  "areYouSureLogout": "Bạn có chắc chắn muốn đăng xuất không?",
+  "confirmation": "Xác nhận",
     "language": "Ngôn ngữ",
     "vietnamese": "Tiếng Việt",
     "english": "Tiếng Anh",
@@ -133,6 +135,7 @@
   "password_mismatch": "Mật khẩu nhập lại không khớp",
   "otp_sent_success": "Mã OTP đã được gửi thành công",
   "otp_send_error": "Có lỗi xảy ra khi gửi mã OTP",
-  "loading_message": "Đang gửi OTP xác thực.."
+  "loading_message": "Đang gửi OTP xác thực..",
+  "successUpdate": "Cập nhật thành công!"
   }
   

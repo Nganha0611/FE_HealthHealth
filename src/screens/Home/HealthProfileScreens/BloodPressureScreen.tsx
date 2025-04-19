@@ -104,7 +104,7 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
                     style={{ marginRight: 15, marginTop: 17 }}
                    onPress={() => navigation.goBack()}
                   />
-                  <Text style={[styles.text1, { fontSize: 30, marginTop: 5 }]}>Nhịp tim</Text>
+                  <Text style={[styles.text1, { fontSize: 30, marginTop: 5 }]}>Huyết áp</Text>
                 </View>
                 <View style={styles.headerRight}>
                   <TouchableOpacity>
