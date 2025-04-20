@@ -9,9 +9,9 @@ import {
     StyleSheet,
     Alert
 } from "react-native";
-import API_BASE_URL from "../../utils/config";
+import { API_BASE_URL } from "../../utils/config";
 import Loading from "../../components/Loading";
-import Notification from "../../components/Notification";
+import { useNotification } from '../../contexts/NotificationContext';
 import { useTranslation } from "react-i18next"; // Import i18n hook
 
 type Props = {
@@ -27,24 +27,7 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
     const [countdown, setCountdown] = useState(300);
     const [isResendDisabled, setIsResendDisabled] = useState(true);
     const countdownRef = useRef<NodeJS.Timeout | null>(null); // Lưu interval
-
-  const [notification, setNotification] = useState({
-    message: "",
-    type: "success" as "success" | "error" | "warning",
-    visible: false,
-    buttonText: "",
-    onPress: () => {},
-  });
-
-  const showNotification = (message: string, type: "success" | "error" | "warning", buttonText?: string, onPress?: () => void) => {
-    setNotification({
-      message,
-      type,
-      visible: true,
-      buttonText: buttonText || "",
-      onPress: onPress || (() => setNotification((prev) => ({ ...prev, visible: false }))),
-    });
-  };
+    const { showNotification } = useNotification();
 
     useEffect(() => {
         startCountdown();
@@ -132,11 +115,22 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
                 numberPhone,
                 address,
             });
-    
+
             if (response.data.result === "success") {
-                showNotification(t('verifyOTP.notification.otpSentSuccess'), "success", "OK", () => {
-                    navigation.navigate("Login");
-                });
+                showNotification(
+                    t('verifyOTP.notification.otpSentSuccess'),
+                    "success",
+                    [
+                        {
+                            text: "OK",
+                            onPress: () => {
+                                navigation.navigate("Login");
+                            },
+                            color: "primary"
+                        }
+                    ]
+                );
+
             } else {
                 showNotification(response.data.message, "error");
             }
@@ -155,9 +149,21 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
             });
 
             if (response.data.result === "success") {
-                showNotification(t('verifyOTP.notification.otpSentSuccess'), "success", "OK", () => {
-                    navigation.navigate("Login");
-                });
+
+                showNotification(
+                    t('verifyOTP.notification.otpSentSuccess'),
+                    "success",
+                    [
+                        {
+                            text: "OK",
+                            onPress: () => {
+                                navigation.navigate("Login");
+                            },
+                            color: "primary"
+                        }
+                    ]
+                );
+
             } else {
                 showNotification(response.data.message, "error");
             }
@@ -194,14 +200,7 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
                 <Text style={styles.verifyButtonText}>{t('verifyOTP.verifyButton')}</Text>
             </TouchableOpacity>
             {loading && <Loading message={t('verifyOTP.loadingMessage')} />}
-            <Notification
-                message={notification.message}
-                type={notification.type}
-                visible={notification.visible}
-                onClose={() => setNotification((prev) => ({ ...prev, visible: false }))}
-                buttonText={notification.buttonText}
-                onPressButton={notification.onPress}
-            />
+
         </View>
     );
 };

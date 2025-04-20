@@ -12,10 +12,10 @@ import {
 import DatePicker from "react-native-date-picker";
 import DropDownPicker from "react-native-dropdown-picker";
 import { useAuth } from "../../contexts/AuthContext";
-import API_BASE_URL from "../../utils/config";
+import {API_BASE_URL} from "../../utils/config";
 import Loading from "../../components/Loading";
-import Notification from "../../components/Notification";
 import { useTranslation } from "react-i18next";
+import { useNotification } from '../../contexts/NotificationContext';
 
 type Props = {
     navigation: NavigationProp<any>;
@@ -39,26 +39,7 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
     const { login } = useAuth();
     const [loading, setLoading] = useState<boolean>(false);
     const [showPicker, setShowPicker] = useState(false);
- /////////////////////////////////////////////////// Xử lý thông báo
-  const [notification, setNotification] = useState({
-    message: "",
-    type: "success" as "success" | "error" | "warning",
-    visible: false,
-    buttonText: "",
-    onPress: () => {},
-});
-
-// Hàm hiển thị thông báo với nút
-const showNotification = (message: string, type: "success" | "error" | "warning", buttonText?: string, onPress?: () => void) => {
-    setNotification({
-        message,
-        type,
-        visible: true,
-        buttonText: buttonText || "",
-        onPress: onPress || (() => setNotification((prev) => ({ ...prev, visible: false }))),
-    });
-};
-
+    const { showNotification } = useNotification();
 
 const handleSendOTP = async () => {
     if (!name || !email || !password || !birth || !gender || !numberPhone || !address) {
@@ -226,12 +207,7 @@ return (
         </Text>
 
         {loading && <Loading message={t("loading_message")} />}
-        <Notification
-            message={notification.message}
-            type={notification.type}
-            visible={notification.visible}
-            onClose={() => setNotification((prev) => ({ ...prev, visible: false }))}
-        />
+        
     </View>
 );
 };

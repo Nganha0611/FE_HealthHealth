@@ -32,9 +32,9 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
     sex: '',
   });
   const { showNotification } = useNotification();
-  
+
   const [loading, setLoading] = useState(false);
- 
+
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -64,34 +64,35 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
         quality: 0.7 as const,
         includeBase64: false,
       };
-  
+
       const result = await launchImageLibrary(options);
       console.log('Image picker result:', result);
-  
+
       if (result.didCancel || !result.assets || !result.assets[0].uri) {
         console.log('User cancelled image picker or no image selected');
+        setLoading(false);
         return;
       }
-  
+
       const image = result.assets[0];
       const imageUri = image.uri;
       const imageType = image.type || 'image/jpeg';
       const imageName = image.fileName || 'photo.jpg';
-  
+
       console.log('Selected image URI:', imageUri);
-  
+
       const formData = new FormData();
       formData.append('file', {
         uri: imageUri,
         type: imageType,
         name: imageName,
-      } as any); 
-  
+      } as any);
+
       formData.append('upload_preset', 'healthhealth');
-  
-     
+
+
       console.log('Uploading to Cloudinary...');
-  
+
       const res = await axios.post(
         'https://api.cloudinary.com/v1_1/dl4o6bfw5/image/upload', // ✅ Đúng cloud_name
         formData,
@@ -101,14 +102,14 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
           },
         }
       );
-  
+
       console.log('Cloudinary response:', res.data);
-  
+
       if (res.data.secure_url) {
         console.log('Image uploaded successfully:', res.data.secure_url);
         setAvatarUrl(res.data.secure_url);
         setFormData(prev => ({ ...prev, url: res.data.secure_url }));
-  
+
         await updateProfileImage(res.data.secure_url);
         showNotification(t('uploadSuccess') || 'Upload ảnh thành công!', 'success');
       } else {
@@ -118,11 +119,11 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
     } catch (error: any) {
       console.error('Error in image upload process:', error.response?.data || error.message);
       showNotification(t('uploadError') || 'Lỗi khi upload ảnh', 'error');
-    } 
+    }
     setLoading(false);
 
   };
-  
+
 
   const updateProfileImage = async (url: string) => {
     try {
@@ -132,18 +133,18 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
         showNotification(t('authError') || 'Lỗi xác thực', 'error');
         return;
       }
-      
+
       const storedUser = await AsyncStorage.getItem("user");
       if (!storedUser) {
         console.error("User data not found");
         throw new Error('User data not found');
       }
-      
+
       const parsedUser = JSON.parse(storedUser);
       const email = parsedUser.email;
-      
+
       console.log("Updating profile image with:", { email, url });
-      
+
       const response = await axios.put(
         `${API_BASE_URL}/api/auth/update-profile-image`,
         { email, url },
@@ -154,9 +155,9 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
           },
         }
       );
-  
+
       console.log("Update image response:", response.data);
-      
+
       const { result, message } = response.data;
       if (result === "success") {
         // Update user in AsyncStorage with new avatar URL
@@ -175,15 +176,15 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
       throw error;
     }
   };
-  
+
   const handleSave = async () => {
     const { name, email, phone, address } = formData;
-  
+
     if (!name || !email || !phone || !address) {
       showNotification(t("errorEmptyFields") || "Vui lòng điền đầy đủ thông tin", 'error');
       return;
     }
-  
+
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem("token");
@@ -191,16 +192,16 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
         showNotification(t('authError') || 'Lỗi xác thực', 'error');
         return;
       }
-      
+
       const storedUser = await AsyncStorage.getItem("user");
       if (!storedUser) {
         showNotification(t("userDataError") || "Không tìm thấy dữ liệu người dùng", 'error');
         return;
       }
-      
+
       const parsedUser = JSON.parse(storedUser);
       const currentEmail = parsedUser.email;
-  
+
       console.log("Sending data to update:", {
         currentEmail,
         name,
@@ -208,7 +209,7 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
         numberPhone: phone,
         address,
       });
-  
+
       // Use plain fetch instead of axios to rule out axios-related issues
       const response = await fetch(`${API_BASE_URL}/api/auth/update-info`, {
         method: 'PUT',
@@ -224,10 +225,10 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
           address,
         })
       });
-  
+
       const responseData = await response.json();
       console.log("Update info response:", responseData);
-      
+
       const { result, message } = responseData;
       if (result === "success") {
         const updatedUser = {
@@ -271,25 +272,26 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
             color="#432c81"
             onPress={() => navigationMain.navigate('SettingStack', { screen: 'Settings' })}
           />
-          <Text style={styles.headerTitle}>{t('personalInformation')}</Text> 
+          <Text style={styles.headerTitle}>{t('personalInformation')}</Text>
         </View>
       </View>
 
       {/* Avatar */}
-      <View style={styles.avatar}>
-        <View style={styles.boxImage}>
-          <Image
-            style={styles.imgProfile}
-            source={avatarUrl ? { uri: avatarUrl } : require('../../assets/avatar.jpg')}
-          />
-          <TouchableOpacity style={styles.editImage} onPress={handlePickAndUploadImage} disabled={loading}>
-            <Image
-              style={styles.editIcon}
-              source={require('../../assets/edit.png')}
-            />
-          </TouchableOpacity>
-        </View>
-      </View>
+       <View style={styles.avatar}>
+             <View style={styles.boxImage}>
+                       <Image
+                         style={styles.imgProfile}
+                         source={avatarUrl ? { uri: avatarUrl } : require('../../assets/avatar.jpg')}
+                       />
+                       <TouchableOpacity style={styles.editImage} onPress={handlePickAndUploadImage} disabled={loading}>
+                         <Image
+                           style={styles.editIcon}
+                           source={require('../../assets/edit.png')}
+                         />
+                       </TouchableOpacity>
+                     </View>
+              
+            </View>
 
       {/* Form Container */}
       <View style={styles.formContainer}>
@@ -320,20 +322,20 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
           />
         </View>
         <View style={styles.readOnlySection}>
-  <View style={styles.readOnlyRow}>
-    <Text style={styles.label}>{t("birth") || "Ngày sinh"}:</Text>
-    <View style={styles.readOnlyField}>
-      <Text style={styles.readOnlyText}>{formData.birth}</Text>
-    </View>
-  </View>
+          <View style={styles.readOnlyRow}>
+            <Text style={styles.label}>{t("birth") || "Ngày sinh"}:</Text>
+            <View style={styles.readOnlyField}>
+              <Text style={styles.readOnlyText}>{formData.birth}</Text>
+            </View>
+          </View>
 
-  <View style={styles.readOnlyRow}>
-    <Text style={styles.label}>{t("gender") || "Giới tính"}:</Text>
-    <View style={styles.readOnlyField}>
-      <Text style={styles.readOnlyText}>{formData.sex}</Text>
-    </View>
-  </View>
-</View>
+          <View style={styles.readOnlyRow}>
+            <Text style={styles.label}>{t("gender") || "Giới tính"}:</Text>
+            <View style={styles.readOnlyField}>
+              <Text style={styles.readOnlyText}>{formData.sex}</Text>
+            </View>
+          </View>
+        </View>
         <View style={styles.inputRow}>
           <Text style={styles.label}>{t("address")}:</Text>
           <TextInput
@@ -348,7 +350,7 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
       <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={loading}>
         <Text style={styles.buttonText}>{loading ? t('saving') : t('save')}</Text>
       </TouchableOpacity>
-      {loading && <Loading message={t("loadingMessage")} />}
+      {loading && <Loading message={t("processing")} />}
     </ScrollView>
   );
 };

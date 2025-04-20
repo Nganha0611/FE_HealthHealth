@@ -22,12 +22,12 @@ type Props = {
                   />
             <Text style={[styles.text, {fontSize: 30, marginTop: 5} ]}>Dinh dưỡng</Text>
               </View>
-              <View style={styles.headerRight}>
+              {/* <View style={styles.headerRight}>
               <Image
               style={styles.imgProfile}
               source={require('../../assets/avatar.jpg')}
             />       
-             </View>
+             </View> */}
               </View>
               </ScrollView>
     );

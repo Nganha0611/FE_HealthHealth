@@ -17,6 +17,7 @@ import axios from 'axios';
 import {API_BASE_URL} from '../../utils/config';
 import Loading from '../../components/Loading';
 import { useTranslation } from 'react-i18next';
+import { useNotification } from '../../contexts/NotificationContext';
 
 type Props = {
   navigation: NavigationProp<any>;
@@ -32,26 +33,25 @@ const ChangePasswordScreen: React.FC<Props> = ({ navigation }) => {
   const [isNewPasswordVisible, setIsNewPasswordVisible] = useState(false);
   const [isReNewPasswordVisible, setIsReNewPasswordVisible] = useState(false);
   const [loading, setLoading] = useState<boolean>(false);
+  const { showNotification } = useNotification();
 
   const handleChangePassword = async () => {
     if (!currentPassword || !newPassword || !reNewPassword) {
-      Alert.alert(t("errorEmptyFields"));
+      showNotification(t("errorEmptyFields"), "error");
       return;
     }
-
     if (newPassword !== reNewPassword) {
-      Alert.alert(t("errorPasswordMismatch"));
+      showNotification(t("errorPasswordMismatch"), "error");
+
       return;
     }
 
     const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     if (!passwordRegex.test(newPassword)) {
-      Alert.alert(t("errorPasswordInvalid"));
+      showNotification(t("errorPasswordInvalid"), "error");
       return;
     }
-
     setLoading(true);
-
     try {
       const response = await axios.post(`${API_BASE_URL}/api/user/change-password`, {
         currentPassword,
@@ -59,20 +59,19 @@ const ChangePasswordScreen: React.FC<Props> = ({ navigation }) => {
       });
 
       if (response.data.result === "success") {
-        Alert.alert(t("successPasswordChanged"));
+        showNotification(t("successPasswordChanged"), "success");
         navigation.goBack();
       } else {
-        Alert.alert(t("errorGeneric"));
+      showNotification(t("errorGeneric"), "error");
       }
     } catch (error) {
       const errorMessage =
         (error as any)?.response?.data?.message || t("errorCannotChange");
-      Alert.alert(t("errorCannotChange"), errorMessage);
+      showNotification(t("errorCannotChange"), "error");
     } finally {
       setLoading(false);
     }
   };
-
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
       {/* Header */}

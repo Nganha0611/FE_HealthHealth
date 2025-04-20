@@ -14,6 +14,7 @@ import {API_BASE_URL} from '../../../utils/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import { useNotification } from '../../../contexts/NotificationContext';
+import Loading from "../../../components/Loading";
 
 type Props = {
   navigation: NavigationProp<any>;
@@ -29,11 +30,14 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
   const steps = 1114;
   const heart_rate = 75;
-  const blood_pressure = "120/80"
   const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
   const { showNotification } = useNotification();
+  const [heartRate, setHeartRate] = useState('77');
+  const [loading, setLoading] = useState<boolean>(false);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   
   const handleMeasureBloodPressure = async () => {
+    setLoading(true);
     try {
       await axios.post(`${API_BASE_URL}/api/blood-pressures/measure`, {
         userId,
@@ -45,7 +49,11 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
     } catch (error) {
       showNotification('Có lỗi xảy ra vui lòng thử lại', 'error');
       console.error(error);
+      setLoading(false);
+
     }
+    setLoading(false);
+
   };
 
   const [userId, setUserId] = useState<string>('');
@@ -55,21 +63,65 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         const userData = await AsyncStorage.getItem('user');
         if (userData) {
           const user = JSON.parse(userData);
-          setUserId(user.id); // Gán tên từ user object
+          setUserId(user.id); 
+          setAvatarUrl(user.url || null);
         }
       } catch (error) {
         console.error('Lỗi khi lấy thông tin người dùng:', error);
       }
     };
-
+  
     fetchUser();
+  
+    const fetchLatestHeartRate = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token"); // hoặc localStorage nếu dùng React Web
+  
+        const res = await axios.get(`${API_BASE_URL}/api/heart-rates/measure/latest`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+  
+        if (res.data && res.data.heartRate !== undefined) {
+          setHeartRate(res.data.heartRate);
+        }
+      } catch (err) {
+        console.error("Lỗi khi lấy nhịp tim:", err);
+      }
+    };
+  
+    const fetchLatestBloodPressure = async () => {
+      try {
+        const token = await AsyncStorage.getItem("token");
+  
+        const res = await axios.get(`${API_BASE_URL}/api/blood-pressures/measure/latest`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+  
+        if (res.data) {
+          setSysValue(res.data.systolic.toString());  
+          setDiaValue(res.data.diastolic.toString());  
+        }
+      } catch (err) {
+        console.error("Lỗi khi lấy huyết áp:", err);
+      }
+    };
+  
+    fetchLatestHeartRate();
+    fetchLatestBloodPressure();
   }, []);
+
+
   const handleMeasurePress = () => {
     setTypeSelectModalVisible(true);
   };
-  const [heartRate, setHeartRate] = useState('77');
 
   const handleMeasureHeartRate = async () => {
+    setLoading(true);
+
     try {
       await axios.post(`${API_BASE_URL}/api/heart-rates/measure`, {
         userId,
@@ -78,9 +130,11 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
       showNotification('Đo nhịp tim thành công', 'success');
       setHeartRate(inputValue);
     } catch (error) {
-      
+      setLoading(false);
       showNotification('errorUpdate', 'error');
     }
+    setLoading(false);
+
   };
 
   
@@ -103,7 +157,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
             <Image
               style={styles.imgProfile}
               // source={require('../../assets/ avatar.jpg')}
-              source={require('../../../assets/avatar.jpg')}
+              source={avatarUrl ? { uri: avatarUrl } : require('../../../assets/avatar.jpg')}
 
             />
           </TouchableOpacity>
@@ -136,7 +190,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
       <View style={styles.row}>
         <Image style={[styles.icon, { width: 23, height: 23, marginLeft: 3, marginRight: 8 }]} source={require('../../../assets/heart_rate.png')} />
         <Text style={[styles.number, { color: '#ed1b24' }]}>
-          {heartRate} {t('bpm')}
+        {heartRate !== null ? `${heartRate} bpm` : "Đang tải..."} {t('bpm')}
         </Text>
       </View>
     </View>
@@ -181,7 +235,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   <View style={styles.stepContent}>
     <FontAwesome5 name="heartbeat" size={26} color="#ed1b24" style={styles.heartRateIcon} />
     <View>
-      <Text style={styles.heartRateTitle}>{heartRate}</Text>
+      <Text style={styles.heartRateTitle}>{heartRate !== null ? `${heartRate} bpm` : "Đang tải..."}</Text>
       <Text style={styles.heartRateSubtitle}>/{t('bpm')}</Text>
     </View>
   </View>
@@ -365,6 +419,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
     </View>
   </View>
 </Modal>
+{loading && <Loading message={t("processing")} />}
 
     </ScrollView>
   );

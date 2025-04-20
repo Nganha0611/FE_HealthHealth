@@ -10,10 +10,10 @@ import {
   StyleSheet,
   Alert,
 } from "react-native";
-import API_BASE_URL from "../../utils/config";
+import {API_BASE_URL} from "../../utils/config";
 import Loading from "../../components/Loading";
-import Notification from "../../components/Notification";
 import { useTranslation } from "react-i18next";
+import { useNotification } from '../../contexts/NotificationContext';
 
 type Props = {
   navigation: NavigationProp<any>;
@@ -28,28 +28,10 @@ const ForgotScreen: React.FC<Props> = ({ navigation }) => {
   const [rePassword, setRePassword] = useState("");
   const [isRePasswordVisible, setIsRePasswordVisible] = useState(false);
   const [loading, setLoading] = useState<boolean>(false);
+  const {showNotification} = useNotification();
 
-  // Xử lý thông báo
-  const [notification, setNotification] = useState({
-    message: "",
-    type: "success" as "success" | "error" | "warning",
-    visible: false,
-    buttonText: "",
-    onPress: () => {},
-  });
+ 
 
-  // Hàm hiển thị thông báo với nút
-  const showNotification = (message: string, type: "success" | "error" | "warning", buttonText?: string, onPress?: () => void) => {
-    setNotification({
-      message,
-      type,
-      visible: true,
-      buttonText: buttonText || "",
-      onPress: onPress || (() => setNotification((prev) => ({ ...prev, visible: false }))),
-    });
-  };
-
-  // Xử lý quên mật khẩu
   const handleForgotPassword = async () => {
     if (!email || !password || !rePassword) {
       showNotification(t("forgotPassword.notification.emptyFields"), "error");
@@ -63,7 +45,6 @@ const ForgotScreen: React.FC<Props> = ({ navigation }) => {
     }
 
     if (password !== rePassword) {
-      Alert.alert(t("Lỗi"), t("forgotPassword.notification.passwordMismatch"));
       showNotification(t("forgotPassword.notification.passwordMismatch"), "error");
       return;
     }
@@ -82,10 +63,24 @@ const ForgotScreen: React.FC<Props> = ({ navigation }) => {
       });
 
       if (response.data.result === "success") {
-        showNotification(t("forgotPassword.notification.otpSendSuccess"), "success", "OK", () => {
-          setNotification((prev) => ({ ...prev, visible: false }));
-          navigation.navigate("VerifyOTP", { email, password, otpAction: "forgotPassword" });
-        });
+        showNotification(
+          t("forgotPassword.notification.otpSendSuccess"),
+          "success",
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                navigation.navigate("VerifyOTP", {
+                  email,
+                  password,
+                  otpAction: "forgotPassword"
+                });
+              },
+              color: "primary"
+            }
+          ]
+        );
+        
       } else {
         showNotification(t("forgotPassword.notification.otpSendError"), "error");
       }
@@ -103,13 +98,11 @@ const ForgotScreen: React.FC<Props> = ({ navigation }) => {
       <Text style={styles.welcomeText}>{t("forgotPassword.title")}</Text>
       <Text style={styles.loginText}>{t("forgotPassword.subtitle")}</Text>
 
-      {/* Hình minh họa */}
       <Image
         source={require("../../assets/login.png")}
         style={styles.illustration}
       />
 
-      {/* Ô nhập Email */}
       <TextInput
         style={styles.input}
         placeholder={t("forgotPassword.emailPlaceholder")}
@@ -174,12 +167,7 @@ const ForgotScreen: React.FC<Props> = ({ navigation }) => {
 
       {loading && <Loading message={t("forgotPassword.loadingMessage")} />}
       
-      <Notification
-        message={notification.message}
-        type={notification.type}
-        visible={notification.visible}
-        onClose={() => setNotification((prev) => ({ ...prev, visible: false }))}
-      />
+      
     </View>
   );
 };

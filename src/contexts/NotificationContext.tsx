@@ -1,22 +1,20 @@
 import React, { createContext, useContext, useState, ReactNode } from "react";
-import Notification from "../components/Notification";
+import Notification, { NotificationButton } from "../components/Notification";
 
-type NotificationType = "success" | "error" | "warning";
+export type NotificationType = "success" | "error" | "warning";
 
 interface NotificationState {
   message: string;
   type: NotificationType;
   visible: boolean;
-  buttonText?: string;
-  onPress?: () => void;
+  buttons?: NotificationButton[];
 }
 
 interface NotificationContextProps {
   showNotification: (
     message: string,
     type: NotificationType,
-    buttonText?: string,
-    onPress?: () => void
+    buttons?: NotificationButton[]
   ) => void;
 }
 
@@ -35,23 +33,24 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
     message: "",
     type: "success",
     visible: false,
-    buttonText: "",
-    onPress: () => setNotification((prev) => ({ ...prev, visible: false })),
+    buttons: [],
   });
 
   const showNotification = (
     message: string,
     type: NotificationType,
-    buttonText?: string,
-    onPress?: () => void
+    buttons?: NotificationButton[]
   ) => {
     setNotification({
       message,
       type,
       visible: true,
-      buttonText: buttonText || "",
-      onPress: onPress || (() => setNotification((prev) => ({ ...prev, visible: false }))),
+      buttons,
     });
+  };
+
+  const handleClose = () => {
+    setNotification((prev) => ({ ...prev, visible: false }));
   };
 
   return (
@@ -61,9 +60,8 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
         message={notification.message}
         type={notification.type}
         visible={notification.visible}
-        onClose={() => setNotification((prev) => ({ ...prev, visible: false }))}
-        buttonText={notification.buttonText}
-        onPress={notification.onPress}
+        onClose={handleClose}
+        buttons={notification.buttons}
       />
     </NotificationContext.Provider>
   );

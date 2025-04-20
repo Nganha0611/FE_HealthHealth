@@ -9,6 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Loading from '../../components/Loading';
 import i18n, { changeLanguage } from '../../locales/i18n';
 import { useTranslation } from 'react-i18next';
+import { useNotification } from '../../contexts/NotificationContext';
 
 type Props = {
   navigation: NavigationProp<any>;
@@ -19,15 +20,14 @@ const LanguageScreen: React.FC<Props> = ({ navigation }) => {
   const [selectedLanguage, setSelectedLanguage] = useState<string>('vi');
   const [loading, setLoading] = useState<boolean>(false);
   const { t } = useTranslation();
-
+  const { showNotification } = useNotification();
   useEffect(() => {
     const loadCurrentLanguage = async () => {
       try {
         const currentLang = await AsyncStorage.getItem('language');
         setSelectedLanguage(currentLang || 'vi');
       } catch (error) {
-        console.error('Lỗi khi tải ngôn ngữ:', error);
-        setSelectedLanguage('vi'); // Fallback khi có lỗi
+        setSelectedLanguage('vi'); 
       }
     };
   
@@ -35,40 +35,31 @@ const LanguageScreen: React.FC<Props> = ({ navigation }) => {
   }, []);
 
   const handleLanguageSelect = async (language: string) => {
-    // Nếu đang chọn ngôn ngữ hiện tại thì không làm gì
     if (language === selectedLanguage) return;
-    
+  
     try {
       setLoading(true);
-      
-      // Thực hiện đổi ngôn ngữ
       const success = await changeLanguage(language);
-      
+  
       if (success) {
-        // Cập nhật state
         setSelectedLanguage(language);
-        
-        // Short delay để hiển thị loading và cho phép ngôn ngữ được áp dụng
         setTimeout(() => {
           setLoading(false);
-        }, 800); // Tăng thời gian delay
+        }, 800); // Delay thêm
       } else {
         setLoading(false);
-        Alert.alert(
-          t('error'),
+        showNotification(
           t('language_change_error'),
-          [{ text: t('ok'), onPress: () => {} }]
+          'error',
+          [{ text: t('ok'), onPress: () => {}, color: 'primary' }]
         );
       }
     } catch (error) {
-      console.error('Error in handleLanguageSelect:', error);
       setLoading(false);
-      
-      // Hiển thị thông báo lỗi chi tiết hơn
-      Alert.alert(
-        t('error'),
+      showNotification(
         `${t('language_change_error')}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        [{ text: t('ok'), onPress: () => {} }]
+        'error',
+        [{ text: t('ok'), onPress: () => {}, color: 'primary' }]
       );
     }
   };

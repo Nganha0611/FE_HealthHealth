@@ -16,14 +16,14 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
   const { t } = useTranslation();  // Hook từ react-i18next
   const [userName, setUserName] = useState<string>(''); 
-
+  
   useEffect(() => {
     const fetchUser = async () => {
       try {
         const userData = await AsyncStorage.getItem('user');
         if (userData) {
           const user = JSON.parse(userData);
-          setUserName(user.name); // Gán tên từ user object
+          setUserName(user.name); 
         }
       } catch (error) {
         console.error('Lỗi khi lấy thông tin người dùng:', error);

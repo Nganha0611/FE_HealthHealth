@@ -1,5 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationProp } from '@react-navigation/native';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Dimensions, StyleSheet, Text, TouchableOpacity, SafeAreaView, Image } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
@@ -10,7 +11,22 @@ type Props = {
 };
 const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('user');
+        if (userData) {
+          const user = JSON.parse(userData);
+          setAvatarUrl(user.url || null);
+        }
+      } catch (error) {
+        console.error('Lỗi khi lấy thông tin người dùng:', error);
+      }
+    };
 
+    fetchUser();
+  }, []);
   // Dữ liệu mẫu - theo giờ trong ngày
   const dailyData = {
     labels: ['6AM', '9AM', '12PM', '3PM', '6PM', '9PM', '12AM', '3PM', '6PM'],

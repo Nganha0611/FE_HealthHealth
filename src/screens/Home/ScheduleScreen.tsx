@@ -26,14 +26,14 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
           />
           <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>Lịch</Text>
         </View>
-        <View style={styles.headerRight}>
+        {/* <View style={styles.headerRight}>
           <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'Account' })}>
             <Image
               style={styles.imgProfile}
               source={require('../../assets/avatar.jpg')}
             />
           </TouchableOpacity>
-        </View>
+        </View> */}
       </View>
     </ScrollView>
   );

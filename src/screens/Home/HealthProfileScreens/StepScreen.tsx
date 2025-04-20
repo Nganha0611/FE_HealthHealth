@@ -1,5 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationProp } from '@react-navigation/native';
-import React, { useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { View, Dimensions, StyleSheet, Text, TouchableOpacity, ScrollView, Image } from 'react-native';
 import { BarChart } from 'react-native-chart-kit';
 import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
@@ -20,13 +21,28 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
       }
     ],
   };
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const userData = await AsyncStorage.getItem('user');
+        if (userData) {
+          const user = JSON.parse(userData);
+          setAvatarUrl(user.url || null);
+        }
+      } catch (error) {
+        console.error('Lỗi khi lấy thông tin người dùng:', error);
+      }
+    };
 
-  const primaryColor = '#3CB371'; 
-  const darkPrimaryColor = '#2E8B57'; 
+    fetchUser();
+  }, []);
+  const primaryColor = '#3CB371';
+  const darkPrimaryColor = '#2E8B57';
 
   const calculateChartWidth = () => {
     const pointCount = stepData.labels.length;
- 
+
     const minWidth = Math.max(pointCount * 40, Dimensions.get('window').width - 40);
     return minWidth;
   };
@@ -56,25 +72,25 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity>
-            <Image 
+            <Image
               style={styles.imgProfile}
-              source={require('../../../assets/avatar.jpg')}
-            />    
+              source={avatarUrl ? { uri: avatarUrl } : require('../../../assets/avatar.jpg')}
+            />
           </TouchableOpacity>
         </View>
       </View>
-      
+
       <Text style={[styles.title, { color: primaryColor }]}>Biểu đồ số bước chân</Text>
       <Text style={styles.subtitle}>Diễn biến theo ngày</Text>
-      
+
       <View style={styles.chartOuterContainer}>
-        <ScrollView 
-          horizontal={true} 
+        <ScrollView
+          horizontal={true}
           showsHorizontalScrollIndicator={true}
           ref={horizontalScrollRef}
           contentContainerStyle={styles.horizontalScrollContainer}
         >
-          <View style={[styles.chartContainer, { width: calculateChartWidth() + 20}]}>
+          <View style={[styles.chartContainer, { width: calculateChartWidth() + 20 }]}>
             <BarChart
               data={stepData}
               width={calculateChartWidth()}
@@ -90,9 +106,9 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
                 labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
                 style: {
                   borderRadius: 16,
-                  paddingRight: 10, 
+                  paddingRight: 10,
                 },
-                barPercentage: 0.5, 
+                barPercentage: 0.5,
                 propsForLabels: {
                   fontSize: 10,
                 },
@@ -124,17 +140,17 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
           <Text style={[styles.infoValue, { color: darkPrimaryColor }]}>{getMaxSteps()} bước</Text>
         </View>
       </View>
-      
+
       <View style={styles.infoContainer}>
         <View style={styles.infoItemFull}>
           <Text style={styles.infoLabel}>Mục tiêu hàng ngày</Text>
           <Text style={[styles.infoValue, { color: primaryColor }]}>6000 bước</Text>
           <View style={styles.progressBarContainer}>
-            <View 
+            <View
               style={[
-                styles.progressBar, 
+                styles.progressBar,
                 { width: `${Math.min(calculateAverageSteps() / 6000 * 100, 100)}%`, backgroundColor: darkPrimaryColor }
-              ]} 
+              ]}
             />
           </View>
           <Text style={styles.progressText}>
@@ -210,7 +226,7 @@ const styles = StyleSheet.create({
   chart: {
     marginVertical: 8,
     borderRadius: 16,
-    paddingRight: 40, 
+    paddingRight: 40,
   },
   infoContainer: {
     flexDirection: 'row',

@@ -22,12 +22,12 @@ const EatingDiaryScreen : React.FC<Props> = ({ navigation }) => {
                 />
           <Text style={[styles.text, {fontSize: 30, marginTop: 5} ]}>Nhật ký ăn uống</Text>
             </View>
-            <View style={styles.headerRight}>
+            {/* <View style={styles.headerRight}>
             <Image
             style={styles.imgProfile}
             source={require('../../assets/avatar.jpg')}
           />       
-           </View>
+           </View> */}
             </View>
             </ScrollView>
   );
