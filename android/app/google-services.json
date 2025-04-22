@@ -1,0 +1,67 @@
+{
+  "project_info": {
+    "project_number": "115630286789",
+    "project_id": "samsunghealth-b785d",
+    "storage_bucket": "samsunghealth-b785d.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:115630286789:android:0a41f88f7fce5ad2230dac",
+        "android_client_info": {
+          "package_name": "com.healthhealth"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTkQ7OZzzfs9PNCHMuNYe1Vv7H9ZekIdo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:115630286789:android:2de70fe35579f5b0230dac",
+        "android_client_info": {
+          "package_name": "com.test2__googlefit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTkQ7OZzzfs9PNCHMuNYe1Vv7H9ZekIdo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:115630286789:android:72bf188758537362230dac",
+        "android_client_info": {
+          "package_name": "com.test2googlefit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDTkQ7OZzzfs9PNCHMuNYe1Vv7H9ZekIdo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

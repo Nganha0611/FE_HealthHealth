@@ -190,7 +190,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
       <View style={styles.row}>
         <Image style={[styles.icon, { width: 23, height: 23, marginLeft: 3, marginRight: 8 }]} source={require('../../../assets/heart_rate.png')} />
         <Text style={[styles.number, { color: '#ed1b24' }]}>
-        {heartRate !== null ? `${heartRate} bpm` : "Đang tải..."} {t('bpm')}
+        {heartRate !== null ? `${heartRate}` : "Đang tải..."} {t('bpm')}
         </Text>
       </View>
     </View>
@@ -235,7 +235,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   <View style={styles.stepContent}>
     <FontAwesome5 name="heartbeat" size={26} color="#ed1b24" style={styles.heartRateIcon} />
     <View>
-      <Text style={styles.heartRateTitle}>{heartRate !== null ? `${heartRate} bpm` : "Đang tải..."}</Text>
+      <Text style={styles.heartRateTitle}>{heartRate !== null ? `${heartRate}` : "Đang tải..."}</Text>
       <Text style={styles.heartRateSubtitle}>/{t('bpm')}</Text>
     </View>
   </View>
