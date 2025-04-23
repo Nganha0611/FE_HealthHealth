@@ -13,6 +13,9 @@ import { API_BASE_URL } from "../../utils/config";
 import Loading from "../../components/Loading";
 import { useNotification } from '../../contexts/NotificationContext';
 import { useTranslation } from "react-i18next"; // Import i18n hook
+import { PhoneAuthProvider, signInWithCredential } from "@react-native-firebase/auth";
+import auth from '@react-native-firebase/auth';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 type Props = {
     navigation: NavigationProp<any>;
@@ -20,21 +23,94 @@ type Props = {
 };
 
 const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
-    const { t } = useTranslation(); // Initialize translation hook
-    const { email, name, password, birth, gender, numberPhone, address, otpAction } = route.params;
+    const { t } = useTranslation(); 
+    const { email, name, password, birth, gender, numberPhone, address, otpAction, verificationId } = route.params;
     const [otp, setOtp] = useState("");
     const [loading, setLoading] = useState<boolean>(false);
     const [countdown, setCountdown] = useState(300);
     const [isResendDisabled, setIsResendDisabled] = useState(true);
-    const countdownRef = useRef<NodeJS.Timeout | null>(null); // Lưu interval
+    const countdownRef = useRef<NodeJS.Timeout | null>(null);
     const { showNotification } = useNotification();
+    // const [phoneNumber, setPhoneNumber] = useState('');
+    const [verifying, setVerifying] = useState(false);
+    const [message, setMessage] = useState('');
 
     useEffect(() => {
+        console.log('Verification ID:', verificationId);
+        console.log('Action:', otpAction);
         startCountdown();
         return () => {
             if (countdownRef.current) clearInterval(countdownRef.current);
         };
     }, []);
+
+    const handleVerifyCode = async () => {
+        if (!verificationId) {
+            Alert.alert('Lỗi', 'Bạn cần gửi mã OTP trước khi xác thực');
+            return;
+        }
+
+        try {
+            setVerifying(true);
+            setMessage('Đang xác thực mã OTP...');
+
+            const credential = PhoneAuthProvider.credential(verificationId, otp);
+            const userCredential = await signInWithCredential(auth(), credential);
+            console.log('Xác thực OTP thành công, user:', userCredential.user.phoneNumber);
+
+            const token = await AsyncStorage.getItem('token');
+            if (!token) {
+                Alert.alert('Lỗi', 'Không tìm thấy token xác thực');
+                setMessage('Lỗi: token xác thực không tồn tại');
+                return;
+            }
+
+            let formattedPhoneNumber = numberPhone.trim();
+            if (formattedPhoneNumber.startsWith('0')) {
+                formattedPhoneNumber = '+84' + formattedPhoneNumber.slice(1);
+            } else if (!formattedPhoneNumber.startsWith('+')) {
+                formattedPhoneNumber = '+' + formattedPhoneNumber;
+            }
+
+            const response = await fetch(`${API_BASE_URL}/api/auth/verify-phone`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${token}`,
+                },
+                body: JSON.stringify({ phoneNumber: formattedPhoneNumber }),
+            });
+
+            if (response.ok) {
+                Alert.alert('Thành công', 'Số điện thoại đã được xác thực!');
+                const stored = await AsyncStorage.getItem('user');
+  if (stored) {
+    const user = JSON.parse(stored);
+    user.isVerifyPhone = true;         // thiết lập đã xác thực
+    await AsyncStorage.setItem('user', JSON.stringify(user));
+  }
+                navigation.navigate('BottomTabs', {
+                    screen: 'SettingStack',
+                    params: {
+                        screen: 'Account',
+                    },
+                });
+            } else {
+                const serverError = await response.text();
+                console.error('Lỗi từ server:', serverError);
+                Alert.alert('Lỗi', 'Cập nhật trạng thái thất bại');
+            }
+
+            await auth().signOut();
+        } catch (error: any) {
+            console.error('Lỗi khi xác thực OTP:', error);
+            const errorMessage = error.message || 'Đã xảy ra lỗi';
+            setMessage(`Lỗi: ${errorMessage}`);
+            Alert.alert('Lỗi', `Mã OTP không hợp lệ: ${errorMessage}`);
+        } finally {
+            setVerifying(false);
+        }
+    };
 
     const startCountdown = () => {
         setCountdown(300);
@@ -82,6 +158,10 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
         }
 
         setLoading(true);
+         if (otpAction === "verify") {
+            await handleVerifyCode();
+            return
+        }
         try {
             const response = await axios.post(`${API_BASE_URL}/api/otp/verify`, null, {
                 params: { email, otp },
@@ -93,7 +173,7 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
                     await handleSignUp();
                 } else if (otpAction === "forgotPassword") {
                     await handleForgotPassword();
-                }
+                } 
             } else {
                 showNotification(t('verifyOTP.notification.otpInvalid'), "error");
             }

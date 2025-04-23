@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import auth from '@react-native-firebase/auth';
 import { View, TextInput, Button, Text, Alert, StyleSheet } from 'react-native';
 import { API_BASE_URL } from '../utils/config';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 const PhoneAuth = () => {
@@ -18,20 +19,24 @@ const PhoneAuth = () => {
     try {
       setLoading(true);
       setMessage('Đang gửi mã OTP...');
-      
-      // Đảm bảo số điện thoại có định dạng đúng (+84...)
-      const formattedPhoneNumber = phoneNumber.startsWith('+') 
-        ? phoneNumber 
-        : `+${phoneNumber}`;
-      // Sử dụng tính năng signInWithPhoneNumber của Firebase
+  
+      // Chuẩn hóa số điện thoại
+      let formattedPhoneNumber = phoneNumber.trim();
+  
+      // Nếu bắt đầu bằng "0" thì chuyển sang "+84"
+      if (formattedPhoneNumber.startsWith('0')) {
+        formattedPhoneNumber = '+84' + formattedPhoneNumber.slice(1);
+      } else if (!formattedPhoneNumber.startsWith('+')) {
+        formattedPhoneNumber = '+' + formattedPhoneNumber;
+      }
+  
       const confirmationResult = await auth().signInWithPhoneNumber(formattedPhoneNumber);
-      
-      // Lưu ID xác thực để sử dụng khi nhập OTP
+  
       if (confirmationResult.verificationId) {
         setVerificationId(confirmationResult.verificationId);
         setMessage('Mã OTP đã được gửi!');
       }
-      
+  
       console.log('Gửi OTP thành công, VerificationId:', confirmationResult.verificationId);
     } catch (error) {
       console.error('Lỗi khi gửi OTP:', error);
@@ -42,58 +47,67 @@ const PhoneAuth = () => {
       setLoading(false);
     }
   };
+  
 
-  // Hàm xác thực mã OTP
   const handleVerifyCode = async () => {
     if (!verificationId) {
       Alert.alert('Lỗi', 'Bạn cần gửi mã OTP trước khi xác thực');
       return;
     }
-    
+  
     try {
       setVerifying(true);
       setMessage('Đang xác thực mã OTP...');
-      
-      // Tạo credential từ verificationId và mã OTP
+  
       const credential = PhoneAuthProvider.credential(verificationId, code);
-      
-      // Đăng nhập với credential
       const userCredential = await signInWithCredential(auth(), credential);
-      
-      // Lấy token ID
-      const idToken = await userCredential.user.getIdToken();
-      console.log('Xác thực thành công! ID Token:', idToken);
-      
-      // Gửi token đến server của bạn
-      try {
-        const response = await fetch(`${API_BASE_URL}/api/auth/firebase`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ idToken }),
-        });
-        
-        if (response.ok) {
-          setMessage('Xác thực thành công và đã gửi token đến server!');
-          Alert.alert('Thành công', 'Đăng nhập thành công!');
-        } else {
-          setMessage('Xác thực thành công nhưng không thể gửi token đến server');
-          console.log('Server response:', await response.text());
-        }
-      } catch (serverError) {
-        console.error('Lỗi khi gửi token đến server:', serverError);
-        setMessage('Xác thực thành công nhưng gặp lỗi khi gửi token đến server');
+      console.log('Xác thực OTP thành công, user:', userCredential.user.phoneNumber);
+  
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        Alert.alert('Lỗi', 'Không tìm thấy token xác thực');
+        setMessage('Lỗi: token xác thực không tồn tại');
+        return;
       }
-    } catch (error) {
+  
+      let formattedPhoneNumber = phoneNumber.trim();
+      if (formattedPhoneNumber.startsWith('0')) {
+        formattedPhoneNumber = '+84' + formattedPhoneNumber.slice(1);
+      } else if (!formattedPhoneNumber.startsWith('+')) {
+        formattedPhoneNumber = '+' + formattedPhoneNumber;
+      }
+  
+      const response = await fetch(`${API_BASE_URL}/api/auth/verify-phone`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ phoneNumber: formattedPhoneNumber }),
+      });
+  
+      if (response.ok) {
+        setMessage('Xác thực thành công và đã cập nhật trạng thái!');
+        Alert.alert('Thành công', 'Số điện thoại đã được xác thực!');
+      } else {
+        const serverError = await response.text();
+        console.error('Lỗi từ server:', serverError);
+        setMessage('Xác thực OTP thành công nhưng cập nhật trạng thái thất bại');
+        Alert.alert('Lỗi', 'Cập nhật trạng thái thất bại');
+      }
+  
+      await auth().signOut();
+    } catch (error: any) {
       console.error('Lỗi khi xác thực OTP:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Đã xảy ra lỗi';
+      const errorMessage = error.message || 'Đã xảy ra lỗi';
       setMessage(`Lỗi: ${errorMessage}`);
       Alert.alert('Lỗi', `Mã OTP không hợp lệ: ${errorMessage}`);
     } finally {
       setVerifying(false);
     }
   };
+  
+  
 
   return (
     <View style={styles.container}>

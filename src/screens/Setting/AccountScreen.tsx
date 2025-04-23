@@ -1,4 +1,4 @@
-import { NavigationProp, useNavigation } from '@react-navigation/native';
+import { NavigationProp, useFocusEffect, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, Image, StyleSheet, TouchableOpacity, Alert } from 'react-native';
@@ -13,48 +13,78 @@ import Notification from "../../components/Notification";
 import { launchImageLibrary } from 'react-native-image-picker';
 import Loading from '../../components/Loading';
 import { useNotification } from '../../contexts/NotificationContext';
+import auth from '@react-native-firebase/auth';
 
 type Props = {
   navigation: NavigationProp<any>;
 };
 
 const AccountScreen: React.FC<Props> = ({ navigation }) => {
-  const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
-  const { t } = useTranslation();
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    address: '',
-    url: '',
-    birth: '',
-    sex: '',
-  });
+    const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
+    const { t } = useTranslation();
+    const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+    const [formData, setFormData] = useState({
+      name: '',
+      email: '',
+      phone: '',
+      address: '',
+      url: '',
+      birth: '',
+      sex: '',
+      isVerifyPhone: false,
+    });
   const { showNotification } = useNotification();
+  const [verificationId, setVerificationId] = useState('');
 
   const [loading, setLoading] = useState(false);
 
+  useFocusEffect(
+    React.useCallback(() => {
+      (async () => {
+        const stored = await AsyncStorage.getItem('user');
+        if (stored) {
+          const u = JSON.parse(stored);
+          console.log('>> loaded user in Account:', u);
+          setFormData({
+            name:          u.name      || '',
+            email:         u.email     || '',
+            phone:         u.numberPhone|| '',
+            address:       u.address   || '',
+            url:           u.url       || '',
+            birth:         u.birth     || '',
+            sex:           u.sex       || '',
+            isVerifyPhone: u.verify, 
+          
+          });
+          console.log('>> loaded user in Account:', u);
+        }
+        console.log('>> loaded user in Account:', stored);
 
-  useEffect(() => {
-    const fetchUser = async () => {
-      const storedUser = await AsyncStorage.getItem('user');
-      if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        setFormData({
-          name: parsedUser.name || '',
-          email: parsedUser.email || '',
-          phone: parsedUser.numberPhone || '',
-          address: parsedUser.address || '',
-          url: parsedUser.url || '',
-          birth: parsedUser.birth || '',
-          sex: parsedUser.sex || '',
-        });
-        setAvatarUrl(parsedUser.url || null);
-      }
-    };
-    fetchUser();
-  }, []);
+      })();
+
+    }, [])
+  );
+  // useEffect(() => {
+  //   const fetchUser = async () => {
+  //     const storedUser = await AsyncStorage.getItem('user');
+  //     if (storedUser) {
+  //       const parsedUser = JSON.parse(storedUser);
+  //       setFormData({
+  //         name: parsedUser.name || '',
+  //         email: parsedUser.email || '',
+  //         phone: parsedUser.numberPhone || '',
+  //         address: parsedUser.address || '',
+  //         url: parsedUser.url || '',
+  //         birth: parsedUser.birth || '',
+  //         sex: parsedUser.sex || '',
+  //         isVerify: parsedUser.isVerifyd,
+  //       });
+  //       setAvatarUrl(parsedUser.url || null);
+  //     }
+  //   };
+  //   fetchUser();
+  //   console.log('User data fetched:', formData.isVerify);
+  // }, []);
 
   const handlePickAndUploadImage = async () => {
     setLoading(true);
@@ -210,7 +240,6 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
         address,
       });
 
-      // Use plain fetch instead of axios to rule out axios-related issues
       const response = await fetch(`${API_BASE_URL}/api/auth/update-info`, {
         method: 'PUT',
         headers: {
@@ -260,7 +289,39 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
     }));
   };
 
+const handleSendCode = async () => {
+    try {
+      setLoading(true);
+  
+      // Chuẩn hóa số điện thoại
+      let formattedPhoneNumber = formData.phone.trim();
+  
+      // Nếu bắt đầu bằng "0" thì chuyển sang "+84"
+      if (formattedPhoneNumber.startsWith('0')) {
+        formattedPhoneNumber = '+84' + formattedPhoneNumber.slice(1);
+      } else if (!formattedPhoneNumber.startsWith('+')) {
+        formattedPhoneNumber = '+' + formattedPhoneNumber;
+      }
+  
+      const confirmationResult = await auth().signInWithPhoneNumber(formattedPhoneNumber);
+  
+      if (confirmationResult.verificationId) {
+        setVerificationId(confirmationResult.verificationId);
+      }
 
+      navigation.navigate("VerifyOTP", {
+        numberPhone: formData.phone,
+        otpAction: "verify",
+        verificationId: confirmationResult.verificationId, 
+      });
+    } catch (error) {
+      console.error('Lỗi khi gửi OTP:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Đã xảy ra lỗi';
+      Alert.alert('Lỗi', `Không thể gửi mã OTP: ${errorMessage}`);
+    } finally {
+      setLoading(false);
+    }
+  };
   return (
     <ScrollView contentContainerStyle={styles.container}>
       {/* Header */}
@@ -314,13 +375,31 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
         </View>
 
         <View style={styles.inputRow}>
-          <Text style={styles.label}>{t("phone")}:</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.phone}
-            onChangeText={(value) => handleInputChange("phone", value)}
-          />
-        </View>
+  <Text style={styles.label}>{t("phone")}:</Text>
+
+  <View style={styles.phoneInputContainer}>
+    <TextInput
+      style={styles.phoneInput}
+      value={formData.phone}
+      editable={!formData.isVerifyPhone}
+      onChangeText={(value) => handleInputChange("phone", value)}
+      keyboardType="phone-pad"
+      placeholder="Nhập số điện thoại"
+    />
+
+    {formData.isVerifyPhone ? (
+      <Text style={styles.verifiedIcon}>Đã xác thực ✅</Text>
+    ) : (
+      <TouchableOpacity
+        onPress={() => {
+          handleSendCode();
+        }}
+      >
+        <Text style={styles.verifyButtonText}>Xác thực ngay</Text>
+      </TouchableOpacity>
+    )}
+  </View>
+</View>
         <View style={styles.readOnlySection}>
           <View style={styles.readOnlyRow}>
             <Text style={styles.label}>{t("birth") || "Ngày sinh"}:</Text>
@@ -479,6 +558,39 @@ const styles = StyleSheet.create({
     backgroundColor: '#e0e0e0',
     marginVertical: 15,
   },
+  phoneInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    flex: 1,
+  },
+  
+  phoneInput: {
+    flex: 1,
+    fontSize: 16,
+    color: '#000',
+  },
+  
+  verifyButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    marginLeft: 10,
+    borderWidth: 1,
+    padding: 5,
+    backgroundColor: 'red',
+    borderBlockColor: 'red',
+  },
+  
+  verifiedIcon: {
+    fontSize: 18,
+    marginLeft: 10,
+    color: 'green',
+  },
+  
 });
 
 export default AccountScreen;

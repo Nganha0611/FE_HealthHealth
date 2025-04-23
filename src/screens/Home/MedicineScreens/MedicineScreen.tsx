@@ -4,10 +4,9 @@ import React from 'react';
 import { View, Text, Button, Image, StyleSheet, TouchableOpacity } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import { BottomTabParamList } from '../../navigation/BottomTabs';
+import { BottomTabParamList } from '../../../navigation/BottomTabs';
 
 type Props = {
-
   navigation: NavigationProp<any>;
 };
 const MedicineScreen: React.FC<Props> = ({ navigation }) => {
@@ -35,13 +34,21 @@ const MedicineScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
         </View> */}
       </View>
-      <TouchableOpacity style = {styles.boxFeature} onPress={() => navigation.navigate('Medicine')}> 
-                <Text style={[styles.text, styles.boxTitle]}>Thuốc</Text>
+      <TouchableOpacity style = {styles.boxFeature} onPress={() => navigation.navigate('Prescription')}> 
+                <Text style={[styles.text, styles.boxTitle]}>Danh sách đơn thuốc</Text>
                 <Image
               style={styles.boxImg}
-              source={require('../../assets/medicine.png')}
+              source={require('../../../assets/prescription.png')}
             />  
              </TouchableOpacity>
+             <TouchableOpacity style = {styles.boxFeature} onPress={() => navigation.navigate('MedicineHistory')}> 
+                <Text style={[styles.text, styles.boxTitle]}>Lịch sử uống thuốc</Text>
+                <Image
+              style={styles.boxImg}
+              source={require('../../../assets/history.png')}
+            />  
+             </TouchableOpacity>
+             
     </ScrollView>
   );
 };
@@ -78,7 +85,7 @@ const styles = StyleSheet.create({
   boxFeature: {
     flexDirection: 'row',
     width: 'auto',
-    height: 140,
+    height: 100,
     backgroundColor: '#e0dee7',
     marginHorizontal: 10,
     borderRadius: 10,
@@ -87,11 +94,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   boxTitle: {
-    marginLeft: 25,
+    marginLeft: 10,
+    fontSize: 23,
   },
+  // boxFeatureItem: {
+  //   flexDirection: 'row',
+  //   width: 'auto',
+  //   height: 50,
+  //   backgroundColor: '#e0dee7',
+  //   marginHorizontal: 10,
+  //   borderRadius: 10,
+  //   marginTop: 20,
+  //   justifyContent: 'space-between',
+  //   alignItems: 'center',
+  // },
+  // boxTitleItem: {
+  //   marginLeft: 15,
+  //   fontSize: 25,
+  //   fontWeight: 'bold',
+  // },
   boxImg: {
-      width: 120,
-      height: 120,
+      width: 80,
+      height: 80,
       marginRight: 30,
   }
 })

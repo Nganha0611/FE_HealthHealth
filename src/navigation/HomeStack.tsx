@@ -2,7 +2,7 @@ import React from 'react';
 import { createStackNavigator } from '@react-navigation/stack';
 import HomeScreen from '../screens/Home/HomeScreen';
 import HealthProfileScreen from '../screens/Home/HealthProfileScreens/HealthProfileScreen';
-import MedicineScreen from '../screens/Home/MedicineScreen';
+import MedicineScreen from '../screens/Home/MedicineScreens/MedicineScreen';
 import ScheduleScreen from '../screens/Home/ScheduleScreen';
 import EatingDiaryScreen from '../screens/Home/EatingDiaryScreen';
 import NutritionScreen from '../screens/Home/NutritionScreen';
@@ -11,6 +11,8 @@ import EmergencyContactScreen from '../screens/Home/EmergencyContact';
 import HeartRateScreen from '../screens/Home/HealthProfileScreens/HeartRateScreen';
 import BloodPressureScreen from '../screens/Home/HealthProfileScreens/BloodPressureScreen';
 import StepScreen from '../screens/Home/HealthProfileScreens/StepScreen';
+import PrescriptionScreen from '../screens/Home/MedicineScreens/PresciptionScreen';
+import MedicineHistoryScreen from '../screens/Home/MedicineScreens/MedicineHistoryScreen';
 
 export type HomeStackParamList = {
   Home: undefined;
@@ -24,6 +26,8 @@ export type HomeStackParamList = {
   HeartRate : undefined;
   BloodPressure : undefined;
   Step : undefined;
+  Prescription: undefined;
+  MedicineHistory: undefined;
 };
 
 const Stack = createStackNavigator<HomeStackParamList>();
@@ -43,6 +47,8 @@ const HomeStack = () => {
       <Stack.Screen name="HeartRate" component={HeartRateScreen} />
       <Stack.Screen name="BloodPressure" component={BloodPressureScreen} />
       <Stack.Screen name="Step" component={StepScreen} />
+      <Stack.Screen name="Prescription" component={PrescriptionScreen} /> 
+      <Stack.Screen name="MedicineHistory" component={MedicineHistoryScreen} /> 
     </Stack.Navigator>
   );
 };

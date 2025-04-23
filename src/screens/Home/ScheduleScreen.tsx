@@ -1,17 +1,63 @@
-import { NavigationProp, useNavigation } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
-import React from 'react';
-import { View, Text, Button, Image, StyleSheet, TouchableOpacity } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, Button } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import { BottomTabParamList } from '../../navigation/BottomTabs';
+import CalendarPicker from 'react-native-calendar-picker';
+import { useTranslation } from 'react-i18next';
 
-type Props = {
+const ScheduleScreen: React.FC<any> = ({ navigation }) => {
+  const { t, i18n } = useTranslation();
 
-  navigation: NavigationProp<any>;
-};
-const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
-  const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
+  const [language, setLanguage] = useState<'vi' | 'en'>(i18n.language as 'vi' | 'en');
+  const [selectedDate, setSelectedDate] = useState(new Date('2025-04-23'));
+
+  const events: { [key: string]: { name: string; time: string }[] } = {
+    '2025-04-23': [{ name: 'Đi khám bác sĩ', time: '9:00 AM' }],
+    '2025-04-24': [{ name: 'Uống thuốc tim', time: '8:00 AM' }],
+  };
+
+  const getDateKey = (date: Date): string => date.toISOString().split('T')[0];
+
+  const onDateChange = (date: any) => {
+    if (date?.toDate) {
+      setSelectedDate(date.toDate());
+    } else {
+      setSelectedDate(new Date(date));
+    }
+  };
+
+  const weekdays = t('calendar.weekdays', { returnObjects: true });
+  const safeWeekdays = Array.isArray(weekdays) ? weekdays : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  const months = t('calendar.months', { returnObjects: true });
+  const safeMonths = Array.isArray(months) ? months : [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  const renderEvents = () => {
+    const dateKey = getDateKey(selectedDate);
+    const dayEvents = events[dateKey] || [];
+    if (dayEvents.length === 0) {
+      return (
+        <View style={styles.noEventContainer}>
+          <Text style={styles.noEventText}>{t('calendar.noEvent')}</Text>
+        </View>
+      );
+    }
+
+    return dayEvents.map((event, index) => (
+      <View key={index} style={styles.eventItem}>
+        <Text style={styles.eventTime}>{event.time}</Text>
+        <Text style={styles.eventName}>{event.name}</Text>
+      </View>
+    ));
+  };
+
+  const toggleLanguage = () => {
+    const newLang = language === 'vi' ? 'en' : 'vi';
+    i18n.changeLanguage(newLang);
+    setLanguage(newLang);
+  };
 
   return (
     <ScrollView>
@@ -26,47 +72,99 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
           />
           <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>Lịch</Text>
         </View>
-        {/* <View style={styles.headerRight}>
-          <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'Account' })}>
-            <Image
-              style={styles.imgProfile}
-              source={require('../../assets/avatar.jpg')}
-            />
-          </TouchableOpacity>
-        </View> */}
+        {/* <Button title={`Lang: ${language.toUpperCase()}`} onPress={toggleLanguage} /> */}
+      </View>
+
+      <View style={styles.container}>
+        <CalendarPicker
+          onDateChange={onDateChange}
+          selectedStartDate={selectedDate}
+          selectedDayColor="#5ce0d8"
+          selectedDayTextColor="#FFFFFF"
+          initialDate={selectedDate}
+          weekdays={safeWeekdays}
+          months={safeMonths}
+          previousTitle={t('calendar.previous')}
+          nextTitle={t('calendar.next')}
+        />
+        <View style={styles.title}>
+          <Text style={styles.headerText}>
+            {t('calendar.title')} {selectedDate.toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}
+          </Text>
+        </View>
+
+        <ScrollView style={styles.eventsContainer}>
+          {renderEvents()}
+        </ScrollView>
       </View>
     </ScrollView>
   );
 };
+
+// Styles remain the same
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
-    marginTop: 10,
-    justifyContent: 'space-between'
+    marginBottom: 20,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 10,
   },
   text: {
     fontSize: 25,
     fontFamily: 'Roboto',
     color: '#432c81',
     fontWeight: 'bold',
-
   },
   headerLeft: {
-    marginLeft: 10,
-    marginTop: 5,
     flexDirection: 'row',
-    justifyContent: 'flex-start',
+    alignItems: 'center',
   },
-  headerRight: {
-    marginRight: 15,
-    backgroundColor: '#e0dee7',
-    borderRadius: 30,
-    padding: 7,
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
   },
-  imgProfile: {
-    width: 45,
-    height: 45,
-    borderRadius: 30
+  title: {
+    backgroundColor: '#5ce0d8',
+    padding: 10,
+    marginTop: 10,
   },
-})
+  headerText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  },
+  eventsContainer: {
+    flex: 1,
+    padding: 10,
+  },
+  eventItem: {
+    backgroundColor: '#f9f9f9',
+    padding: 15,
+    marginVertical: 5,
+    borderRadius: 5,
+    borderLeftWidth: 4,
+    borderLeftColor: '#5ce0d8',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  eventTime: {
+    color: '#666',
+    marginRight: 10,
+    fontSize: 14,
+  },
+  eventName: {
+    fontSize: 16,
+  },
+  noEventContainer: {
+    padding: 20,
+    alignItems: 'center',
+  },
+  noEventText: {
+    color: '#888',
+    fontSize: 16,
+  },
+});
+
 export default ScheduleScreen;

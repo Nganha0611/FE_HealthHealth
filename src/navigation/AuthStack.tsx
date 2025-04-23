@@ -15,7 +15,10 @@ export type AuthStackParamList = {
   ForgotPassword: undefined;
   BottomTabs: undefined;
   Settings: undefined;
-  VerifyOTP: undefined;
+  VerifyOTP: {
+    phoneNumber: string;
+    otpAction: "verify" | "register"; // hoặc string nếu bạn muốn thoải mái hơn
+  };
 };
 
 const Stack = createStackNavigator<AuthStackParamList>();

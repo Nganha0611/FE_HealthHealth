@@ -24,28 +24,40 @@ const Notification: React.FC<NotificationProps> = ({
   buttons
 }) => {
   const fadeAnim = useRef(new Animated.Value(visible ? 1 : 0)).current;
-
+  
   useEffect(() => {
-    if (visible) {
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-
-      const autoHide = setTimeout(() => {
-        onClose();
-      }, buttons && buttons.length > 0 ? 5000 : 3000);
-
-      return () => clearTimeout(autoHide);
-    } else {
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }).start();
-    }
+    Animated.timing(fadeAnim, {
+      toValue: visible ? 1 : 0,
+      duration: 300,
+      useNativeDriver: true,
+    }).start();
   }, [visible]);
+  
+  useEffect(() => {
+    let autoHide: NodeJS.Timeout | null = null;
+  
+    if (visible && (!buttons || buttons.length === 0)) {
+      autoHide = setTimeout(() => {
+        onClose();
+      }, 3000);
+    }
+  
+    return () => {
+      if (autoHide) {
+        clearTimeout(autoHide);
+      }
+    };
+  }, [visible, buttons, onClose]);
+  
+  if (!visible) return null;
+
+  // Hàm xử lý khi nhấn nút - gọi cả onPress của nút và onClose
+  const handleButtonPress = (buttonOnPress: () => void) => {
+    // Thực hiện hành động của nút trước
+    buttonOnPress();
+    // Sau đó đóng thông báo
+    onClose();
+  };
 
   return (
     <Animated.View
@@ -74,7 +86,7 @@ const Notification: React.FC<NotificationProps> = ({
                 styles.button,
                 btn.color === 'danger' ? styles.buttonDanger : styles.buttonPrimary,
               ]}
-              onPress={btn.onPress}
+              onPress={() => handleButtonPress(btn.onPress)}
             >
               <Text style={styles.buttonText}>{btn.text}</Text>
             </TouchableOpacity>
@@ -86,8 +98,12 @@ const Notification: React.FC<NotificationProps> = ({
 };
 
 const styles = StyleSheet.create({
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    zIndex: 10001,
+  },
   container: {
-    // ...StyleSheet.absoluteFillObject,
     width: "90%",
     padding: 20,
     borderRadius: 12,
@@ -101,7 +117,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     position: "absolute",
     backgroundColor: "#fff",
-    
   },
   top: {
     top: 50,

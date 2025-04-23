@@ -1,5 +1,5 @@
 import { StackNavigationProp } from '@react-navigation/stack';
-import { RouteProp } from '@react-navigation/native';
+import { ParamListBase, RouteProp } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   View,
@@ -28,7 +28,25 @@ type Props = {
   navigation: LoginScreenNavigationProp;
   route: LoginScreenRouteProp;
 };
-
+type LoginScreenProps = {
+  navigation: StackNavigationProp<ParamListBase, 'Login'>;
+  route: RouteProp<ParamListBase, 'Login'>;
+};
+// type RootStackParamList = {
+//   Login: undefined;
+//   Register: undefined;
+//   VerifyOTP: {
+//     email: string;
+//     name: string;
+//     password: string;
+//     birth: string;
+//     gender: string;
+//     numberPhone: string;
+//     address: string;
+//     otpAction: string;
+//   };
+//   BottomTabs: undefined;
+// };
 const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -58,6 +76,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         showNotification(t('loginSuccess'), 'success');
         await AsyncStorage.setItem('token', token);
         await AsyncStorage.setItem('user', JSON.stringify(user));
+        console.log('Login successful:', user.isVerify);
         await login(token, user);
       } else {
         showNotification( t('error.loginFailed'), 'error');

@@ -5,18 +5,18 @@ import { AuthProvider } from "../HealthHealth/src/contexts/AuthContext";
 import AppNavigator from "../HealthHealth/src/navigation/AppNavigator"; 
 import { NotificationProvider } from "../HealthHealth/src/contexts/NotificationContext"; // 👈
 import PhoneAuth from "./src/components/PhoneAuth";
+import MyAgenda from "./src/components/MyAgenda";
 
 const App = () => {
   return (
-    // <I18nextProvider i18n={i18n}>
-    //   <AuthProvider>
-    //     <NotificationProvider>
-    //       <AppNavigator />
-    //     </NotificationProvider>
-    //   </AuthProvider>
-    // </I18nextProvider>
-    <PhoneAuth></PhoneAuth>
-  );
-};
+    <I18nextProvider i18n={i18n}>
+      <AuthProvider>
+        <NotificationProvider>
+          <AppNavigator />
+        </NotificationProvider>
+      </AuthProvider>
+    </I18nextProvider>
+  // <MyAgenda /> );
+)};
 
 export default App;
