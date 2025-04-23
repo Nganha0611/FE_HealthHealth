@@ -140,11 +140,12 @@
   "errorUpdate": "Có lỗi xảy ra trong quá trình cập nhật!",
   "loginSuccess": "Đăng nhập thành công!",
   "calendar": {
-    "weekdays": ["T2", "T3", "T4", "T5", "T6", "T7", "CN"],
+    "weekdays": ["CN", "T2", "T3", "T4", "T5", "T6", "T7"],
     "months": ["Tháng 1", "Tháng 2", "Tháng 3", "Tháng 4", "Tháng 5", "Tháng 6", "Tháng 7", "Tháng 8", "Tháng 9", "Tháng 10", "Tháng 11", "Tháng 12"],
     "previous": "Trước",
     "next": "Sau",
     "title": "Sự kiện cho",
-    "noEvent": "Không có sự kiện"
-  }
+    "noEvent": "Không có sự kiện"  },
+    "healthmonitor": "Theo dõi sức khỏe"
+
 }

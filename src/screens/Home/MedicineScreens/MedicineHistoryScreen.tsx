@@ -11,21 +11,25 @@ type Props = {
 };
 const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
   const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
-
+  // const openAddModal = () => {
+  //   resetForm();
+  //   setModalVisible(true);
+  // };
   return (
-    <ScrollView>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <FontAwesome
-            name="chevron-left"
-            size={20}
-            color="#432c81"
-            style={{ marginRight: 15, marginTop: 17 }}
-            onPress={() => navigation.goBack()}
-          />
-          <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>Danh sách đơn thuốc</Text>
-        </View>
-        {/* <View style={styles.headerRight}>
+    <View style={{ flex: 1 }}>
+      <ScrollView>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <FontAwesome
+              name="chevron-left"
+              size={20}
+              color="#432c81"
+              style={{ marginRight: 15, marginTop: 17 }}
+              onPress={() => navigation.goBack()}
+            />
+            <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>Lịch sử uống thuốc</Text>
+          </View>
+          {/* <View style={styles.headerRight}>
            <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'Account' })}>
              <Image
                style={styles.imgProfile}
@@ -33,74 +37,76 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
              />
            </TouchableOpacity>
          </View> */}
-      </View>
-      <TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
-        <Text style={[styles.text, styles.boxTitle]}>Today</Text>
-        <Text style={styles.note}>Trạng thái: Missing</Text>
-        <Text style={styles.note}>Note: Quên uống</Text>
+        </View>
+        <TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('MedicineHistoryDetail')}>
+          <Text style={[styles.text, styles.boxTitle]}>Today</Text>
+          <Text style={styles.note}>Trạng thái: Missing</Text>
+          <Text style={styles.note}>Note: Quên uống</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
+          <Text style={[styles.text, styles.boxTitle]}>Today</Text>
+          <Text style={styles.note}>Trạng thái: Missing</Text>
+          <Text style={styles.note}>Note: Quên uống</Text>
+
+
+        </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
+          <Text style={[styles.text, styles.boxTitle]}>Today</Text>
+          <Text style={styles.note}>Trạng thái: Missing</Text>
+          <Text style={styles.note}>Note: Quên uống</Text>
+
+
+        </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
+          <Text style={[styles.text, styles.boxTitle]}>Today</Text>
+          <Text style={styles.note}>Trạng thái: Missing</Text>
+          <Text style={styles.note}>Note: Quên uống</Text>
+
+
+        </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
+          <Text style={[styles.text, styles.boxTitle]}>Today</Text>
+          <Text style={styles.note}>Trạng thái: Missing</Text>
+          <Text style={styles.note}>Note: Quên uống</Text>
+
+
+        </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
+          <Text style={[styles.text, styles.boxTitle]}>Today</Text>
+          <Text style={styles.note}>Trạng thái: Missing</Text>
+          <Text style={styles.note}>Note: Quên uống</Text>
+
+
+        </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
+          <Text style={[styles.text, styles.boxTitle]}>Today</Text>
+          <Text style={styles.note}>Trạng thái: Missing</Text>
+          <Text style={styles.note}>Note: Quên uống</Text>
+
+
+        </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
+          <Text style={[styles.text, styles.boxTitle]}>Today</Text>
+          <Text style={styles.note}>Trạng thái: Missing</Text>
+          <Text style={styles.note}>Note: Quên uống</Text>
+
+
+        </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
+          <Text style={[styles.text, styles.boxTitle]}>Today</Text>
+          <Text style={styles.note}>Trạng thái: Missing</Text>
+          <Text style={styles.note}>Note: Quên uống</Text>
+
+
+        </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
+          <Text style={[styles.text, styles.boxTitle]}>Today</Text>
+          <Text style={styles.note}>Trạng thái: Missing</Text>
+          <Text style={styles.note}>Note: Quên uống</Text>
+
+
+        </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
+          <Text style={[styles.text, styles.boxTitle]}>Today</Text>
+          <Text style={styles.note}>Trạng thái: Missing</Text>
+          <Text style={styles.note}>Note: Quên uống</Text>
+        </TouchableOpacity>
+      </ScrollView>
+      <TouchableOpacity style={styles.fab}>
+        <FontAwesome name="plus" size={24} color="#fff" />
       </TouchableOpacity>
-      <TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
-        <Text style={[styles.text, styles.boxTitle]}>Today</Text>
-        <Text style={styles.note}>Trạng thái: Missing</Text>
-        <Text style={styles.note}>Note: Quên uống</Text>
-
-
-      </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
-        <Text style={[styles.text, styles.boxTitle]}>Today</Text>
-        <Text style={styles.note}>Trạng thái: Missing</Text>
-        <Text style={styles.note}>Note: Quên uống</Text>
-
-
-      </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
-        <Text style={[styles.text, styles.boxTitle]}>Today</Text>
-        <Text style={styles.note}>Trạng thái: Missing</Text>
-        <Text style={styles.note}>Note: Quên uống</Text>
-
-
-      </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
-        <Text style={[styles.text, styles.boxTitle]}>Today</Text>
-        <Text style={styles.note}>Trạng thái: Missing</Text>
-        <Text style={styles.note}>Note: Quên uống</Text>
-
-
-      </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
-        <Text style={[styles.text, styles.boxTitle]}>Today</Text>
-        <Text style={styles.note}>Trạng thái: Missing</Text>
-        <Text style={styles.note}>Note: Quên uống</Text>
-
-
-      </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
-        <Text style={[styles.text, styles.boxTitle]}>Today</Text>
-        <Text style={styles.note}>Trạng thái: Missing</Text>
-        <Text style={styles.note}>Note: Quên uống</Text>
-
-
-      </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
-        <Text style={[styles.text, styles.boxTitle]}>Today</Text>
-        <Text style={styles.note}>Trạng thái: Missing</Text>
-        <Text style={styles.note}>Note: Quên uống</Text>
-
-
-      </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
-        <Text style={[styles.text, styles.boxTitle]}>Today</Text>
-        <Text style={styles.note}>Trạng thái: Missing</Text>
-        <Text style={styles.note}>Note: Quên uống</Text>
-
-
-      </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
-        <Text style={[styles.text, styles.boxTitle]}>Today</Text>
-        <Text style={styles.note}>Trạng thái: Missing</Text>
-        <Text style={styles.note}>Note: Quên uống</Text>
-
-
-      </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
-        <Text style={[styles.text, styles.boxTitle]}>Today</Text>
-        <Text style={styles.note}>Trạng thái: Missing</Text>
-        <Text style={styles.note}>Note: Quên uống</Text>
-
-
-      </TouchableOpacity>
-    </ScrollView>
+    </View>
   );
 };
 const styles = StyleSheet.create({
@@ -109,7 +115,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     justifyContent: 'space-between',
     marginBottom: 20,
-    
+
   },
   text: {
     fontSize: 25,
@@ -160,6 +166,18 @@ const styles = StyleSheet.create({
     width: 80,
     height: 80,
     marginRight: 30,
-  }
+  },
+  fab: {
+    position: 'absolute',
+    right: 20,
+    bottom: 20,
+    backgroundColor: '#432c81',
+    width: 50,
+    height: 50,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 25,
+  },
 })
 export default MedicineHistoryScreen;

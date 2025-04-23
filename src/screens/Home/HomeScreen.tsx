@@ -62,7 +62,10 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         <Text style={[styles.text, styles.boxTitle]}>{t('medicalHistory')}</Text>
         <Image style={styles.boxImg} source={require('../../assets/medical_history.png')} />
       </TouchableOpacity>
-
+      <TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('MedicalHistory')}>
+        <Text style={[styles.text, styles.boxTitle]}>{t('healthmonitor')}</Text>
+        <Image style={styles.boxImg} source={require('../../assets/healthmonitor.png')} />
+      </TouchableOpacity>
       <TouchableOpacity style={[styles.boxFeature, { marginBottom: 10 }]} onPress={() => navigation.navigate('EmergencyContact')}>
         <Text style={[styles.text, styles.boxTitle]}>{t('emergencyContact')}</Text>
         <Image style={styles.boxImg} source={require('../../assets/warning.png')} />
@@ -110,12 +113,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   boxTitle: {
-    marginLeft: 25,
+    marginHorizontal: 10,
   },
   boxImg: {
     width: 120,
     height: 120,
-    marginRight: 30,
+    marginRight: 20,
   }
 });
 

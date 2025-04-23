@@ -11,9 +11,22 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
   const [selectedDate, setSelectedDate] = useState(new Date('2025-04-23'));
 
   const events: { [key: string]: { name: string; time: string }[] } = {
-    '2025-04-23': [{ name: 'Đi khám bác sĩ', time: '9:00 AM' }],
-    '2025-04-24': [{ name: 'Uống thuốc tim', time: '8:00 AM' }],
+    '2025-04-23': [
+      { name: 'Đi khám bác sĩ', time: '9:00 AM' },
+      { name: 'Uống thuốc', time: '10:00 AM' },
+      { name: 'Tập thể dục', time: '4:00 PM' },
+      { name: 'Tập thể dục', time: '4:00 PM' },
+      { name: 'Tập thể dục', time: '4:00 PM' },
+      { name: 'Tập thể dục', time: '4:00 PM' },
+      { name: 'Tập thể dục', time: '4:00 PM' },
+      { name: 'Tập thể dục', time: '4:00 PM' },
+
+    ],
+    '2025-04-24': [
+      { name: 'Tái khám', time: '8:00 AM' },
+    ],
   };
+  
 
   const getDateKey = (date: Date): string => date.toISOString().split('T')[0];
 
@@ -79,7 +92,7 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
         <CalendarPicker
           onDateChange={onDateChange}
           selectedStartDate={selectedDate}
-          selectedDayColor="#5ce0d8"
+          selectedDayColor="#432c81"
           selectedDayTextColor="#FFFFFF"
           initialDate={selectedDate}
           weekdays={safeWeekdays}
@@ -125,7 +138,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   title: {
-    backgroundColor: '#5ce0d8',
+    backgroundColor: '#432c81',
     padding: 10,
     marginTop: 10,
   },
@@ -145,7 +158,7 @@ const styles = StyleSheet.create({
     marginVertical: 5,
     borderRadius: 5,
     borderLeftWidth: 4,
-    borderLeftColor: '#5ce0d8',
+    borderLeftColor: '#432c81',
     flexDirection: 'row',
     alignItems: 'center',
   },

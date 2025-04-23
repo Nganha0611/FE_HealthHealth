@@ -25,16 +25,16 @@ const MedicineScreen: React.FC<Props> = ({ navigation }) => {
           />
           <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>Thuốc</Text>
         </View>
-        {/* <View style={styles.headerRight}>
-          <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'Account' })}>
-            <Image
-              style={styles.imgProfile}
-              source={require('../../assets/avatar.jpg')}
-            />
-          </TouchableOpacity>
-        </View> */}
+     
       </View>
-      <TouchableOpacity style = {styles.boxFeature} onPress={() => navigation.navigate('Prescription')}> 
+      <TouchableOpacity style = {styles.boxFeature} onPress={() => navigation.navigate('MedicineManager')}> 
+                <Text style={[styles.text, styles.boxTitle]}>Quản lý thuốc</Text>
+                <Image
+              style={styles.boxImg}
+              source={require('../../../assets/medicine.png')}
+            />  
+             </TouchableOpacity>
+             <TouchableOpacity style = {styles.boxFeature} onPress={() => navigation.navigate('Prescription')}> 
                 <Text style={[styles.text, styles.boxTitle]}>Danh sách đơn thuốc</Text>
                 <Image
               style={styles.boxImg}

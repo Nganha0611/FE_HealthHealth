@@ -6,13 +6,15 @@ import MedicineScreen from '../screens/Home/MedicineScreens/MedicineScreen';
 import ScheduleScreen from '../screens/Home/ScheduleScreen';
 import EatingDiaryScreen from '../screens/Home/EatingDiaryScreen';
 import NutritionScreen from '../screens/Home/NutritionScreen';
-import MedicalHistoryScreen from '../screens/Home/MedicalHistoryScreen';
+import MedicalHistoryScreen from '../screens/Home/MedicalScreens/MedicalHistoryScreen';
 import EmergencyContactScreen from '../screens/Home/EmergencyContact';
 import HeartRateScreen from '../screens/Home/HealthProfileScreens/HeartRateScreen';
 import BloodPressureScreen from '../screens/Home/HealthProfileScreens/BloodPressureScreen';
 import StepScreen from '../screens/Home/HealthProfileScreens/StepScreen';
 import PrescriptionScreen from '../screens/Home/MedicineScreens/PresciptionScreen';
 import MedicineHistoryScreen from '../screens/Home/MedicineScreens/MedicineHistoryScreen';
+import MedicineManagerScreen from '../screens/Home/MedicineScreens/MedicineManagerScreen';
+import MedicineHistoryDetailScreen from '../screens/Home/MedicineScreens/MedicineHistoryDetailScreen';
 
 export type HomeStackParamList = {
   Home: undefined;
@@ -28,6 +30,8 @@ export type HomeStackParamList = {
   Step : undefined;
   Prescription: undefined;
   MedicineHistory: undefined;
+  MedicineManager: undefined;
+  MedicineHistoryDetail: undefined;
 };
 
 const Stack = createStackNavigator<HomeStackParamList>();
@@ -49,6 +53,9 @@ const HomeStack = () => {
       <Stack.Screen name="Step" component={StepScreen} />
       <Stack.Screen name="Prescription" component={PrescriptionScreen} /> 
       <Stack.Screen name="MedicineHistory" component={MedicineHistoryScreen} /> 
+      <Stack.Screen name="MedicineManager" component={MedicineManagerScreen} /> 
+      <Stack.Screen name="MedicineHistoryDetail" component={MedicineHistoryDetailScreen} />
+      {/* Add other screens here */}
     </Stack.Navigator>
   );
 };
