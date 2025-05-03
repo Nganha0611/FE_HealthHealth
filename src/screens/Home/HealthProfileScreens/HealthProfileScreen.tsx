@@ -1,16 +1,15 @@
-import { NavigationProp, useNavigation } from '@react-navigation/native';
+import { NavigationProp, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import React, { useEffect, useState } from 'react';
-import { View, Text, Button, Image, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, Button, Image, StyleSheet, TouchableOpacity, Alert, TextInput, Modal, Pressable } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import Svg, { Circle } from 'react-native-svg';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import { Colors } from 'react-native/Libraries/NewAppScreen';
 import { BottomTabParamList } from '../../../navigation/BottomTabs';
-import { Alert, TextInput, Modal, Pressable } from 'react-native';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import axios from 'axios';
-import {API_BASE_URL} from '../../../utils/config';
+import { API_BASE_URL } from '../../../utils/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import { useNotification } from '../../../contexts/NotificationContext';
@@ -22,20 +21,80 @@ type Props = {
 
 const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   const [selectedMeasurement, setSelectedMeasurement] = useState<string | null>(null);
-  const [inputValue, setInputValue] = useState('77');
+  const [inputValue, setInputValue] = useState('null');
   const [modalVisible, setModalVisible] = useState(false);
   const [typeSelectModalVisible, setTypeSelectModalVisible] = useState(false);
-  const [sysValue, setSysValue] = useState('120');
-  const [diaValue, setDiaValue] = useState('60');
+  const [sysValue, setSysValue] = useState('null');
+  const [diaValue, setDiaValue] = useState('null');
   const { t } = useTranslation();
   const steps = 1114;
   const heart_rate = 75;
   const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
   const { showNotification } = useNotification();
-  const [heartRate, setHeartRate] = useState('77');
+  const [heartRate, setHeartRate] = useState('null');
   const [loading, setLoading] = useState<boolean>(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-  
+  const [userId, setUserId] = useState<string>('');
+
+  const fetchUser = async () => {
+    try {
+      const userData = await AsyncStorage.getItem('user');
+      if (userData) {
+        const user = JSON.parse(userData);
+        setUserId(user.id);
+        setAvatarUrl(user.url || null);
+      }
+    } catch (error) {
+      console.error('Lỗi khi lấy thông tin người dùng:', error);
+    }
+  };
+
+  const fetchLatestHeartRate = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      const res = await axios.get(`${API_BASE_URL}/api/heart-rates/measure/latest`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.data && res.data.heartRate !== undefined) {
+        setHeartRate(res.data.heartRate.toString());
+      }
+    } catch (err) {
+      console.error("Lỗi khi lấy nhịp tim:", err);
+    }
+  };
+
+  const fetchLatestBloodPressure = async () => {
+    try {
+      const token = await AsyncStorage.getItem("token");
+      const res = await axios.get(`${API_BASE_URL}/api/blood-pressures/measure/latest`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (res.data) {
+        setSysValue(res.data.systolic.toString());
+        setDiaValue(res.data.diastolic.toString());
+      }
+    } catch (err) {
+      console.error("Lỗi khi lấy huyết áp:", err);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      const fetchAll = async () => {
+        await fetchUser();
+        await fetchLatestHeartRate();
+        await fetchLatestBloodPressure();
+      };
+      fetchAll();
+    }, [])
+  );
+
   const handleMeasureBloodPressure = async () => {
     setLoading(true);
     try {
@@ -45,83 +104,16 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         diastolic: parseInt(diaValue),
       });
       showNotification('Đo huyết áp thành công', 'success');
- 
     } catch (error) {
       showNotification('Có lỗi xảy ra vui lòng thử lại', 'error');
       console.error(error);
+    } finally {
       setLoading(false);
-
     }
-    setLoading(false);
-
-  };
-
-  const [userId, setUserId] = useState<string>('');
-  useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const userData = await AsyncStorage.getItem('user');
-        if (userData) {
-          const user = JSON.parse(userData);
-          setUserId(user.id); 
-          setAvatarUrl(user.url || null);
-        }
-      } catch (error) {
-        console.error('Lỗi khi lấy thông tin người dùng:', error);
-      }
-    };
-  
-    fetchUser();
-  
-    const fetchLatestHeartRate = async () => {
-      try {
-        const token = await AsyncStorage.getItem("token"); // hoặc localStorage nếu dùng React Web
-  
-        const res = await axios.get(`${API_BASE_URL}/api/heart-rates/measure/latest`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-  
-        if (res.data && res.data.heartRate !== undefined) {
-          setHeartRate(res.data.heartRate);
-        }
-      } catch (err) {
-        console.error("Lỗi khi lấy nhịp tim:", err);
-      }
-    };
-  
-    const fetchLatestBloodPressure = async () => {
-      try {
-        const token = await AsyncStorage.getItem("token");
-  
-        const res = await axios.get(`${API_BASE_URL}/api/blood-pressures/measure/latest`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-  
-        if (res.data) {
-          setSysValue(res.data.systolic.toString());  
-          setDiaValue(res.data.diastolic.toString());  
-        }
-      } catch (err) {
-        console.error("Lỗi khi lấy huyết áp:", err);
-      }
-    };
-  
-    fetchLatestHeartRate();
-    fetchLatestBloodPressure();
-  }, []);
-
-
-  const handleMeasurePress = () => {
-    setTypeSelectModalVisible(true);
   };
 
   const handleMeasureHeartRate = async () => {
     setLoading(true);
-
     try {
       await axios.post(`${API_BASE_URL}/api/heart-rates/measure`, {
         userId,
@@ -130,11 +122,15 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
       showNotification('Đo nhịp tim thành công', 'success');
       setHeartRate(inputValue);
     } catch (error) {
-      setLoading(false);
       showNotification('errorUpdate', 'error');
+      console.error(error);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  };
 
+  const handleMeasurePress = () => {
+    setTypeSelectModalVisible(true);
   };
 
   
