@@ -3,9 +3,8 @@ import { I18nextProvider } from "react-i18next";
 import i18n from "../HealthHealth/src/locales/i18n"; 
 import { AuthProvider } from "../HealthHealth/src/contexts/AuthContext"; 
 import AppNavigator from "../HealthHealth/src/navigation/AppNavigator"; 
-import { NotificationProvider } from "../HealthHealth/src/contexts/NotificationContext"; // 👈
-import PhoneAuth from "./src/components/PhoneAuth";
-import MyAgenda from "./src/components/MyAgenda";
+import { NotificationProvider } from "../HealthHealth/src/contexts/NotificationContext"; 
+import HeartRateMonitor from "./src/components/HearRateMonitor";
 
 const App = () => {
   return (
@@ -15,8 +14,8 @@ const App = () => {
           <AppNavigator />
         </NotificationProvider>
       </AuthProvider>
-    </I18nextProvider>
-  // <MyAgenda /> );
+     </I18nextProvider>
+    // <HeartRateMonitor />
 )};
 
 export default App;
