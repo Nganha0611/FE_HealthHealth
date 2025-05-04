@@ -21,17 +21,17 @@ type Props = {
 
 const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   const [selectedMeasurement, setSelectedMeasurement] = useState<string | null>(null);
-  const [inputValue, setInputValue] = useState('null');
+  const [inputValue, setInputValue] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [typeSelectModalVisible, setTypeSelectModalVisible] = useState(false);
-  const [sysValue, setSysValue] = useState('null');
-  const [diaValue, setDiaValue] = useState('null');
+  const [sysValue, setSysValue] = useState('');
+  const [diaValue, setDiaValue] = useState('');
   const { t } = useTranslation();
   const steps = 1114;
   const heart_rate = 75;
   const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
   const { showNotification } = useNotification();
-  const [heartRate, setHeartRate] = useState('null');
+  const [heartRate, setHeartRate] = useState('');
   const [loading, setLoading] = useState<boolean>(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [userId, setUserId] = useState<string>('');

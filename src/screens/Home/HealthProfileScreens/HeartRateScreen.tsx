@@ -72,7 +72,6 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         return;
       }
 
-      // Lọc dữ liệu có heartRate hợp lệ
       const validData = data.filter(item => 
         typeof item.heartRate === 'number' && 
         !isNaN(item.heartRate) && 
@@ -91,13 +90,9 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         return;
       }
 
-      // Sắp xếp theo thời gian
       const sorted = validData.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
       setAllHeartRateData(sorted);
-      
-      // Process data based on current view mode
       processHeartRateData(sorted);
-      
     } catch (error) {
       console.error('Lỗi khi tải dữ liệu nhịp tim:', error);
       Alert.alert('Lỗi', 'Không thể tải dữ liệu nhịp tim. Vui lòng kiểm tra kết nối và thử lại.');
@@ -114,49 +109,45 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
 
   const processHeartRateData = (data: HeartRateData[]) => {
     if (!data || data.length === 0) return;
-    
+
     let filteredData: HeartRateData[] = [];
     let labels: string[] = [];
     let values: number[] = [];
 
     const today = new Date();
-    // Don't set hours to 0 to ensure we see today's data
-    
-    console.log(`Processing data for ${viewMode} view`);
-    console.log(`Today: ${today.toISOString()}`);
-    console.log(`Total data points: ${data.length}`);
+    console.log(`Xử lý dữ liệu cho chế độ ${viewMode}`);
+    console.log(`Hôm nay: ${today.toISOString()}`);
+    console.log(`Tổng số điểm dữ liệu: ${data.length}`);
 
     if (viewMode === 'daily') {
-      // For daily view, get all data from the current day
-      // We're not resetting hours to 0 to ensure we include today's data
       filteredData = data.filter((item) => {
         const itemDate = new Date(item.createdAt);
         const isSameDay = 
           itemDate.getDate() === today.getDate() &&
           itemDate.getMonth() === today.getMonth() &&
           itemDate.getFullYear() === today.getFullYear();
-        
         return isSameDay;
       });
 
-      // For testing/debugging
-      console.log(`Daily filtered data points: ${filteredData.length}`);
+      console.log(`Số điểm dữ liệu theo ngày: ${filteredData.length}`);
       filteredData.forEach(item => {
-        console.log(`Item date: ${new Date(item.createdAt).toISOString()}, Heart rate: ${item.heartRate}`);
+        console.log(`Ngày của mục: ${new Date(item.createdAt).toISOString()}, Nhịp tim: ${item.heartRate}`);
       });
 
       if (filteredData.length === 0) {
-        // If today has no data, show the most recent data available
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        
-        filteredData = data;
-        // Log that we're using all data because today has none
-        console.log("No data for today, using all available data");
+        // Thay vì sử dụng toàn bộ dữ liệu, chỉ sử dụng dữ liệu của ngày gần nhất
+        const latestDate = new Date(data[data.length - 1].createdAt);
+        filteredData = data.filter((item) => {
+          const itemDate = new Date(item.createdAt);
+          return (
+            itemDate.getDate() === latestDate.getDate() &&
+            itemDate.getMonth() === latestDate.getMonth() &&
+            itemDate.getFullYear() === latestDate.getFullYear()
+          );
+        });
       }
 
-      // Group data by hour
-      const hourlyData: {[hour: string]: number[]} = {};
+      const hourlyData: { [hour: string]: number[] } = {};
       filteredData.forEach(item => {
         const date = new Date(item.createdAt);
         const hourKey = `${date.getHours()}h`;
@@ -166,35 +157,29 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         hourlyData[hourKey].push(item.heartRate);
       });
 
-      // Create labels and values from hourly data
-      labels = Object.keys(hourlyData).sort((a, b) => {
-        return parseInt(a) - parseInt(b); // Sort hours numerically
-      });
+      labels = Object.keys(hourlyData).sort((a, b) => parseInt(a) - parseInt(b));
       values = labels.map(hour => {
         const rates = hourlyData[hour];
-        return Math.round(rates.reduce((sum, val) => sum + val, 0) / rates.length);
+        return rates.length > 0 ? Math.round(rates.reduce((sum, val) => sum + val, 0) / rates.length) : 0;
       });
 
     } else if (viewMode === 'weekly') {
-      // For weekly view, we'll get data from the last 7 days
       const sevenDaysAgo = new Date(today);
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      
+
       filteredData = data.filter((item) => {
         const itemDate = new Date(item.createdAt);
         return itemDate >= sevenDaysAgo;
       });
 
-      console.log(`Weekly filtered data points: ${filteredData.length}`);
-      
+      console.log(`Số điểm dữ liệu theo tuần: ${filteredData.length}`);
+
       if (filteredData.length === 0) {
-        // If no data in the last 7 days, use all available data
         filteredData = data;
-        console.log("No data for past week, using all available data");
+        console.log("Không có dữ liệu cho 7 ngày qua, sử dụng toàn bộ dữ liệu có sẵn");
       }
 
-      // Group data by day
-      const dailyData: {[day: string]: number[]} = {};
+      const dailyData: { [day: string]: number[] } = {};
       filteredData.forEach(item => {
         const date = new Date(item.createdAt);
         const dayKey = `${date.getDate()}/${date.getMonth() + 1}`;
@@ -204,7 +189,6 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         dailyData[dayKey].push(item.heartRate);
       });
 
-      // Create labels and values from daily data
       const sortedDays = Object.keys(dailyData).sort((a, b) => {
         const [dayA, monthA] = a.split('/').map(Number);
         const [dayB, monthB] = b.split('/').map(Number);
@@ -215,64 +199,83 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
       labels = sortedDays;
       values = labels.map(day => {
         const rates = dailyData[day];
-        return Math.round(rates.reduce((sum, val) => sum + val, 0) / rates.length);
+        return rates.length > 0 ? Math.round(rates.reduce((sum, val) => sum + val, 0) / rates.length) : 0;
       });
 
+      if (values.length === 1) {
+        const avgValue = allHeartRateData.length > 0 
+          ? Math.round(allHeartRateData.reduce((sum, item) => sum + item.heartRate, 0) / allHeartRateData.length) 
+          : 0;
+        labels.unshift('Trước đó');
+        values.unshift(avgValue); // Sử dụng giá trị trung bình toàn bộ thay vì lặp lại giá trị
+      }
+
     } else if (viewMode === 'monthly') {
-      // For monthly view, get data from start of current month
       const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-      
+
       filteredData = data.filter((item) => {
         const itemDate = new Date(item.createdAt);
         return itemDate >= startOfMonth;
       });
 
-      console.log(`Monthly filtered data points: ${filteredData.length}`);
-      
+      console.log(`Số điểm dữ liệu theo tháng: ${filteredData.length}`);
+
       if (filteredData.length === 0) {
-        // If no data this month, use all available data
         filteredData = data;
-        console.log("No data for current month, using all available data");
+        console.log("Không có dữ liệu cho tháng hiện tại, sử dụng toàn bộ dữ liệu có sẵn");
       }
 
-      // Divide the month into weeks
       const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
       const weekSize = Math.ceil(daysInMonth / 4);
-      
-      const weeklyData: {[week: string]: number[]} = {};
+
+      const weeklyData: { [week: string]: number[] } = {};
       filteredData.forEach(item => {
         const date = new Date(item.createdAt);
         const dayOfMonth = date.getDate();
         const weekNumber = Math.floor((dayOfMonth - 1) / weekSize) + 1;
         const weekKey = `Tuần ${weekNumber}`;
-        
         if (!weeklyData[weekKey]) {
           weeklyData[weekKey] = [];
         }
         weeklyData[weekKey].push(item.heartRate);
       });
 
-      // Create labels and values
       labels = Object.keys(weeklyData).sort((a, b) => {
         return parseInt(a.replace('Tuần ', '')) - parseInt(b.replace('Tuần ', ''));
       });
       values = labels.map(week => {
         const rates = weeklyData[week];
-        return Math.round(rates.reduce((sum, val) => sum + val, 0) / rates.length);
+        return rates.length > 0 ? Math.round(rates.reduce((sum, val) => sum + val, 0) / rates.length) : 0;
       });
+
+      if (values.length === 1) {
+        const avgValue = allHeartRateData.length > 0 
+          ? Math.round(allHeartRateData.reduce((sum, item) => sum + item.heartRate, 0) / allHeartRateData.length) 
+          : 0;
+        labels.unshift('Trước đó');
+        values.unshift(avgValue); // Sử dụng giá trị trung bình toàn bộ thay vì lặp lại giá trị
+      }
     }
 
-    // Calculate average heart rate
-    const avgHeartRate = values.length > 0 
-      ? Math.round(values.reduce((sum, val) => sum + val, 0) / values.length) 
-      : null;
+    // Tính trung bình chỉ dựa trên giá trị thực tế của khoảng thời gian hiện tại
+let avgHeartRate = null;
+if (values.length > 0) {
+  // Nếu có giá trị "Trước đó", "Ngày trước", hoặc "Tuần trước", loại bỏ khỏi tính toán trung bình
+  const valuesToAverage = [...values];
+  if (labels[0] === 'Trước đó' || labels[0] === 'Ngày trước' || labels[0] === 'Tuần trước') {
+    valuesToAverage.shift(); // Loại bỏ phần tử đầu tiên
+  }
+  
+  if (valuesToAverage.length > 0) {
+    avgHeartRate = Math.round(valuesToAverage.reduce((sum, val) => sum + val, 0) / valuesToAverage.length);
+  }
+}
 
     setChartData({
       labels,
       datasets: [{ data: values, color: () => '#FF6384', strokeWidth: 2 }],
       legend: ['Nhịp tim'],
     });
-    
     setAverageHeartRate(avgHeartRate);
   };
 
@@ -336,11 +339,11 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
               color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
               labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
               style: { borderRadius: 16 },
-              propsForDots: { r: '4', strokeWidth: '2' },
+              propsForDots: { r: '6', strokeWidth: '2', stroke: '#FF6384' },
             }}
-            bezier 
+            bezier
             style={styles.chart}
-            yAxisSuffix="" 
+            yAxisSuffix=""
             withDots={true}
           />
         </View>
