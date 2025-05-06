@@ -6,6 +6,7 @@ import { LineChart } from 'react-native-chart-kit';
 import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
 import axios from 'axios';
 import { API_BASE_URL } from '../../../utils/config';
+import { useTranslation } from 'react-i18next';
 
 type ViewMode = 'monthly' | 'daily' | 'weekly';
 
@@ -24,12 +25,13 @@ type Props = {
 };
 
 const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
+  const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [chartData, setChartData] = useState<any>({
     labels: [],
     datasets: [{ data: [], color: () => '#FF6384', strokeWidth: 2 }],
-    legend: ['Nhịp tim'],
+    legend: [t('heartRate')],
   });
   const [averageHeartRate, setAverageHeartRate] = useState<number | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -45,11 +47,11 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
           setAvatarUrl(user.url || null);
           fetchHeartRateData(user.id);
         } else {
-          Alert.alert('Lỗi', 'Không tìm thấy thông tin người dùng.');
+          Alert.alert(t('error'), t('noUserInfo'));
         }
       } catch (error) {
-        console.error('Lỗi khi lấy thông tin người dùng:', error);
-        Alert.alert('Lỗi', 'Không thể lấy thông tin người dùng. Vui lòng thử lại.');
+        console.error('Error fetching user info:', error);
+        Alert.alert(t('error'), t('fetchUserError'));
       }
     };
 
@@ -65,10 +67,10 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         setChartData({
           labels: [],
           datasets: [{ data: [], color: () => '#FF6384', strokeWidth: 2 }],
-          legend: ['Nhịp tim'],
+          legend: [t('heartRate')],
         });
         setAverageHeartRate(null);
-        Alert.alert('Thông báo', 'Không có dữ liệu nhịp tim nào để hiển thị.');
+        Alert.alert(t('notification'), t('noHeartRateData'));
         return;
       }
 
@@ -83,10 +85,10 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         setChartData({
           labels: [],
           datasets: [{ data: [], color: () => '#FF6384', strokeWidth: 2 }],
-          legend: ['Nhịp tim'],
+          legend: [t('heartRate')],
         });
         setAverageHeartRate(null);
-        Alert.alert('Thông báo', 'Dữ liệu nhịp tim không hợp lệ.');
+        Alert.alert(t('notification'), t('invalidHeartRateData'));
         return;
       }
 
@@ -94,12 +96,12 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
       setAllHeartRateData(sorted);
       processHeartRateData(sorted);
     } catch (error) {
-      console.error('Lỗi khi tải dữ liệu nhịp tim:', error);
-      Alert.alert('Lỗi', 'Không thể tải dữ liệu nhịp tim. Vui lòng kiểm tra kết nối và thử lại.');
+      console.error('Error fetching heart rate data:', error);
+      Alert.alert(t('error'), t('fetchHeartRateError'));
       setChartData({
         labels: [],
         datasets: [{ data: [], color: () => '#FF6384', strokeWidth: 2 }],
-        legend: ['Nhịp tim'],
+        legend: [t('heartRate')],
       });
       setAverageHeartRate(null);
     } finally {
@@ -115,27 +117,18 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
     let values: number[] = [];
 
     const today = new Date();
-    console.log(`Xử lý dữ liệu cho chế độ ${viewMode}`);
-    console.log(`Hôm nay: ${today.toISOString()}`);
-    console.log(`Tổng số điểm dữ liệu: ${data.length}`);
 
     if (viewMode === 'daily') {
       filteredData = data.filter((item) => {
         const itemDate = new Date(item.createdAt);
-        const isSameDay = 
+        return (
           itemDate.getDate() === today.getDate() &&
           itemDate.getMonth() === today.getMonth() &&
-          itemDate.getFullYear() === today.getFullYear();
-        return isSameDay;
-      });
-
-      console.log(`Số điểm dữ liệu theo ngày: ${filteredData.length}`);
-      filteredData.forEach(item => {
-        console.log(`Ngày của mục: ${new Date(item.createdAt).toISOString()}, Nhịp tim: ${item.heartRate}`);
+          itemDate.getFullYear() === today.getFullYear()
+        );
       });
 
       if (filteredData.length === 0) {
-        // Thay vì sử dụng toàn bộ dữ liệu, chỉ sử dụng dữ liệu của ngày gần nhất
         const latestDate = new Date(data[data.length - 1].createdAt);
         filteredData = data.filter((item) => {
           const itemDate = new Date(item.createdAt);
@@ -150,7 +143,7 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
       const hourlyData: { [hour: string]: number[] } = {};
       filteredData.forEach(item => {
         const date = new Date(item.createdAt);
-        const hourKey = `${date.getHours()}h`;
+        const hourKey = `${date.getHours()}${t('hour')}`;
         if (!hourlyData[hourKey]) {
           hourlyData[hourKey] = [];
         }
@@ -172,11 +165,8 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         return itemDate >= sevenDaysAgo;
       });
 
-      console.log(`Số điểm dữ liệu theo tuần: ${filteredData.length}`);
-
       if (filteredData.length === 0) {
         filteredData = data;
-        console.log("Không có dữ liệu cho 7 ngày qua, sử dụng toàn bộ dữ liệu có sẵn");
       }
 
       const dailyData: { [day: string]: number[] } = {};
@@ -206,8 +196,8 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         const avgValue = allHeartRateData.length > 0 
           ? Math.round(allHeartRateData.reduce((sum, item) => sum + item.heartRate, 0) / allHeartRateData.length) 
           : 0;
-        labels.unshift('Trước đó');
-        values.unshift(avgValue); // Sử dụng giá trị trung bình toàn bộ thay vì lặp lại giá trị
+        labels.unshift(t('previous'));
+        values.unshift(avgValue);
       }
 
     } else if (viewMode === 'monthly') {
@@ -218,11 +208,8 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         return itemDate >= startOfMonth;
       });
 
-      console.log(`Số điểm dữ liệu theo tháng: ${filteredData.length}`);
-
       if (filteredData.length === 0) {
         filteredData = data;
-        console.log("Không có dữ liệu cho tháng hiện tại, sử dụng toàn bộ dữ liệu có sẵn");
       }
 
       const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
@@ -233,7 +220,7 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         const date = new Date(item.createdAt);
         const dayOfMonth = date.getDate();
         const weekNumber = Math.floor((dayOfMonth - 1) / weekSize) + 1;
-        const weekKey = `Tuần ${weekNumber}`;
+        const weekKey = `${t('week')} ${weekNumber}`;
         if (!weeklyData[weekKey]) {
           weeklyData[weekKey] = [];
         }
@@ -241,7 +228,7 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
       });
 
       labels = Object.keys(weeklyData).sort((a, b) => {
-        return parseInt(a.replace('Tuần ', '')) - parseInt(b.replace('Tuần ', ''));
+        return parseInt(a.replace(`${t('week')} `, '')) - parseInt(b.replace(`${t('week')} `, ''));
       });
       values = labels.map(week => {
         const rates = weeklyData[week];
@@ -252,29 +239,27 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         const avgValue = allHeartRateData.length > 0 
           ? Math.round(allHeartRateData.reduce((sum, item) => sum + item.heartRate, 0) / allHeartRateData.length) 
           : 0;
-        labels.unshift('Trước đó');
-        values.unshift(avgValue); // Sử dụng giá trị trung bình toàn bộ thay vì lặp lại giá trị
+        labels.unshift(t('previous'));
+        values.unshift(avgValue);
       }
     }
 
-    // Tính trung bình chỉ dựa trên giá trị thực tế của khoảng thời gian hiện tại
-let avgHeartRate = null;
-if (values.length > 0) {
-  // Nếu có giá trị "Trước đó", "Ngày trước", hoặc "Tuần trước", loại bỏ khỏi tính toán trung bình
-  const valuesToAverage = [...values];
-  if (labels[0] === 'Trước đó' || labels[0] === 'Ngày trước' || labels[0] === 'Tuần trước') {
-    valuesToAverage.shift(); // Loại bỏ phần tử đầu tiên
-  }
-  
-  if (valuesToAverage.length > 0) {
-    avgHeartRate = Math.round(valuesToAverage.reduce((sum, val) => sum + val, 0) / valuesToAverage.length);
-  }
-}
+    let avgHeartRate = null;
+    if (values.length > 0) {
+      const valuesToAverage = [...values];
+      if (labels[0] === t('previous')) {
+        valuesToAverage.shift();
+      }
+      
+      if (valuesToAverage.length > 0) {
+        avgHeartRate = Math.round(valuesToAverage.reduce((sum, val) => sum + val, 0) / valuesToAverage.length);
+      }
+    }
 
     setChartData({
       labels,
       datasets: [{ data: values, color: () => '#FF6384', strokeWidth: 2 }],
-      legend: ['Nhịp tim'],
+      legend: [t('heartRate')],
     });
     setAverageHeartRate(avgHeartRate);
   };
@@ -283,18 +268,18 @@ if (values.length > 0) {
     if (allHeartRateData.length > 0) {
       processHeartRateData(allHeartRateData);
     }
-  }, [viewMode]);
+  }, [viewMode, t]);
 
   const getChartTitle = () => {
     switch (viewMode) {
       case 'monthly':
-        return 'Diễn biến theo tuần trong tháng';
+        return t('chartTitle.monthly');
       case 'daily':
-        return 'Diễn biến theo giờ trong ngày';
+        return t('chartTitle.daily');
       case 'weekly':
-        return 'Diễn biến theo ngày trong tuần';
+        return t('chartTitle.weekly');
       default:
-        return 'Biểu đồ nhịp tim';
+        return t('chartTitle.default');
     }
   };
 
@@ -309,7 +294,7 @@ if (values.length > 0) {
             style={{ marginRight: 15, marginTop: 17 }}
             onPress={() => navigation.goBack()}
           />
-          <Text style={[styles.text1, { fontSize: 30, marginTop: 5 }]}>Nhịp tim</Text>
+          <Text style={[styles.text1, { fontSize: 30, marginTop: 5 }]}>{t('heartRate')}</Text>
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity>
@@ -320,11 +305,11 @@ if (values.length > 0) {
           </TouchableOpacity>
         </View>
       </View>
-      <Text style={styles.title}>Biểu đồ nhịp tim</Text>
+      <Text style={styles.title}>{t('heartRateChart')}</Text>
       <Text style={styles.subtitle}>{getChartTitle()}</Text>
 
       {loading ? (
-        <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
+        <Text style={styles.loadingText}>{t('loading_message')}</Text>
       ) : chartData.datasets[0].data.length > 0 ? (
         <View style={styles.chartContainer}>
           <LineChart
@@ -348,7 +333,7 @@ if (values.length > 0) {
           />
         </View>
       ) : (
-        <Text style={styles.noDataText}>Không có dữ liệu để hiển thị biểu đồ.</Text>
+        <Text style={styles.noDataText}>{t('noData')}</Text>
       )}
 
       <View style={styles.buttonContainer}>
@@ -356,27 +341,27 @@ if (values.length > 0) {
           style={[styles.button, viewMode === 'daily' && styles.selectedButton]}
           onPress={() => setViewMode('daily')}
         >
-          <Text style={[styles.buttonText, viewMode === 'daily' && styles.selectedButtonText]}>Giờ</Text>
+          <Text style={[styles.buttonText, viewMode === 'daily' && styles.selectedButtonText]}>{t('hour')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.button, viewMode === 'weekly' && styles.selectedButton]}
           onPress={() => setViewMode('weekly')}
         >
-          <Text style={[styles.buttonText, viewMode === 'weekly' && styles.selectedButtonText]}>Ngày</Text>
+          <Text style={[styles.buttonText, viewMode === 'weekly' && styles.selectedButtonText]}>{t('day')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.button, viewMode === 'monthly' && styles.selectedButton]}
           onPress={() => setViewMode('monthly')}
         >
-          <Text style={[styles.buttonText, viewMode === 'monthly' && styles.selectedButtonText]}>Tuần</Text>
+          <Text style={[styles.buttonText, viewMode === 'monthly' && styles.selectedButtonText]}>{t('week')}</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.infoContainer}>
         <View style={styles.infoItem}>
-          <Text style={styles.infoLabel}>Nhịp tim trung bình</Text>
+          <Text style={styles.infoLabel}>{t('averageHeartRate')}</Text>
           <Text style={[styles.infoValue, { color: '#FF6384' }]}>
-            {averageHeartRate !== null ? `${averageHeartRate} BPM` : '-- BPM'}
+            {averageHeartRate !== null ? `${averageHeartRate} ${t('bpm')}` : `-- ${t('bpm')}`}
           </Text>
         </View>
       </View>

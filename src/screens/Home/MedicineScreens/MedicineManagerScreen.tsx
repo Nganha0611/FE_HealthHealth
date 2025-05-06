@@ -9,12 +9,12 @@ import { BottomTabParamList } from '../../../navigation/BottomTabs';
 import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../../utils/config';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   navigation: NavigationProp<any>;
 };
 
-// Định nghĩa kiểu Medicine khớp với model Prescription ở backend
 type Medicine = {
   id?: string;
   name: string;
@@ -24,16 +24,17 @@ type Medicine = {
   amount: string | number;
   instruction: string;
   startday: string;
-  repeatDetails?: { // Đổi từ repeat_details thành repeatDetails
+  repeatDetails?: {
     type: string;
     interval: string | number;
-    daysOfWeek: string[]; // Đổi từ days_of_week thành daysOfWeek
-    daysOfMonth: string[]; // Đổi từ days_of_month thành daysOfMonth
-    timePerDay: string[]; // Đổi từ time_per_day thành timePerDay
+    daysOfWeek: string[];
+    daysOfMonth: string[];
+    timePerDay: string[];
   };
 };
 
 const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
+  const { t } = useTranslation();
   const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
   const [isModalVisible, setModalVisible] = useState(false);
   const [name, setName] = useState('');
@@ -44,7 +45,6 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
   const [currentMedicineId, setCurrentMedicineId] = useState<string | null>(null);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   
-  // Trạng thái cho dropdown
   const [openForm, setOpenForm] = useState(false);
   const [form, setForm] = useState('');
   const [openUnit, setOpenUnit] = useState(false);
@@ -54,43 +54,39 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
   const [openRepeatInterval, setOpenRepeatInterval] = useState(false);
   const [repeatInterval, setRepeatInterval] = useState('');
 
-  // Trạng thái cho các lựa chọn
   const [selectedDaysOfWeek, setSelectedDaysOfWeek] = useState<string[]>([]);
   const [selectedDaysOfMonth, setSelectedDaysOfMonth] = useState<string[]>([]);
   const [selectedTimesPerDay, setSelectedTimesPerDay] = useState<string[]>([]);
   
-  // Date picker
   const [openDate, setOpenDate] = useState(false);
   const [date, setDate] = useState(new Date());
 
-  // Các mục cho dropdown
   const medicineFormItems = [
-    { label: 'Viên nén', value: 'tablet' },
-    { label: 'Viên nang', value: 'capsule' },
-    { label: 'Dung dịch', value: 'solution' },
-    { label: 'Thuốc tiêm', value: 'injection' },
-    { label: 'Thuốc mỡ', value: 'ointment' },
-    { label: 'Thuốc nhỏ mắt', value: 'eye_drops' },
-    { label: 'Thuốc hít', value: 'inhaler' },
+    { label: t('medicineForms.tablet'), value: 'tablet' },
+    { label: t('medicineForms.capsule'), value: 'capsule' },
+    { label: t('medicineForms.solution'), value: 'solution' },
+    { label: t('medicineForms.injection'), value: 'injection' },
+    { label: t('medicineForms.ointment'), value: 'ointment' },
+    { label: t('medicineForms.eyeDrops'), value: 'eye_drops' },
+    { label: t('medicineForms.inhaler'), value: 'inhaler' },
   ];
 
   const unitItems = [
     { label: 'mg', value: 'mg' },
     { label: 'g', value: 'g' },
     { label: 'ml', value: 'ml' },
-    { label: 'viên', value: 'viên' },
-    { label: 'ống', value: 'ống' },
-    { label: 'giọt', value: 'giọt' },
+    { label: t('units.tablet'), value: 'viên' },
+    { label: t('units.tube'), value: 'ống' },
+    { label: t('units.drop'), value: 'giọt' },
     { label: 'mcg', value: 'mcg' },
   ];
 
   const repeatTypeItems = [
-    { label: 'Hằng ngày', value: 'daily' },
-    { label: 'Hằng tuần', value: 'weekly' },
-    { label: 'Hằng tháng', value: 'monthly' },
+    { label: t('repeatTypes.daily'), value: 'daily' },
+    { label: t('repeatTypes.weekly'), value: 'weekly' },
+    { label: t('repeatTypes.monthly'), value: 'monthly' },
   ];
 
-  // Giới hạn khoảng cách chu kỳ từ 1-4
   const repeatIntervalItems = [
     { label: '1', value: '1' },
     { label: '2', value: '2' },
@@ -99,13 +95,13 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
   ];
 
   const daysOfWeekItems = [
-    { id: 'CN', label: 'CN' },
-    { id: 'T2', label: 'T2' },
-    { id: 'T3', label: 'T3' },
-    { id: 'T4', label: 'T4' },
-    { id: 'T5', label: 'T5' },
-    { id: 'T6', label: 'T6' },
-    { id: 'T7', label: 'T7' },
+    { id: 'CN', label: t('daysOfWeek.sunday') },
+    { id: 'T2', label: t('daysOfWeek.monday') },
+    { id: 'T3', label: t('daysOfWeek.tuesday') },
+    { id: 'T4', label: t('daysOfWeek.wednesday') },
+    { id: 'T5', label: t('daysOfWeek.thursday') },
+    { id: 'T6', label: t('daysOfWeek.friday') },
+    { id: 'T7', label: t('daysOfWeek.saturday') },
   ];
 
   const daysOfMonthItems = Array.from({ length: 31 }, (_, i) => ({
@@ -129,11 +125,9 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
   const fetchPrescriptions = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
-      console.log('Token gửi đi:', token); // Logging để debug
-
       if (!token) {
-        Alert.alert('Lỗi', 'Token không tồn tại. Vui lòng đăng nhập lại.');
-        navigation.navigate('Login'); // Điều hướng về màn hình đăng nhập
+        Alert.alert(t('error'), t('noToken'));
+        navigation.navigate('Login');
         return;
       }
 
@@ -141,33 +135,30 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
         headers: { Authorization: `Bearer ${token}` },
       });
       const data = response.data;
-      console.log('Dữ liệu từ API /api/prescriptions:', JSON.stringify(data, null, 2));
 
       if (!data || data.length === 0) {
         setMedicines([]);
-        Alert.alert('Thông báo', 'Không có dữ liệu đơn thuốc nào để hiển thị.');
+        Alert.alert(t('notification'), t('noPrescriptionData'));
         return;
       }
 
       setMedicines(data);
     } catch (error: any) {
-      console.error('Lỗi khi lấy danh sách đơn thuốc:', error);
+      console.error('Error fetching prescriptions:', error);
       if (error.response && error.response.status === 401) {
-        Alert.alert('Lỗi', 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
-        await AsyncStorage.removeItem('token'); // Xóa token nếu hết hạn
-        navigation.navigate('Login'); // Điều hướng về màn hình đăng nhập
+        Alert.alert(t('error'), t('sessionExpired'));
+        await AsyncStorage.removeItem('token');
+        navigation.navigate('Login');
       } else {
-        Alert.alert('Lỗi', 'Không thể lấy dữ liệu đơn thuốc. Vui lòng kiểm tra kết nối.');
+        Alert.alert(t('error'), t('fetchPrescriptionError'));
       }
     }
   };
 
-  // Gọi API khi component được mount
   useEffect(() => {
     fetchPrescriptions();
   }, []);
 
-  // Reset form
   const resetForm = () => {
     setCurrentMedicineId(null);
     setName('');
@@ -185,16 +176,12 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
     setDate(new Date());
   };
 
-  // Mở modal để thêm thuốc mới
   const openAddModal = () => {
     resetForm();
     setModalVisible(true);
   };
 
-  // Mở modal để chỉnh sửa thuốc
   const openEditModal = (medicine: Medicine) => {
-    console.log('Medicine được chỉnh sửa:', JSON.stringify(medicine, null, 2));
-
     setCurrentMedicineId(medicine.id || null);
     setName(medicine.name);
     setForm(medicine.form.toString());
@@ -204,7 +191,6 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
     setInstruction(medicine.instruction);
     setStartday(medicine.startday);
 
-    // Kiểm tra repeatDetails và cung cấp giá trị mặc định nếu không tồn tại
     if (medicine.repeatDetails) {
       setRepeatType(medicine.repeatDetails.type || '');
       setRepeatInterval(medicine.repeatDetails.interval ? medicine.repeatDetails.interval.toString() : '');
@@ -212,8 +198,7 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
       setSelectedDaysOfMonth(medicine.repeatDetails.daysOfMonth || []);
       setSelectedTimesPerDay(medicine.repeatDetails.timePerDay || []);
     } else {
-      // Thiết lập giá trị mặc định khi không có repeatDetails
-      setRepeatType('daily'); // hoặc giá trị mặc định khác
+      setRepeatType('daily');
       setRepeatInterval('1');
       setSelectedDaysOfWeek([]);
       setSelectedDaysOfMonth([]);
@@ -234,21 +219,18 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
     );
   };
 
-  // Chuyển đổi lựa chọn ngày trong tháng
   const toggleDayOfMonth = (day: string) => {
     setSelectedDaysOfMonth(prev =>
       prev.includes(day) ? prev.filter(item => item !== day) : [...prev, day]
     );
   };
 
-  // Chuyển đổi lựa chọn giờ uống thuốc
   const toggleTimePerDay = (time: string) => {
     setSelectedTimesPerDay(prev =>
       prev.includes(time) ? prev.filter(item => item !== time) : [...prev, time]
     );
   };
 
-  // Định dạng ngày
   const formatDate = (date: Date): string => {
     const day = date.getDate().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -256,22 +238,20 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
     return `${day}/${month}/${year}`;
   };
 
-  // Xử lý chọn ngày
   const handleDateConfirm = (selectedDate: Date) => {
     setDate(selectedDate);
     setStartday(formatDate(selectedDate));
     setOpenDate(false);
   };
 
-  // Lưu hoặc cập nhật đơn thuốc
   const handleSavePrescription = async () => {
     if (!name || !form || !strength || !unit || !amount || !repeatType || !repeatInterval || !startday) {
-      Alert.alert('Thông báo', 'Vui lòng điền đầy đủ thông tin thuốc');
+      Alert.alert(t('notification'), t('incompleteMedicineInfo'));
       return;
     }
 
     if (selectedTimesPerDay.length === 0) {
-      Alert.alert('Thông báo', 'Vui lòng chọn ít nhất một thời điểm uống thuốc');
+      Alert.alert(t('notification'), t('noTimeSelected'));
       return;
     }
 
@@ -283,27 +263,24 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
       amount,
       instruction,
       startday,
-      repeatDetails: { // Đổi từ repeat_details thành repeatDetails
+      repeatDetails: {
         type: repeatType,
         interval: repeatInterval,
-        daysOfWeek: selectedDaysOfWeek, // Đổi từ days_of_week thành daysOfWeek
-        daysOfMonth: selectedDaysOfMonth, // Đổi từ days_of_month thành daysOfMonth
-        timePerDay: selectedTimesPerDay, // Đổi từ time_per_day thành timePerDay
+        daysOfWeek: selectedDaysOfWeek,
+        daysOfMonth: selectedDaysOfMonth,
+        timePerDay: selectedTimesPerDay,
       },
     };
 
     try {
       const token = await AsyncStorage.getItem('token');
-      console.log('Token gửi đi:', token); // Logging để debug
-
       if (!token) {
-        Alert.alert('Lỗi', 'Token không tồn tại. Vui lòng đăng nhập lại.');
+        Alert.alert(t('error'), t('noToken'));
         navigation.navigate('Login');
         return;
       }
 
       if (currentMedicineId) {
-        // Cập nhật đơn thuốc
         const response = await axios.put(
           `${API_BASE_URL}/api/prescriptions/${currentMedicineId}`,
           medicine,
@@ -312,49 +289,45 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
         setMedicines(prev =>
           prev.map(med => (med.id === currentMedicineId ? response.data : med))
         );
-        Alert.alert('Thành công', 'Cập nhật thuốc thành công');
+        Alert.alert(t('success'), t('medicineUpdated'));
       } else {
-        // Tạo đơn thuốc mới
         const response = await axios.post(
           `${API_BASE_URL}/api/prescriptions`,
           medicine,
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setMedicines(prev => [...prev, response.data]);
-        Alert.alert('Thành công', 'Thêm thuốc mới thành công');
+        Alert.alert(t('success'), t('medicineAdded'));
       }
 
       setModalVisible(false);
       resetForm();
     } catch (error: any) {
-      console.error('Lỗi khi lưu:', error);
+      console.error('Error saving prescription:', error);
       if (error.response && error.response.status === 401) {
-        Alert.alert('Lỗi', 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
-        await AsyncStorage.removeItem('token'); // Xóa token nếu hết hạn
-        navigation.navigate('Login'); // Điều hướng về màn hình đăng nhập
+        Alert.alert(t('error'), t('sessionExpired'));
+        await AsyncStorage.removeItem('token');
+        navigation.navigate('Login');
       } else {
-        Alert.alert('Lỗi', 'Có lỗi xảy ra khi lưu thông tin thuốc.');
+        Alert.alert(t('error'), t('saveMedicineError'));
       }
     }
   };
 
-  // Xóa đơn thuốc
   const handleDeleteMedicine = async (id: string) => {
     Alert.alert(
-      'Xác nhận xóa',
-      'Bạn có chắc chắn muốn xóa thuốc này?',
+      t('confirmDelete'),
+      t('deleteMedicineConfirmation'),
       [
-        { text: 'Hủy', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Xóa',
+          text: t('delete'),
           style: 'destructive',
           onPress: async () => {
             try {
               const token = await AsyncStorage.getItem('token');
-              console.log('Token gửi đi:', token); // Logging để debug
-
               if (!token) {
-                Alert.alert('Lỗi', 'Token không tồn tại. Vui lòng đăng nhập lại.');
+                Alert.alert(t('error'), t('noToken'));
                 navigation.navigate('Login');
                 return;
               }
@@ -363,16 +336,16 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
                 headers: { Authorization: `Bearer ${token}` },
               });
               setMedicines(prev => prev.filter(med => med.id !== id));
-              Alert.alert('Thành công', 'Đã xóa thuốc');
+              Alert.alert(t('success'), t('medicineDeleted'));
               setModalVisible(false);
             } catch (error: any) {
-              console.error('Lỗi khi xóa:', error);
+              console.error('Error deleting medicine:', error);
               if (error.response && error.response.status === 401) {
-                Alert.alert('Lỗi', 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.');
-                await AsyncStorage.removeItem('token'); 
-                navigation.navigate('Login'); 
+                Alert.alert(t('error'), t('sessionExpired'));
+                await AsyncStorage.removeItem('token');
+                navigation.navigate('Login');
               } else {
-                Alert.alert('Lỗi', 'Có lỗi xảy ra khi xóa thuốc.');
+                Alert.alert(t('error'), t('deleteMedicineError'));
               }
             }
           },
@@ -398,7 +371,7 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
               style={{ marginRight: 15, marginTop: 17 }}
               onPress={() => navigation.goBack()}
             />
-            <Text style={styles.textHeader}>Quản lý thuốc</Text>
+            <Text style={styles.textHeader}>{t('medicineManager')}</Text>
           </View>
         </View>
 
@@ -413,15 +386,15 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
               {medicine.unit}
             </Text>
             <View style={{ flexDirection: 'row', justifyContent: 'flex-start' }}>
-              <Text style={styles.titleNote}>Số lượng:</Text>
+              <Text style={styles.titleNote}>{t('quantity')}:</Text>
               <Text style={styles.note}>{medicine.amount}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'flex-start' }}>
-              <Text style={styles.titleNote}>Dạng thuốc:</Text>
+              <Text style={styles.titleNote}>{t('form')}:</Text>
               <Text style={styles.note}>{getMedicineFormLabel(medicine.form.toString())}</Text>
             </View>
             <View style={{ flexDirection: 'row', justifyContent: 'flex-start' }}>
-              <Text style={styles.titleNote}>Ngày bắt đầu:</Text>
+              <Text style={styles.titleNote}>{t('startDate')}:</Text>
               <Text style={styles.note}>{medicine.startday}</Text>
             </View>
           </TouchableOpacity>
@@ -444,19 +417,19 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
               showsVerticalScrollIndicator={false}
             >
               <Text style={styles.modalTitle}>
-                {currentMedicineId ? 'Chỉnh sửa thuốc' : 'Thêm thuốc mới'}
+                {currentMedicineId ? t('editMedicine') : t('addMedicine')}
               </Text>
 
-              <Text style={styles.inputLabel}>Tên thuốc</Text>
+              <Text style={styles.inputLabel}>{t('medicineName')}</Text>
               <TextInput
-                placeholder="Nhập tên thuốc"
+                placeholder={t('enterMedicineName')}
                 placeholderTextColor="#888"
                 style={styles.input}
                 value={name}
                 onChangeText={setName}
               />
 
-              <Text style={styles.inputLabel}>Dạng thuốc</Text>
+              <Text style={styles.inputLabel}>{t('form')}</Text>
               <View style={{ zIndex: 6000 }}>
                 <DropDownPicker
                   open={openForm}
@@ -467,7 +440,7 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
                   containerStyle={styles.dropdownContainer}
                   style={styles.dropdown}
                   dropDownContainerStyle={styles.dropdownList}
-                  placeholder="Chọn dạng thuốc"
+                  placeholder={t('selectForm')}
                   placeholderStyle={styles.placeholder}
                   zIndex={6000}
                   listMode="SCROLLVIEW"
@@ -475,9 +448,9 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
                 />
               </View>
 
-              <Text style={styles.inputLabel}>Liều lượng</Text>
+              <Text style={styles.inputLabel}>{t('strength')}</Text>
               <TextInput
-                placeholder="Nhập liều lượng"
+                placeholder={t('enterStrength')}
                 placeholderTextColor="#888"
                 style={styles.input}
                 keyboardType="numeric"
@@ -485,7 +458,7 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
                 onChangeText={setStrength}
               />
 
-              <Text style={styles.inputLabel}>Đơn vị</Text>
+              <Text style={styles.inputLabel}>{t('unit')}</Text>
               <View style={{ zIndex: 5900 }}>
                 <DropDownPicker
                   open={openUnit}
@@ -496,7 +469,7 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
                   containerStyle={styles.dropdownContainer}
                   style={styles.dropdown}
                   dropDownContainerStyle={styles.dropdownList}
-                  placeholder="Chọn đơn vị"
+                  placeholder={t('selectUnit')}
                   placeholderStyle={styles.placeholder}
                   zIndex={5900}
                   listMode="SCROLLVIEW"
@@ -504,9 +477,9 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
                 />
               </View>
 
-              <Text style={styles.inputLabel}>Số lượng</Text>
+              <Text style={styles.inputLabel}>{t('quantity')}</Text>
               <TextInput
-                placeholder="Nhập số lượng"
+                placeholder={t('enterQuantity')}
                 placeholderTextColor="#888"
                 style={styles.input}
                 keyboardType="numeric"
@@ -514,13 +487,13 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
                 onChangeText={setAmount}
               />
 
-              <Text style={styles.inputLabel}>Ngày bắt đầu</Text>
+              <Text style={styles.inputLabel}>{t('startDate')}</Text>
               <TouchableOpacity
                 style={styles.dateButton}
                 onPress={() => setOpenDate(true)}
               >
                 <Text style={styles.dateButtonText}>
-                  {startday ? startday : 'Chọn ngày bắt đầu'}
+                  {startday ? startday : t('selectStartDate')}
                 </Text>
                 <FontAwesome name="calendar" size={18} color="#432c81" />
               </TouchableOpacity>
@@ -532,14 +505,14 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
                 onConfirm={handleDateConfirm}
                 onCancel={() => setOpenDate(false)}
                 mode="date"
-                title="Chọn ngày bắt đầu"
-                confirmText="Xác nhận"
-                cancelText="Hủy"
+                title={t('selectStartDate')}
+                confirmText={t('confirm')}
+                cancelText={t('cancel')}
               />
 
-              <Text style={styles.modalSubtitle}>Chu kỳ uống</Text>
+              <Text style={styles.modalSubtitle}>{t('medicationSchedule')}</Text>
 
-              <Text style={styles.inputLabel}>Loại chu kỳ</Text>
+              <Text style={styles.inputLabel}>{t('repeatType')}</Text>
               <View style={{ zIndex: 5800 }}>
                 <DropDownPicker
                   open={openRepeatType}
@@ -550,7 +523,7 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
                   containerStyle={styles.dropdownContainer}
                   style={styles.dropdown}
                   dropDownContainerStyle={styles.dropdownList}
-                  placeholder="Chọn kiểu lặp lại"
+                  placeholder={t('selectRepeatType')}
                   placeholderStyle={styles.placeholder}
                   zIndex={5800}
                   listMode="SCROLLVIEW"
@@ -558,7 +531,7 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
                 />
               </View>
 
-              <Text style={styles.inputLabel}>Khoảng cách chu kỳ</Text>
+              <Text style={styles.inputLabel}>{t('repeatInterval')}</Text>
               <View style={{ zIndex: 5700 }}>
                 <DropDownPicker
                   open={openRepeatInterval}
@@ -569,7 +542,7 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
                   containerStyle={styles.dropdownContainer}
                   style={styles.dropdown}
                   dropDownContainerStyle={styles.dropdownList}
-                  placeholder="Chọn khoảng cách lặp"
+                  placeholder={t('selectRepeatInterval')}
                   placeholderStyle={styles.placeholder}
                   zIndex={5700}
                   listMode="SCROLLVIEW"
@@ -579,7 +552,7 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
 
               {repeatType === 'weekly' && (
                 <>
-                  <Text style={styles.inputLabel}>Chọn ngày trong tuần</Text>
+                  <Text style={styles.inputLabel}>{t('selectDaysOfWeek')}</Text>
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -610,7 +583,7 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
 
               {repeatType === 'monthly' && (
                 <>
-                  <Text style={styles.inputLabel}>Chọn ngày trong tháng</Text>
+                  <Text style={styles.inputLabel}>{t('selectDaysOfMonth')}</Text>
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -639,7 +612,7 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
                 </>
               )}
 
-              <Text style={styles.inputLabel}>Chọn giờ uống thuốc</Text>
+              <Text style={styles.inputLabel}>{t('selectTimesPerDay')}</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -666,9 +639,9 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
                 ))}
               </ScrollView>
 
-              <Text style={styles.inputLabel}>Hướng dẫn sử dụng</Text>
+              <Text style={styles.inputLabel}>{t('instructions')}</Text>
               <TextInput
-                placeholder="Nhập hướng dẫn sử dụng thuốc"
+                placeholder={t('enterInstructions')}
                 placeholderTextColor="#888"
                 style={[styles.input, { height: 80 }]}
                 multiline={true}
@@ -683,20 +656,20 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
                   style={[styles.button, styles.deleteButton]}
                   onPress={() => handleDeleteMedicine(currentMedicineId)}
                 >
-                  <Text style={styles.buttonText}>Xóa</Text>
+                  <Text style={styles.buttonText}>{t('delete')}</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity
                 style={[styles.button, styles.cancelButton]}
                 onPress={() => setModalVisible(false)}
               >
-                <Text style={styles.buttonText}>Hủy</Text>
+                <Text style={styles.buttonText}>{t('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.button, styles.saveButton]}
                 onPress={handleSavePrescription}
               >
-                <Text style={styles.buttonText}>Lưu</Text>
+                <Text style={styles.buttonText}>{t('save')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -826,7 +799,7 @@ const styles = StyleSheet.create({
   dropdownList: {
     backgroundColor: '#fff',
     borderColor: '#ccc',
-    maxHeight: 'auto', // Tăng chiều cao để hiển thị nhiều mục hơn
+    maxHeight: 'auto',
   },
   placeholder: {
     color: '#888',

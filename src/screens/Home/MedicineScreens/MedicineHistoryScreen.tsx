@@ -9,6 +9,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../../utils/config';
 import { BottomTabParamList } from '../../../navigation/BottomTabs';
+import { useTranslation } from 'react-i18next';
 
 type Props = {
   navigation: NavigationProp<any>;
@@ -37,6 +38,7 @@ type MedicineHistory = {
 };
 
 const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
+  const { t } = useTranslation();
   const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
   const [isModalVisible, setModalVisible] = useState(false);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
@@ -53,9 +55,9 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
   const [medicineHistory, setMedicineHistory] = useState<MedicineHistory[]>([]);
 
   const statusItems = [
-    { label: 'Đã uống', value: 'Taken' },
-    { label: 'Quên uống', value: 'Missing' },
-    { label: 'Tạm dừng', value: 'Paused' },
+    { label: t('status.taken'), value: 'Taken' },
+    { label: t('status.missing'), value: 'Missing' },
+    { label: t('status.paused'), value: 'Paused' },
   ];
 
   const medicineItems = medicines.map(med => ({ label: med.name, value: med.id || '' }));
@@ -64,7 +66,7 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
-        Alert.alert('Lỗi', 'Token không tồn tại. Vui lòng đăng nhập lại.');
+        Alert.alert(t('error'), t('noToken'));
         navigation.navigate('Login');
         return;
       }
@@ -77,14 +79,11 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
       const fetchedMedicines = medicineResponse.data;
       const fetchedHistory = historyResponse.data;
 
-      console.log('Danh sách thuốc:', JSON.stringify(fetchedMedicines, null, 2));
-      console.log('Lịch sử uống thuốc:', JSON.stringify(fetchedHistory, null, 2));
-
       setMedicines(fetchedMedicines);
       setMedicineHistory(fetchedHistory);
     } catch (error: any) {
-      console.error('Lỗi khi lấy dữ liệu:', error);
-      Alert.alert('Lỗi', 'Không thể lấy dữ liệu. Vui lòng kiểm tra kết nối.');
+      console.error('Error fetching data:', error);
+      Alert.alert(t('error'), t('fetchDataError'));
     }
   };
 
@@ -94,14 +93,14 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleSaveHistory = async () => {
     if (!selectedMedicine || !status) {
-      Alert.alert('Thông báo', 'Vui lòng điền đầy đủ thông tin.');
+      Alert.alert(t('notification'), t('incompleteInfo'));
       return;
     }
 
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
-        Alert.alert('Lỗi', 'Token không tồn tại. Vui lòng đăng nhập lại.');
+        Alert.alert(t('error'), t('noToken'));
         navigation.navigate('Login');
         return;
       }
@@ -114,10 +113,8 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
         time.getMinutes(),
         time.getSeconds()
       );
-      const timestampStr = timestamp.toISOString(); // Đảm bảo gửi định dạng ISO đầy đủ
+      const timestampStr = timestamp.toISOString();
       const data = { prescriptionsId: selectedMedicine, timestamp: timestampStr, status, note };
-
-      console.log('Dữ liệu gửi đi:', JSON.stringify(data, null, 2));
 
       if (selectedHistoryId) {
         await axios.put(
@@ -125,14 +122,14 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
           data,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        Alert.alert('Thành công', 'Đã cập nhật lịch sử uống thuốc.');
+        Alert.alert(t('success'), t('historyUpdated'));
       } else {
         await axios.post(
           `${API_BASE_URL}/api/medicine-history`,
           data,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        Alert.alert('Thành công', 'Đã thêm lịch sử uống thuốc.');
+        Alert.alert(t('success'), t('historyAdded'));
       }
 
       fetchData();
@@ -144,8 +141,8 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
       setDate(new Date());
       setTime(new Date());
     } catch (error: any) {
-      console.error('Lỗi khi lưu lịch sử:', error.response?.data || error.message);
-      Alert.alert('Lỗi', 'Không thể lưu lịch sử. Vui lòng thử lại.');
+      console.error('Error saving history:', error.response?.data || error.message);
+      Alert.alert(t('error'), t('saveHistoryError'));
     }
   };
 
@@ -175,20 +172,20 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
               style={{ marginRight: 15, marginTop: 17 }}
               onPress={() => navigation.goBack()}
             />
-            <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>Lịch sử uống thuốc</Text>
+            <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>{t('medicineHistory')}</Text>
           </View>
         </View>
         {medicineHistory.length === 0 ? (
-          <Text style={styles.note}>Không có lịch sử uống thuốc nào để hiển thị.</Text>
+          <Text style={styles.note}>{t('noHistory')}</Text>
         ) : (
           medicineHistory.map((history, index) => {
             const medicine = medicines.find(m => m.id === history.prescriptionsId);
             return (
               <TouchableOpacity key={index} style={styles.boxFeature} onPress={() => handleEditHistory(history)}>
-                <Text style={[styles.text, styles.boxTitle]}>{medicine ? medicine.name : 'Thuốc không xác định'}</Text>
-                <Text style={styles.note}>Trạng thái: {statusItems.find(item => item.value === history.status)?.label || history.status}</Text>
-                <Text style={styles.note}>Thời gian: {new Date(history.timestamp).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</Text>
-                <Text style={styles.note}>Ghi chú: {history.note || 'Chưa cập nhật'}</Text>
+                <Text style={[styles.text, styles.boxTitle]}>{medicine ? medicine.name : t('unknownMedicine')}</Text>
+                <Text style={styles.note}>{t('statusLabel')}: {statusItems.find(item => item.value === history.status)?.label || history.status}</Text>
+                <Text style={styles.note}>{t('time')}: {new Date(history.timestamp).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</Text>
+                <Text style={styles.note}>{t('note')}: {history.note || t('noNote')}</Text>
               </TouchableOpacity>
             );
           })
@@ -202,8 +199,8 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
               <FontAwesome name="close" size={24} color="#444" />
             </TouchableOpacity>
             <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-              <Text style={styles.modalTitle}>{selectedHistoryId ? 'Chỉnh sửa' : 'Thêm'} lịch sử uống thuốc</Text>
-              <Text style={styles.inputLabel}>Thuốc</Text>
+              <Text style={styles.modalTitle}>{selectedHistoryId ? t('editHistory') : t('addHistory')}</Text>
+              <Text style={styles.inputLabel}>{t('medicine')}</Text>
               <DropDownPicker
                 open={openMedicine}
                 setOpen={setOpenMedicine}
@@ -213,12 +210,12 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
                 containerStyle={styles.dropdownContainer}
                 style={styles.dropdown}
                 dropDownContainerStyle={styles.dropdownList}
-                placeholder="Chọn thuốc"
+                placeholder={t('selectMedicine')}
                 zIndex={2000}
                 listMode="SCROLLVIEW"
                 disabled={!!selectedHistoryId}
               />
-              <Text style={styles.inputLabel}>Trạng thái</Text>
+              <Text style={styles.inputLabel}>{t('statusLabel')}</Text>
               <DropDownPicker
                 open={openStatus}
                 setOpen={setOpenStatus}
@@ -228,11 +225,11 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
                 containerStyle={styles.dropdownContainer}
                 style={styles.dropdown}
                 dropDownContainerStyle={styles.dropdownList}
-                placeholder="Chọn trạng thái"
+                placeholder={t('selectStatus')}
                 zIndex={1000}
                 listMode="SCROLLVIEW"
               />
-              <Text style={styles.inputLabel}>Ngày</Text>
+              <Text style={styles.inputLabel}>{t('date')}</Text>
               <TouchableOpacity
                 style={styles.dateButton}
                 onPress={() => setShowDatePicker(true)}
@@ -258,7 +255,7 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
                   }}
                 />
               )}
-              <Text style={styles.inputLabel}>Giờ</Text>
+              <Text style={styles.inputLabel}>{t('time')}</Text>
               <TouchableOpacity
                 style={styles.dateButton}
                 onPress={() => setShowTimePicker(true)}
@@ -284,9 +281,9 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
                   }}
                 />
               )}
-              <Text style={styles.inputLabel}>Ghi chú</Text>
+              <Text style={styles.inputLabel}>{t('note')}</Text>
               <TextInput
-                placeholder="Nhập ghi chú"
+                placeholder={t('enterNote')}
                 style={styles.input}
                 value={note}
                 onChangeText={setNote}
@@ -296,7 +293,7 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
                 style={[styles.fab, { alignSelf: 'center', marginTop: 30 }]}
                 onPress={handleSaveHistory}
               >
-                <FontAwesome name="check" size={20} color="#fff" />
+                <Text style={styles.saveButtonText}>{t('save')}</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -319,6 +316,11 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
   header: {
     flexDirection: 'row',
     marginTop: 10,

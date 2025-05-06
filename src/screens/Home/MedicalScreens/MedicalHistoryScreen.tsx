@@ -9,13 +9,14 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../../utils/config';
 import { BottomTabParamList } from '../../../navigation/BottomTabs';
+import { useTranslation } from 'react-i18next';
 
-// Định nghĩa kiểu cho tham số navigation
+// Define type for navigation prop
 type Props = {
   navigation: NavigationProp<any>;
 };
 
-// Định nghĩa kiểu cho lịch sử y tế
+// Define type for medical history
 type MedicalHistory = {
   id?: string;
   userId: string;
@@ -26,6 +27,7 @@ type MedicalHistory = {
 };
 
 const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
+  const { t } = useTranslation();
   const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
   const [isModalVisible, setModalVisible] = useState(false);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
@@ -41,26 +43,25 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Danh sách trạng thái cho dropdown
+  // List of status items for dropdown
   const statusItems = [
-    { label: 'Đã hoàn thành', value: 'Completed' },
-    { label: 'Đã hủy', value: 'Cancelled' },
-    { label: 'Chờ khám', value: 'Pending' },
+    { label: t('medicalStatus.completed'), value: 'Completed' },
+    { label: t('medicalStatus.cancelled'), value: 'Cancelled' },
+    { label: t('medicalStatus.pending'), value: 'Pending' },
   ];
 
-  // Hàm lấy dữ liệu lịch sử y tế từ API
+  // Function to fetch medical history data from API
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
-        Alert.alert('Lỗi', 'Không tìm thấy token. Vui lòng đăng nhập lại.');
+        Alert.alert(t('error'), t('noToken'));
         navigation.navigate('Login');
         return;
       }
 
-      console.log('Gửi yêu cầu API với token:', token);
       const historyResponse = await axios.get<MedicalHistory[]>(
         `${API_BASE_URL}/api/medical-history`,
         { 
@@ -72,32 +73,31 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
       );
 
       const fetchedHistory = historyResponse.data;
-      console.log('Dữ liệu lịch sử y tế:', JSON.stringify(fetchedHistory, null, 2));
       setMedicalHistory(fetchedHistory);
     } catch (error: any) {
-      console.error('Lỗi khi lấy dữ liệu:', error.response?.data || error.message);
-      setError('Không thể tải dữ liệu. Vui lòng kiểm tra kết nối.');
+      console.error('Error fetching data:', error.response?.data || error.message);
+      setError(t('fetchDataError'));
     } finally {
       setLoading(false);
     }
   };
 
-  // Gọi fetchData khi component được mount
+  // Call fetchData when component mounts
   useEffect(() => {
     fetchData();
   }, []);
 
-  // Hàm lưu hoặc cập nhật lịch sử y tế
+  // Function to save or update medical history
   const handleSaveHistory = async () => {
     if (!location || !status) {
-      Alert.alert('Thông báo', 'Vui lòng điền đầy đủ địa điểm và trạng thái.');
+      Alert.alert(t('notification'), t('incompleteMedicalInfo'));
       return;
     }
 
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
-        Alert.alert('Lỗi', 'Không tìm thấy token. Vui lòng đăng nhập lại.');
+        Alert.alert(t('error'), t('noToken'));
         navigation.navigate('Login');
         return;
       }
@@ -116,12 +116,8 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
         location, 
         status, 
         note,
-        userId: await AsyncStorage.getItem('userId') // Thêm userId nếu API yêu cầu
+        userId: await AsyncStorage.getItem('userId')
       };
-
-      console.log('Dữ liệu gửi đi:', JSON.stringify(data, null, 2));
-      console.log('API endpoint:', `${API_BASE_URL}/api/medical-history`);
-      console.log('Token:', token);
 
       let response;
       if (selectedHistoryId) {
@@ -135,7 +131,7 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
             } 
           }
         );
-        Alert.alert('Thành công', 'Đã cập nhật lịch sử y tế.');
+        Alert.alert(t('success'), t('medicalHistoryUpdated'));
       } else {
         response = await axios.post(
           `${API_BASE_URL}/api/medical-history`,
@@ -147,10 +143,9 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
             } 
           }
         );
-        Alert.alert('Thành công', 'Đã thêm lịch sử y tế mới.');
+        Alert.alert(t('success'), t('medicalHistoryAdded'));
       }
 
-      console.log('Phản hồi từ API:', JSON.stringify(response.data, null, 2));
       fetchData();
       setModalVisible(false);
       setSelectedHistoryId(null);
@@ -160,31 +155,31 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
       setDate(new Date());
       setTime(new Date());
     } catch (error: any) {
-      console.error('Lỗi khi lưu lịch sử:', {
+      console.error('Error saving history:', {
         message: error.message,
         response: error.response?.data,
         status: error.response?.status,
         headers: error.response?.headers
       });
 
-      let errorMessage = 'Không thể lưu lịch sử y tế';
+      let errorMessage = t('saveMedicalHistoryError');
       if (error.response) {
         errorMessage += `: ${error.response.data.message || error.response.statusText}`;
         if (error.response.status === 401) {
-          errorMessage = 'Phiên đăng nhập hết hạn. Vui lòng đăng nhập lại.';
+          errorMessage = t('sessionExpired');
           navigation.navigate('Login');
         }
       } else if (error.request) {
-        errorMessage += ': Không nhận được phản hồi từ server';
+        errorMessage += `: ${t('noServerResponse')}`;
       } else {
         errorMessage += `: ${error.message}`;
       }
 
-      Alert.alert('Lỗi', errorMessage);
+      Alert.alert(t('error'), errorMessage);
     }
   };
 
-  // Hàm xử lý chỉnh sửa lịch sử y tế
+  // Function to handle editing medical history
   const handleEditHistory = (history: MedicalHistory) => {
     setSelectedHistoryId(history.id || null);
     setLocation(history.location || '');
@@ -208,34 +203,34 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
               style={{ marginRight: 15, marginTop: 17 }}
               onPress={() => navigation.goBack()}
             />
-            <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>Lịch sử y tế</Text>
+            <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>{t('medicalHistory')}</Text>
           </View>
         </View>
         
         {loading ? (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#432c81" />
-            <Text style={styles.note}>Đang tải dữ liệu...</Text>
+            <Text style={styles.note}>{t('loading')}</Text>
           </View>
         ) : error ? (
           <View style={styles.errorContainer}>
             <FontAwesome name="exclamation-circle" size={50} color="#432c81" />
             <Text style={styles.note}>{error}</Text>
             <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
-              <Text style={styles.retryButtonText}>Thử lại</Text>
+              <Text style={styles.retryButtonText}>{t('retry')}</Text>
             </TouchableOpacity>
           </View>
         ) : medicalHistory.length === 0 ? (
           <View style={styles.emptyContainer}>
-            <Text style={styles.note}>Không có</Text>
+            <Text style={styles.note}>{t('noMedicalHistory')}</Text>
           </View>
         ) : (
           medicalHistory.map((history, index) => (
             <TouchableOpacity key={index} style={styles.boxFeature} onPress={() => handleEditHistory(history)}>
               <Text style={[styles.text, styles.boxTitle]}>{history.location}</Text>
-              <Text style={styles.note}>Trạng thái: {statusItems.find(item => item.value === history.status)?.label || history.status}</Text>
-              <Text style={styles.note}>Thời gian: {new Date(history.appointmentDate).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</Text>
-              <Text style={styles.note}>Ghi chú: {history.note || 'Chưa cập nhật'}</Text>
+              <Text style={styles.note}>{t('statusLabel')}: {statusItems.find(item => item.value === history.status)?.label || history.status}</Text>
+              <Text style={styles.note}>{t('time')}: {new Date(history.appointmentDate).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</Text>
+              <Text style={styles.note}>{t('note')}: {history.note || t('noNote')}</Text>
             </TouchableOpacity>
           ))
         )}
@@ -248,17 +243,17 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
               <FontAwesome name="close" size={24} color="#444" />
             </TouchableOpacity>
             <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-              <Text style={styles.modalTitle}>{selectedHistoryId ? 'Chỉnh sửa' : 'Thêm'} lịch sử y tế</Text>
+              <Text style={styles.modalTitle}>{selectedHistoryId ? t('editMedicalHistory') : t('addMedicalHistory')}</Text>
               
-              <Text style={styles.inputLabel}>Địa điểm</Text>
+              <Text style={styles.inputLabel}>{t('location')}</Text>
               <TextInput
-                placeholder="Nhập địa điểm"
+                placeholder={t('enterLocation')}
                 style={styles.input}
                 value={location}
                 onChangeText={setLocation}
               />
               
-              <Text style={styles.inputLabel}>Trạng thái</Text>
+              <Text style={styles.inputLabel}>{t('statusLabel')}</Text>
               <DropDownPicker
                 open={openStatus}
                 setOpen={setOpenStatus}
@@ -268,12 +263,12 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
                 containerStyle={styles.dropdownContainer}
                 style={styles.dropdown}
                 dropDownContainerStyle={styles.dropdownList}
-                placeholder="Chọn trạng thái"
+                placeholder={t('selectStatus')}
                 zIndex={1000}
                 listMode="SCROLLVIEW"
               />
               
-              <Text style={styles.inputLabel}>Ngày</Text>
+              <Text style={styles.inputLabel}>{t('date')}</Text>
               <TouchableOpacity
                 style={styles.dateButton}
                 onPress={() => setShowDatePicker(true)}
@@ -300,7 +295,7 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
                 />
               )}
               
-              <Text style={styles.inputLabel}>Giờ</Text>
+              <Text style={styles.inputLabel}>{t('time')}</Text>
               <TouchableOpacity
                 style={styles.dateButton}
                 onPress={() => setShowTimePicker(true)}
@@ -327,9 +322,9 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
                 />
               )}
               
-              <Text style={styles.inputLabel}>Ghi chú</Text>
+              <Text style={styles.inputLabel}>{t('note')}</Text>
               <TextInput
-                placeholder="Nhập ghi chú"
+                placeholder={t('enterNote')}
                 style={styles.input}
                 value={note}
                 onChangeText={setNote}
@@ -340,7 +335,7 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
                 style={[styles.fab, { alignSelf: 'center', marginTop: 30 }]}
                 onPress={handleSaveHistory}
               >
-                <FontAwesome name="check" size={20} color="#fff" />
+                <Text style={styles.saveButtonText}>{t('save')}</Text>
               </TouchableOpacity>
             </ScrollView>
           </View>
@@ -362,7 +357,7 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
   );
 };
 
-// Định nghĩa styles
+// Define styles
 const styles = StyleSheet.create({
   retryButton: {
     flexDirection: 'row',
@@ -501,6 +496,11 @@ const styles = StyleSheet.create({
   dateButtonText: {
     fontSize: 16,
     color: '#333',
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

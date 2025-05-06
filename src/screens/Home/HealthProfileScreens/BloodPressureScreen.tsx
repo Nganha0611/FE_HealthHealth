@@ -6,6 +6,7 @@ import { LineChart } from 'react-native-chart-kit';
 import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
 import axios from 'axios';
 import { API_BASE_URL } from '../../../utils/config';
+import { useTranslation } from 'react-i18next';
 
 type ViewMode = 'monthly' | 'daily' | 'weekly';
 
@@ -25,6 +26,7 @@ type Props = {
 };
 
 const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
+  const { t } = useTranslation();
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [chartData, setChartData] = useState<any>({
@@ -33,7 +35,7 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
       { data: [], color: () => '#36A2EB', strokeWidth: 2 },
       { data: [], color: () => '#4BC0C0', strokeWidth: 2 },
     ],
-    legend: ['Tâm thu', 'Tâm trương'],
+    legend: [t('systolic'), t('diastolic')],
   });
   const [averageBloodPressure, setAverageBloodPressure] = useState<{ systolic: number | null; diastolic: number | null }>({
     systolic: null,
@@ -52,11 +54,11 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
           setAvatarUrl(user.url || null);
           fetchBloodPressureData(user.id);
         } else {
-          Alert.alert('Lỗi', 'Không tìm thấy thông tin người dùng.');
+          Alert.alert(t('error'), t('noUserInfo'));
         }
       } catch (error) {
-        console.error('Lỗi khi lấy thông tin người dùng:', error);
-        Alert.alert('Lỗi', 'Không thể lấy thông tin người dùng. Vui lòng thử lại.');
+        console.error('Error fetching user info:', error);
+        Alert.alert(t('error'), t('fetchUserError'));
       }
     };
 
@@ -75,10 +77,10 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
             { data: [], color: () => '#36A2EB', strokeWidth: 2 },
             { data: [], color: () => '#4BC0C0', strokeWidth: 2 },
           ],
-          legend: ['Tâm thu', 'Tâm trương'],
+          legend: [t('systolic'), t('diastolic')],
         });
         setAverageBloodPressure({ systolic: null, diastolic: null });
-        Alert.alert('Thông báo', 'Không có dữ liệu huyết áp nào để hiển thị.');
+        Alert.alert(t('notification'), t('noBloodPressureData'));
         return;
       }
 
@@ -101,10 +103,10 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
             { data: [], color: () => '#36A2EB', strokeWidth: 2 },
             { data: [], color: () => '#4BC0C0', strokeWidth: 2 },
           ],
-          legend: ['Tâm thu', 'Tâm trương'],
+          legend: [t('systolic'), t('diastolic')],
         });
         setAverageBloodPressure({ systolic: null, diastolic: null });
-        Alert.alert('Thông báo', 'Dữ liệu huyết áp không hợp lệ.');
+        Alert.alert(t('notification'), t('invalidBloodPressureData'));
         return;
       }
 
@@ -112,15 +114,15 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
       setAllBloodPressureData(sorted);
       processBloodPressureData(sorted);
     } catch (error) {
-      console.error('Lỗi khi tải dữ liệu huyết áp:', error);
-      Alert.alert('Lỗi', 'Không thể tải dữ liệu huyết áp. Vui lòng kiểm tra kết nối và thử lại.');
+      console.error('Error fetching blood pressure data:', error);
+      Alert.alert(t('error'), t('fetchBloodPressureError'));
       setChartData({
         labels: [],
         datasets: [
           { data: [], color: () => '#36A2EB', strokeWidth: 2 },
           { data: [], color: () => '#4BC0C0', strokeWidth: 2 },
         ],
-        legend: ['Tâm thu', 'Tâm trương'],
+        legend: [t('systolic'), t('diastolic')],
       });
       setAverageBloodPressure({ systolic: null, diastolic: null });
     } finally {
@@ -136,10 +138,10 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
           { data: [], color: () => '#36A2EB', strokeWidth: 2 },
           { data: [], color: () => '#4BC0C0', strokeWidth: 2 },
         ],
-        legend: ['Tâm thu', 'Tâm trương'],
+        legend: [t('systolic'), t('diastolic')],
       });
       setAverageBloodPressure({ systolic: null, diastolic: null });
-      Alert.alert('Thông báo', 'Không có dữ liệu huyết áp để hiển thị.');
+      Alert.alert(t('notification'), t('noBloodPressureData'));
       return;
     }
 
@@ -167,17 +169,17 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
             { data: [], color: () => '#36A2EB', strokeWidth: 2 },
             { data: [], color: () => '#4BC0C0', strokeWidth: 2 },
           ],
-          legend: ['Tâm thu', 'Tâm trương'],
+          legend: [t('systolic'), t('diastolic')],
         });
         setAverageBloodPressure({ systolic: null, diastolic: null });
-        Alert.alert('Thông báo', 'Không có dữ liệu huyết áp cho ngày hiện tại.');
+        Alert.alert(t('notification'), t('noDailyBloodPressureData'));
         return;
       }
 
       const hourlyData: { [hour: string]: { systolic: number[]; diastolic: number[] } } = {};
       filteredData.forEach((item) => {
         const date = new Date(item.createdAt);
-        const hourKey = `${date.getHours()}h`;
+        const hourKey = `${date.getHours()}${t('hour')}`;
         if (!hourlyData[hourKey]) {
           hourlyData[hourKey] = { systolic: [], diastolic: [] };
         }
@@ -211,10 +213,10 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
             { data: [], color: () => '#36A2EB', strokeWidth: 2 },
             { data: [], color: () => '#4BC0C0', strokeWidth: 2 },
           ],
-          legend: ['Tâm thu', 'Tâm trương'],
+          legend: [t('systolic'), t('diastolic')],
         });
         setAverageBloodPressure({ systolic: null, diastolic: null });
-        Alert.alert('Thông báo', 'Không có dữ liệu huyết áp cho 7 ngày qua.');
+        Alert.alert(t('notification'), t('noWeeklyBloodPressureData'));
         return;
       }
 
@@ -260,10 +262,10 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
             { data: [], color: () => '#36A2EB', strokeWidth: 2 },
             { data: [], color: () => '#4BC0C0', strokeWidth: 2 },
           ],
-          legend: ['Tâm thu', 'Tâm trương'],
+          legend: [t('systolic'), t('diastolic')],
         });
         setAverageBloodPressure({ systolic: null, diastolic: null });
-        Alert.alert('Thông báo', 'Không có dữ liệu huyết áp cho tháng hiện tại.');
+        Alert.alert(t('notification'), t('noMonthlyBloodPressureData'));
         return;
       }
 
@@ -275,7 +277,7 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
         const date = new Date(item.createdAt);
         const dayOfMonth = date.getDate();
         const weekNumber = Math.floor((dayOfMonth - 1) / weekSize) + 1;
-        const weekKey = `Tuần ${weekNumber}`;
+        const weekKey = `${t('week')} ${weekNumber}`;
         if (!weeklyData[weekKey]) {
           weeklyData[weekKey] = { systolic: [], diastolic: [] };
         }
@@ -284,7 +286,7 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
       });
 
       labels = Object.keys(weeklyData).sort((a, b) => {
-        return parseInt(a.replace('Tuần ', '')) - parseInt(b.replace('Tuần ', ''));
+        return parseInt(a.replace(`${t('week')} `, '')) - parseInt(b.replace(`${t('week')} `, ''));
       });
       systolicValues = labels.map((week) => {
         const rates = weeklyData[week].systolic;
@@ -296,7 +298,6 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
       });
     }
 
-    // Tính trung bình từ filteredData
     let avgSystolic = null;
     let avgDiastolic = null;
     if (filteredData.length > 0) {
@@ -310,7 +311,7 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
         { data: systolicValues, color: () => '#36A2EB', strokeWidth: 2 },
         { data: diastolicValues, color: () => '#4BC0C0', strokeWidth: 2 },
       ],
-      legend: ['Tâm thu', 'Tâm trương'],
+      legend: [t('systolic'), t('diastolic')],
     });
     setAverageBloodPressure({ systolic: avgSystolic, diastolic: avgDiastolic });
   };
@@ -319,18 +320,18 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
     if (allBloodPressureData.length > 0) {
       processBloodPressureData(allBloodPressureData);
     }
-  }, [viewMode]);
+  }, [viewMode, t]);
 
   const getChartTitle = () => {
     switch (viewMode) {
       case 'monthly':
-        return 'Diễn biến theo tuần trong tháng';
+        return t('chartTitle.monthly');
       case 'daily':
-        return 'Diễn biến theo giờ trong ngày';
+        return t('chartTitle.daily');
       case 'weekly':
-        return 'Diễn biến theo ngày trong tuần';
+        return t('chartTitle.weekly');
       default:
-        return 'Biểu đồ huyết áp';
+        return t('chartTitle.default');
     }
   };
 
@@ -345,7 +346,7 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
             style={{ marginRight: 15, marginTop: 17 }}
             onPress={() => navigation.goBack()}
           />
-          <Text style={[styles.text1, { fontSize: 30, marginTop: 5 }]}>Huyết áp</Text>
+          <Text style={[styles.text1, { fontSize: 30, marginTop: 5 }]}>{t('bloodPressure')}</Text>
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity>
@@ -356,11 +357,11 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       </View>
-      <Text style={styles.title}>Biểu đồ huyết áp</Text>
+      <Text style={styles.title}>{t('bloodPressureChart')}</Text>
       <Text style={styles.subtitle}>{getChartTitle()}</Text>
 
       {loading ? (
-        <Text style={styles.loadingText}>Đang tải dữ liệu...</Text>
+        <Text style={styles.loadingText}>{t('loading_message')}</Text>
       ) : chartData.datasets[0].data.length > 0 ? (
         <View style={styles.chartContainer}>
           <LineChart
@@ -384,7 +385,7 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
           />
         </View>
       ) : (
-        <Text style={styles.noDataText}>Không có dữ liệu để hiển thị biểu đồ.</Text>
+        <Text style={styles.noDataText}>{t('noData')}</Text>
       )}
 
       <View style={styles.buttonContainer}>
@@ -392,29 +393,29 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
           style={[styles.button, viewMode === 'daily' && styles.selectedButton]}
           onPress={() => setViewMode('daily')}
         >
-          <Text style={[styles.buttonText, viewMode === 'daily' && styles.selectedButtonText]}>Giờ</Text>
+          <Text style={[styles.buttonText, viewMode === 'daily' && styles.selectedButtonText]}>{t('hour')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.button, viewMode === 'weekly' && styles.selectedButton]}
           onPress={() => setViewMode('weekly')}
         >
-          <Text style={[styles.buttonText, viewMode === 'weekly' && styles.selectedButtonText]}>Ngày</Text>
+          <Text style={[styles.buttonText, viewMode === 'weekly' && styles.selectedButtonText]}>{t('day')}</Text>
         </TouchableOpacity>
         <TouchableOpacity
           style={[styles.button, viewMode === 'monthly' && styles.selectedButton]}
           onPress={() => setViewMode('monthly')}
         >
-          <Text style={[styles.buttonText, viewMode === 'monthly' && styles.selectedButtonText]}>Tuần</Text>
+          <Text style={[styles.buttonText, viewMode === 'monthly' && styles.selectedButtonText]}>{t('week')}</Text>
         </TouchableOpacity>
       </View>
 
       <View style={styles.infoContainer}>
         <View style={styles.infoItem}>
-          <Text style={styles.infoLabel}>Huyết áp trung bình</Text>
+          <Text style={styles.infoLabel}>{t('averageBloodPressure')}</Text>
           <Text style={[styles.infoValue, { color: '#36A2EB' }]}>
             {averageBloodPressure.systolic !== null && averageBloodPressure.diastolic !== null
-              ? `${averageBloodPressure.systolic}/${averageBloodPressure.diastolic} mmHg`
-              : '--/-- mmHg'}
+              ? `${averageBloodPressure.systolic}/${averageBloodPressure.diastolic} ${t('mmHg')}`
+              : `--/-- ${t('mmHg')}`}
           </Text>
         </View>
       </View>

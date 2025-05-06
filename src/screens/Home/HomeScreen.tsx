@@ -14,7 +14,7 @@ type Props = {
 
 const HomeScreen: React.FC<Props> = ({ navigation }) => {
   const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
-  const { t } = useTranslation();  // Hook từ react-i18next
+  const { t } = useTranslation(); 
   const [userName, setUserName] = useState<string>(''); 
   
   useEffect(() => {
