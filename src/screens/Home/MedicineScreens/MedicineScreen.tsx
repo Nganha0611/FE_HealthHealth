@@ -34,13 +34,13 @@ const MedicineScreen: React.FC<Props> = ({ navigation }) => {
               source={require('../../../assets/medicine.png')}
             />  
              </TouchableOpacity>
-             <TouchableOpacity style = {styles.boxFeature} onPress={() => navigation.navigate('Prescription')}> 
+             {/* <TouchableOpacity style = {styles.boxFeature} onPress={() => navigation.navigate('Prescription')}> 
                 <Text style={[styles.text, styles.boxTitle]}>Danh sách đơn thuốc</Text>
                 <Image
               style={styles.boxImg}
               source={require('../../../assets/prescription.png')}
-            />  
-             </TouchableOpacity>
+            />   */}
+             {/* </TouchableOpacity> */}
              <TouchableOpacity style = {styles.boxFeature} onPress={() => navigation.navigate('MedicineHistory')}> 
                 <Text style={[styles.text, styles.boxTitle]}>Lịch sử uống thuốc</Text>
                 <Image

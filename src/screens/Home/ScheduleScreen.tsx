@@ -8,7 +8,7 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
   const { t, i18n } = useTranslation();
 
   const [language, setLanguage] = useState<'vi' | 'en'>(i18n.language as 'vi' | 'en');
-  const [selectedDate, setSelectedDate] = useState(new Date('2025-04-23'));
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
   const events: { [key: string]: { name: string; time: string }[] } = {
     '2025-04-23': [

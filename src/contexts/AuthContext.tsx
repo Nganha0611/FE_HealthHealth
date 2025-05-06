@@ -15,56 +15,37 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  // Kiểm tra trạng thái đăng nhập khi component load
   useEffect(() => {
     const checkLoginStatus = async () => {
-      try {
-        const token = await AsyncStorage.getItem("authToken");
-        console.log("Token từ AsyncStorage:", token);
-        setIsLoggedIn(!!token); // Nếu có token, đặt isLoggedIn = true
-      } catch (error) {
-        console.error("Lỗi khi lấy token:", error);
-      }
+      const token = await AsyncStorage.getItem("authToken");
+      setIsLoggedIn(!!token);
     };
-
     checkLoginStatus();
   }, []);
 
   const login = async (token: string, user: any) => {
-    try {
-      // Kiểm tra nếu token và user không phải là null hoặc undefined
-      if (token && user) {
-        await AsyncStorage.setItem("authToken", token);  // Lưu token
-        await AsyncStorage.setItem("user", JSON.stringify(user)); // Lưu thông tin người dùng
-        setIsLoggedIn(true); // Cập nhật trạng thái đăng nhập thành công
-      } else {
-        console.error("Token hoặc thông tin người dùng không hợp lệ");
-      }
-    } catch (error) {
-      if (error instanceof Error) {
-        // Kiểm tra xem error có phải là đối tượng lỗi không
-        console.error("Lỗi khi lưu thông tin đăng nhập:", error.message);
-      } else {
-        // Nếu không phải đối tượng lỗi, in ra lỗi trực tiếp
-        console.error("Lỗi khi lưu thông tin đăng nhập:", error);
-      }
+    if (token && user) {
+      await AsyncStorage.setItem("authToken", token);
+      await AsyncStorage.setItem("user", JSON.stringify(user));
+      setIsLoggedIn(true);
     }
   };
-  
-  
 
-  // Hàm logout để xóa token và thông tin người dùng
   const logout = async () => {
     try {
       await AsyncStorage.removeItem("authToken");
-      await AsyncStorage.removeItem("user"); // Xóa thông tin người dùng
-      setIsLoggedIn(false); // Cập nhật trạng thái đăng xuất
+      await AsyncStorage.removeItem("user");
+      setIsLoggedIn(false);
     } catch (error) {
-      console.error("Lỗi khi xóa thông tin đăng nhập:", error);
+      console.error("Lỗi khi logout:", error);
     }
   };
 
-  // Cung cấp các giá trị cho context
+  // Gán hàm logout ra global để gọi từ axios interceptor
+  useEffect(() => {
+    global.authLogout = logout;
+  }, [logout]);
+
   return (
     <AuthContext.Provider value={{ isLoggedIn, login, logout }}>
       {children}

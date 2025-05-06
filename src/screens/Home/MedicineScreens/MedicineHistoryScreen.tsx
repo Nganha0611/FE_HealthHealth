@@ -1,20 +1,168 @@
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import React from 'react';
-import { View, Text, Button, Image, StyleSheet, TouchableOpacity } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet, TextInput, Alert, Platform } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import DropDownPicker from 'react-native-dropdown-picker';
+import DateTimePicker from '@react-native-community/datetimepicker';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { API_BASE_URL } from '../../../utils/config';
 import { BottomTabParamList } from '../../../navigation/BottomTabs';
 
 type Props = {
   navigation: NavigationProp<any>;
 };
+
+type Medicine = {
+  id?: string;
+  name: string;
+  startday: string;
+  repeatDetails?: {
+    type: string;
+    interval: string | number;
+    daysOfWeek?: string[];
+    daysOfMonth?: string[];
+    timePerDay?: string[];
+  };
+};
+
+type MedicineHistory = {
+  id: string;
+  userId: string;
+  prescriptionsId?: string;
+  timestamp: string;
+  status: string;
+  note: string;
+};
+
 const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
   const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
-  // const openAddModal = () => {
-  //   resetForm();
-  //   setModalVisible(true);
-  // };
+  const [isModalVisible, setModalVisible] = useState(false);
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
+  const [selectedMedicine, setSelectedMedicine] = useState<string | null>(null);
+  const [status, setStatus] = useState<string | null>(null);
+  const [note, setNote] = useState('');
+  const [date, setDate] = useState(new Date());
+  const [time, setTime] = useState(new Date());
+  const [openStatus, setOpenStatus] = useState(false);
+  const [openMedicine, setOpenMedicine] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [medicines, setMedicines] = useState<Medicine[]>([]);
+  const [medicineHistory, setMedicineHistory] = useState<MedicineHistory[]>([]);
+
+  const statusItems = [
+    { label: 'Đã uống', value: 'Taken' },
+    { label: 'Quên uống', value: 'Missing' },
+    { label: 'Tạm dừng', value: 'Paused' },
+  ];
+
+  const medicineItems = medicines.map(med => ({ label: med.name, value: med.id || '' }));
+
+  const fetchData = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        Alert.alert('Lỗi', 'Token không tồn tại. Vui lòng đăng nhập lại.');
+        navigation.navigate('Login');
+        return;
+      }
+
+      const [medicineResponse, historyResponse] = await Promise.all([
+        axios.get<Medicine[]>(`${API_BASE_URL}/api/prescriptions`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get<MedicineHistory[]>(`${API_BASE_URL}/api/medicine-history`, { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
+
+      const fetchedMedicines = medicineResponse.data;
+      const fetchedHistory = historyResponse.data;
+
+      console.log('Danh sách thuốc:', JSON.stringify(fetchedMedicines, null, 2));
+      console.log('Lịch sử uống thuốc:', JSON.stringify(fetchedHistory, null, 2));
+
+      setMedicines(fetchedMedicines);
+      setMedicineHistory(fetchedHistory);
+    } catch (error: any) {
+      console.error('Lỗi khi lấy dữ liệu:', error);
+      Alert.alert('Lỗi', 'Không thể lấy dữ liệu. Vui lòng kiểm tra kết nối.');
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const handleSaveHistory = async () => {
+    if (!selectedMedicine || !status) {
+      Alert.alert('Thông báo', 'Vui lòng điền đầy đủ thông tin.');
+      return;
+    }
+
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        Alert.alert('Lỗi', 'Token không tồn tại. Vui lòng đăng nhập lại.');
+        navigation.navigate('Login');
+        return;
+      }
+
+      const timestamp = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+        time.getHours(),
+        time.getMinutes(),
+        time.getSeconds()
+      );
+      const timestampStr = timestamp.toISOString(); // Đảm bảo gửi định dạng ISO đầy đủ
+      const data = { prescriptionsId: selectedMedicine, timestamp: timestampStr, status, note };
+
+      console.log('Dữ liệu gửi đi:', JSON.stringify(data, null, 2));
+
+      if (selectedHistoryId) {
+        await axios.put(
+          `${API_BASE_URL}/api/medicine-history/${selectedHistoryId}`,
+          data,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        Alert.alert('Thành công', 'Đã cập nhật lịch sử uống thuốc.');
+      } else {
+        await axios.post(
+          `${API_BASE_URL}/api/medicine-history`,
+          data,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        Alert.alert('Thành công', 'Đã thêm lịch sử uống thuốc.');
+      }
+
+      fetchData();
+      setModalVisible(false);
+      setSelectedHistoryId(null);
+      setSelectedMedicine(null);
+      setStatus(null);
+      setNote('');
+      setDate(new Date());
+      setTime(new Date());
+    } catch (error: any) {
+      console.error('Lỗi khi lưu lịch sử:', error.response?.data || error.message);
+      Alert.alert('Lỗi', 'Không thể lưu lịch sử. Vui lòng thử lại.');
+    }
+  };
+
+  const handleEditHistory = (history: MedicineHistory) => {
+    const medicine = medicines.find(m => m.id === history.prescriptionsId);
+    if (medicine) {
+      setSelectedHistoryId(history.id);
+      setSelectedMedicine(history.prescriptionsId || null);
+      setStatus(history.status);
+      setNote(history.note || '');
+      const timestampDate = new Date(history.timestamp);
+      setDate(timestampDate);
+      setTime(timestampDate);
+      setModalVisible(true);
+    }
+  };
+
   return (
     <View style={{ flex: 1 }}>
       <ScrollView>
@@ -29,100 +177,153 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
             />
             <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>Lịch sử uống thuốc</Text>
           </View>
-          {/* <View style={styles.headerRight}>
-           <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'Account' })}>
-             <Image
-               style={styles.imgProfile}
-               source={require('../../assets/avatar.jpg')}
-             />
-           </TouchableOpacity>
-         </View> */}
         </View>
-        <TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('MedicineHistoryDetail')}>
-          <Text style={[styles.text, styles.boxTitle]}>Today</Text>
-          <Text style={styles.note}>Trạng thái: Missing</Text>
-          <Text style={styles.note}>Note: Quên uống</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
-          <Text style={[styles.text, styles.boxTitle]}>Today</Text>
-          <Text style={styles.note}>Trạng thái: Missing</Text>
-          <Text style={styles.note}>Note: Quên uống</Text>
-
-
-        </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
-          <Text style={[styles.text, styles.boxTitle]}>Today</Text>
-          <Text style={styles.note}>Trạng thái: Missing</Text>
-          <Text style={styles.note}>Note: Quên uống</Text>
-
-
-        </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
-          <Text style={[styles.text, styles.boxTitle]}>Today</Text>
-          <Text style={styles.note}>Trạng thái: Missing</Text>
-          <Text style={styles.note}>Note: Quên uống</Text>
-
-
-        </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
-          <Text style={[styles.text, styles.boxTitle]}>Today</Text>
-          <Text style={styles.note}>Trạng thái: Missing</Text>
-          <Text style={styles.note}>Note: Quên uống</Text>
-
-
-        </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
-          <Text style={[styles.text, styles.boxTitle]}>Today</Text>
-          <Text style={styles.note}>Trạng thái: Missing</Text>
-          <Text style={styles.note}>Note: Quên uống</Text>
-
-
-        </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
-          <Text style={[styles.text, styles.boxTitle]}>Today</Text>
-          <Text style={styles.note}>Trạng thái: Missing</Text>
-          <Text style={styles.note}>Note: Quên uống</Text>
-
-
-        </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
-          <Text style={[styles.text, styles.boxTitle]}>Today</Text>
-          <Text style={styles.note}>Trạng thái: Missing</Text>
-          <Text style={styles.note}>Note: Quên uống</Text>
-
-
-        </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
-          <Text style={[styles.text, styles.boxTitle]}>Today</Text>
-          <Text style={styles.note}>Trạng thái: Missing</Text>
-          <Text style={styles.note}>Note: Quên uống</Text>
-
-
-        </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
-          <Text style={[styles.text, styles.boxTitle]}>Today</Text>
-          <Text style={styles.note}>Trạng thái: Missing</Text>
-          <Text style={styles.note}>Note: Quên uống</Text>
-
-
-        </TouchableOpacity><TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('Medicine')}>
-          <Text style={[styles.text, styles.boxTitle]}>Today</Text>
-          <Text style={styles.note}>Trạng thái: Missing</Text>
-          <Text style={styles.note}>Note: Quên uống</Text>
-        </TouchableOpacity>
+        {medicineHistory.length === 0 ? (
+          <Text style={styles.note}>Không có lịch sử uống thuốc nào để hiển thị.</Text>
+        ) : (
+          medicineHistory.map((history, index) => {
+            const medicine = medicines.find(m => m.id === history.prescriptionsId);
+            return (
+              <TouchableOpacity key={index} style={styles.boxFeature} onPress={() => handleEditHistory(history)}>
+                <Text style={[styles.text, styles.boxTitle]}>{medicine ? medicine.name : 'Thuốc không xác định'}</Text>
+                <Text style={styles.note}>Trạng thái: {statusItems.find(item => item.value === history.status)?.label || history.status}</Text>
+                <Text style={styles.note}>Thời gian: {new Date(history.timestamp).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</Text>
+                <Text style={styles.note}>Ghi chú: {history.note || 'Chưa cập nhật'}</Text>
+              </TouchableOpacity>
+            );
+          })
+        )}
       </ScrollView>
-      <TouchableOpacity style={styles.fab}>
+
+      <Modal visible={isModalVisible} animationType="slide" transparent={true}>
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
+              <FontAwesome name="close" size={24} color="#444" />
+            </TouchableOpacity>
+            <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+              <Text style={styles.modalTitle}>{selectedHistoryId ? 'Chỉnh sửa' : 'Thêm'} lịch sử uống thuốc</Text>
+              <Text style={styles.inputLabel}>Thuốc</Text>
+              <DropDownPicker
+                open={openMedicine}
+                setOpen={setOpenMedicine}
+                value={selectedMedicine}
+                setValue={setSelectedMedicine}
+                items={medicineItems}
+                containerStyle={styles.dropdownContainer}
+                style={styles.dropdown}
+                dropDownContainerStyle={styles.dropdownList}
+                placeholder="Chọn thuốc"
+                zIndex={2000}
+                listMode="SCROLLVIEW"
+                disabled={!!selectedHistoryId}
+              />
+              <Text style={styles.inputLabel}>Trạng thái</Text>
+              <DropDownPicker
+                open={openStatus}
+                setOpen={setOpenStatus}
+                value={status}
+                setValue={setStatus}
+                items={statusItems}
+                containerStyle={styles.dropdownContainer}
+                style={styles.dropdown}
+                dropDownContainerStyle={styles.dropdownList}
+                placeholder="Chọn trạng thái"
+                zIndex={1000}
+                listMode="SCROLLVIEW"
+              />
+              <Text style={styles.inputLabel}>Ngày</Text>
+              <TouchableOpacity
+                style={styles.dateButton}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Text style={styles.dateButtonText}>
+                  {date.toLocaleDateString('vi-VN')}
+                </Text>
+              </TouchableOpacity>
+              {showDatePicker && (
+                <DateTimePicker
+                  value={date}
+                  mode="date"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+                  onChange={(event, selectedDate) => {
+                    if (selectedDate) {
+                      setDate(selectedDate);
+                      if (Platform.OS === 'android') {
+                        setShowDatePicker(false);
+                      }
+                    } else if (Platform.OS === 'ios') {
+                      setShowDatePicker(false);
+                    }
+                  }}
+                />
+              )}
+              <Text style={styles.inputLabel}>Giờ</Text>
+              <TouchableOpacity
+                style={styles.dateButton}
+                onPress={() => setShowTimePicker(true)}
+              >
+                <Text style={styles.dateButtonText}>
+                  {time.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+                </Text>
+              </TouchableOpacity>
+              {showTimePicker && (
+                <DateTimePicker
+                  value={time}
+                  mode="time"
+                  display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
+                  onChange={(event, selectedTime) => {
+                    if (selectedTime) {
+                      setTime(selectedTime);
+                      if (Platform.OS === 'android') {
+                        setShowTimePicker(false);
+                      }
+                    } else if (Platform.OS === 'ios') {
+                      setShowTimePicker(false);
+                    }
+                  }}
+                />
+              )}
+              <Text style={styles.inputLabel}>Ghi chú</Text>
+              <TextInput
+                placeholder="Nhập ghi chú"
+                style={styles.input}
+                value={note}
+                onChangeText={setNote}
+                multiline
+              />
+              <TouchableOpacity
+                style={[styles.fab, { alignSelf: 'center', marginTop: 30 }]}
+                onPress={handleSaveHistory}
+              >
+                <FontAwesome name="check" size={20} color="#fff" />
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      <TouchableOpacity style={styles.fab} onPress={() => {
+        setSelectedHistoryId(null);
+        setSelectedMedicine(null);
+        setStatus(null);
+        setNote('');
+        setDate(new Date());
+        setTime(new Date());
+        setModalVisible(true);
+      }}>
         <FontAwesome name="plus" size={24} color="#fff" />
       </TouchableOpacity>
     </View>
   );
 };
+
 const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     marginTop: 10,
     justifyContent: 'space-between',
     marginBottom: 20,
-
-  },
-  text: {
-    fontSize: 25,
-    fontFamily: 'Roboto',
-    color: '#432c81',
-    fontWeight: 'bold',
-
   },
   headerLeft: {
     marginLeft: 10,
@@ -130,42 +331,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-start',
   },
-  headerRight: {
-    marginRight: 15,
-    backgroundColor: '#e0dee7',
-    borderRadius: 30,
-    padding: 7,
-  },
-  imgProfile: {
-    width: 45,
-    height: 45,
-    borderRadius: 30
+  text: {
+    fontSize: 25,
+    fontFamily: 'Roboto',
+    color: '#432c81',
+    fontWeight: 'bold',
   },
   boxFeature: {
     flexDirection: 'column',
     width: 'auto',
-    height: 100,
+    height: 'auto',
     backgroundColor: '#e0dee7',
     marginHorizontal: 10,
     borderRadius: 10,
     marginBottom: 20,
-    justifyContent: 'flex-start',
-    // alignItems: 'center',
+    padding: 7,
   },
   boxTitle: {
-    marginLeft: 10,
     fontSize: 23,
   },
   note: {
-    marginLeft: 10,
     fontSize: 17,
     color: '#432c81',
-  },
-
-  boxImg: {
-    width: 80,
-    height: 80,
-    marginRight: 30,
   },
   fab: {
     position: 'absolute',
@@ -179,5 +366,64 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     elevation: 25,
   },
-})
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 20,
+  },
+  modalContent: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 20,
+    maxHeight: '80%',
+  },
+  closeButton: {
+    alignSelf: 'flex-end',
+    marginBottom: 10,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#432c81',
+    marginBottom: 10,
+  },
+  inputLabel: {
+    fontSize: 16,
+    color: '#333',
+    marginTop: 10,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    padding: 10,
+    fontSize: 16,
+    marginTop: 5,
+    minHeight: 60,
+  },
+  dropdownContainer: {
+    marginTop: 5,
+  },
+  dropdown: {
+    backgroundColor: '#fafafa',
+  },
+  dropdownList: {
+    backgroundColor: '#fafafa',
+  },
+  dateButton: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    padding: 10,
+    marginTop: 5,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+  },
+  dateButtonText: {
+    fontSize: 16,
+    color: '#333',
+  },
+});
+
 export default MedicineHistoryScreen;
