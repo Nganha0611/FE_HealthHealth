@@ -45,7 +45,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         setAvatarUrl(user.url || null);
       }
     } catch (error) {
-      console.error('Lỗi khi lấy thông tin người dùng:', error);
+      showNotification('Không thể tải dữ liệu người dùng!!!', 'error');
     }
   };
 
@@ -60,9 +60,10 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
 
       if (res.data && res.data.heartRate !== undefined) {
         setHeartRate(res.data.heartRate.toString());
+
       }
     } catch (err) {
-      console.error("Lỗi khi lấy nhịp tim:", err);
+      showNotification('Không thể tải dữ liệu nhịp tim!!!', 'error');
     }
   };
 
@@ -80,7 +81,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         setDiaValue(res.data.diastolic.toString());
       }
     } catch (err) {
-      console.error("Lỗi khi lấy huyết áp:", err);
+      showNotification('Không thể tải dữ liệu huyết áp!!!', 'error');
     }
   };
 

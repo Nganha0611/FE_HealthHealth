@@ -7,6 +7,7 @@ import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
 import axios from 'axios';
 import { API_BASE_URL } from '../../../utils/config';
 import { useTranslation } from 'react-i18next';
+import { useNotification } from '../../../contexts/NotificationContext';
 
 type ViewMode = 'monthly' | 'daily' | 'weekly';
 
@@ -27,6 +28,8 @@ type Props = {
 
 const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
+  const { showNotification } = useNotification();
+
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [chartData, setChartData] = useState<any>({
@@ -54,11 +57,12 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
           setAvatarUrl(user.url || null);
           fetchBloodPressureData(user.id);
         } else {
-          Alert.alert(t('error'), t('noUserInfo'));
+          showNotification(t('noUserInfo'), 'error');
+
         }
       } catch (error) {
         console.error('Error fetching user info:', error);
-        Alert.alert(t('error'), t('fetchUserError'));
+        showNotification(t('fetchUserError'), 'error');
       }
     };
 
@@ -80,7 +84,8 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
           legend: [t('systolic'), t('diastolic')],
         });
         setAverageBloodPressure({ systolic: null, diastolic: null });
-        Alert.alert(t('notification'), t('noBloodPressureData'));
+        showNotification(t('noBloodPressureData'), 'error');
+
         return;
       }
 
@@ -106,7 +111,7 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
           legend: [t('systolic'), t('diastolic')],
         });
         setAverageBloodPressure({ systolic: null, diastolic: null });
-        Alert.alert(t('notification'), t('invalidBloodPressureData'));
+        showNotification(t('invalidBloodPressureData'), 'error');
         return;
       }
 
@@ -115,7 +120,8 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
       processBloodPressureData(sorted);
     } catch (error) {
       console.error('Error fetching blood pressure data:', error);
-      Alert.alert(t('error'), t('fetchBloodPressureError'));
+      showNotification(t('fetchBloodPressureError'), 'error');
+
       setChartData({
         labels: [],
         datasets: [
@@ -141,7 +147,7 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
         legend: [t('systolic'), t('diastolic')],
       });
       setAverageBloodPressure({ systolic: null, diastolic: null });
-      Alert.alert(t('notification'), t('noBloodPressureData'));
+      showNotification(t('noBloodPressureData'), 'error');
       return;
     }
 
@@ -172,7 +178,8 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
           legend: [t('systolic'), t('diastolic')],
         });
         setAverageBloodPressure({ systolic: null, diastolic: null });
-        Alert.alert(t('notification'), t('noDailyBloodPressureData'));
+        showNotification(t('noDailyBloodPressureData'), 'error');
+
         return;
       }
 
@@ -216,7 +223,8 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
           legend: [t('systolic'), t('diastolic')],
         });
         setAverageBloodPressure({ systolic: null, diastolic: null });
-        Alert.alert(t('notification'), t('noWeeklyBloodPressureData'));
+        showNotification(t('noWeeklyBloodPressureData'), 'error');
+
         return;
       }
 
@@ -265,7 +273,8 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
           legend: [t('systolic'), t('diastolic')],
         });
         setAverageBloodPressure({ systolic: null, diastolic: null });
-        Alert.alert(t('notification'), t('noMonthlyBloodPressureData'));
+        showNotification(t('noMonthlyBloodPressureData'), 'error');
+
         return;
       }
 

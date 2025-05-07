@@ -1,7 +1,7 @@
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet, TextInput, Alert, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet, TextInput, Platform, ActivityIndicator } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import DropDownPicker from 'react-native-dropdown-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -10,6 +10,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../../utils/config';
 import { BottomTabParamList } from '../../../navigation/BottomTabs';
 import { useTranslation } from 'react-i18next';
+import { useNotification } from '../../../contexts/NotificationContext';
+import Loading from "../../../components/Loading";
 
 // Define type for navigation prop
 type Props = {
@@ -40,8 +42,9 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [medicalHistory, setMedicalHistory] = useState<MedicalHistory[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+
+  const { showNotification } = useNotification();
 
   // List of status items for dropdown
   const statusItems = [
@@ -53,22 +56,21 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
   // Function to fetch medical history data from API
   const fetchData = async () => {
     setLoading(true);
-    setError(null);
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
-        Alert.alert(t('error'), t('noToken'));
+        showNotification(t('noToken'), 'error');
         navigation.navigate('Login');
         return;
       }
 
       const historyResponse = await axios.get<MedicalHistory[]>(
         `${API_BASE_URL}/api/medical-history`,
-        { 
-          headers: { 
+        {
+          headers: {
             Authorization: `Bearer ${token}`,
             'Content-Type': 'application/json'
-          } 
+          }
         }
       );
 
@@ -76,7 +78,8 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
       setMedicalHistory(fetchedHistory);
     } catch (error: any) {
       console.error('Error fetching data:', error.response?.data || error.message);
-      setError(t('fetchDataError'));
+      showNotification(t('fetchDataError'), 'error');
+
     } finally {
       setLoading(false);
     }
@@ -90,14 +93,16 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
   // Function to save or update medical history
   const handleSaveHistory = async () => {
     if (!location || !status) {
-      Alert.alert(t('notification'), t('incompleteMedicalInfo'));
+      showNotification(t('incompleteMedicalInfo'), 'error');
+
       return;
     }
 
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
-        Alert.alert(t('error'), t('noToken'));
+        showNotification(t('noToken'), 'error');
+
         navigation.navigate('Login');
         return;
       }
@@ -111,10 +116,10 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
         time.getSeconds()
       );
       const appointmentDateStr = appointmentDate.toISOString();
-      const data = { 
-        appointmentDate: appointmentDateStr, 
-        location, 
-        status, 
+      const data = {
+        appointmentDate: appointmentDateStr,
+        location,
+        status,
         note,
         userId: await AsyncStorage.getItem('userId')
       };
@@ -124,26 +129,27 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
         response = await axios.put(
           `${API_BASE_URL}/api/medical-history/${selectedHistoryId}`,
           data,
-          { 
-            headers: { 
+          {
+            headers: {
               Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json'
-            } 
+            }
           }
         );
-        Alert.alert(t('success'), t('medicalHistoryUpdated'));
+        showNotification(t('medicalHistoryUpdated'), 'success');
+
       } else {
         response = await axios.post(
           `${API_BASE_URL}/api/medical-history`,
           data,
-          { 
-            headers: { 
+          {
+            headers: {
               Authorization: `Bearer ${token}`,
               'Content-Type': 'application/json'
-            } 
+            }
           }
         );
-        Alert.alert(t('success'), t('medicalHistoryAdded'));
+        showNotification(t('medicalHistoryAdded'), 'success');
       }
 
       fetchData();
@@ -174,8 +180,8 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
       } else {
         errorMessage += `: ${error.message}`;
       }
+      showNotification(t(t('error')), 'error');
 
-      Alert.alert(t('error'), errorMessage);
     }
   };
 
@@ -206,34 +212,26 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
             <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>{t('medicalHistory')}</Text>
           </View>
         </View>
+
+        {medicalHistory.map((history, index) => (
+  <TouchableOpacity key={index} style={styles.boxFeature} onPress={() => handleEditHistory(history)}>
+    <Text style={[styles.text, styles.boxTitle]}>{history.location}</Text>
+    <Text style={styles.note}>
+      {t('statusLabel')}: {statusItems.find(item => item.value === history.status)?.label || history.status}
+    </Text>
+    <Text style={styles.note}>
+      {t('time')}: {new Date(history.appointmentDate).toLocaleString('vi-VN', {
+        dateStyle: 'short',
+        timeStyle: 'short',
+      })}
+    </Text>
+    <Text style={styles.note}>
+      {t('note')}: {history.note || t('noNote')}
+    </Text>
+  </TouchableOpacity>
+))}
+
         
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#432c81" />
-            <Text style={styles.note}>{t('loading')}</Text>
-          </View>
-        ) : error ? (
-          <View style={styles.errorContainer}>
-            <FontAwesome name="exclamation-circle" size={50} color="#432c81" />
-            <Text style={styles.note}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={fetchData}>
-              <Text style={styles.retryButtonText}>{t('retry')}</Text>
-            </TouchableOpacity>
-          </View>
-        ) : medicalHistory.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.note}>{t('noMedicalHistory')}</Text>
-          </View>
-        ) : (
-          medicalHistory.map((history, index) => (
-            <TouchableOpacity key={index} style={styles.boxFeature} onPress={() => handleEditHistory(history)}>
-              <Text style={[styles.text, styles.boxTitle]}>{history.location}</Text>
-              <Text style={styles.note}>{t('statusLabel')}: {statusItems.find(item => item.value === history.status)?.label || history.status}</Text>
-              <Text style={styles.note}>{t('time')}: {new Date(history.appointmentDate).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</Text>
-              <Text style={styles.note}>{t('note')}: {history.note || t('noNote')}</Text>
-            </TouchableOpacity>
-          ))
-        )}
       </ScrollView>
 
       <Modal visible={isModalVisible} animationType="slide" transparent={true}>
@@ -244,7 +242,7 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
             </TouchableOpacity>
             <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
               <Text style={styles.modalTitle}>{selectedHistoryId ? t('editMedicalHistory') : t('addMedicalHistory')}</Text>
-              
+
               <Text style={styles.inputLabel}>{t('location')}</Text>
               <TextInput
                 placeholder={t('enterLocation')}
@@ -252,7 +250,7 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
                 value={location}
                 onChangeText={setLocation}
               />
-              
+
               <Text style={styles.inputLabel}>{t('statusLabel')}</Text>
               <DropDownPicker
                 open={openStatus}
@@ -267,7 +265,7 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
                 zIndex={1000}
                 listMode="SCROLLVIEW"
               />
-              
+
               <Text style={styles.inputLabel}>{t('date')}</Text>
               <TouchableOpacity
                 style={styles.dateButton}
@@ -294,7 +292,7 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
                   }}
                 />
               )}
-              
+
               <Text style={styles.inputLabel}>{t('time')}</Text>
               <TouchableOpacity
                 style={styles.dateButton}
@@ -321,7 +319,7 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
                   }}
                 />
               )}
-              
+
               <Text style={styles.inputLabel}>{t('note')}</Text>
               <TextInput
                 placeholder={t('enterNote')}
@@ -330,7 +328,7 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
                 onChangeText={setNote}
                 multiline
               />
-              
+
               <TouchableOpacity
                 style={[styles.fab, { alignSelf: 'center', marginTop: 30 }]}
                 onPress={handleSaveHistory}
@@ -353,6 +351,8 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
       }}>
         <FontAwesome name="plus" size={24} color="#fff" />
       </TouchableOpacity>
+      {loading && <Loading message={t("processing")} />}
+
     </View>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Button, Alert, ActivityIndicator, TouchableOpacity, Modal, TextInput, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Button, ActivityIndicator, TouchableOpacity, Modal, TextInput, Platform } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import CalendarPicker from 'react-native-calendar-picker';
 import { useTranslation } from 'react-i18next';
@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../utils/config';
 import DropDownPicker from 'react-native-dropdown-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { useNotification } from '../../contexts/NotificationContext';
 
 interface Event {
   name: string;
@@ -75,6 +76,7 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
   // Shared data
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [medicalHistory, setMedicalHistory] = useState<MedicalHistory[]>([]);
+  const { showNotification } = useNotification();
 
   const medicineStatusItems = [
     { label: t('status.taken'), value: 'Taken' },
@@ -232,7 +234,8 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
-        Alert.alert(t('error'), t('noToken'));
+        showNotification(t('noToken'), 'error');
+
         navigation.navigate('Login');
         return;
       }
@@ -280,7 +283,7 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
       console.error('Error fetching data:', err.response?.data || err.message);
       setError(t('fetchDataError'));
       if (err.response?.status === 401) {
-        Alert.alert(t('error'), t('sessionExpired'));
+        showNotification(t('sessionExpired'), 'error');
         await AsyncStorage.removeItem('token');
         navigation.navigate('Login');
       }
@@ -347,14 +350,14 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
   // Save medicine history
   const handleSaveMedicineHistory = async () => {
     if (!selectedMedicine || !medicineStatus) {
-      Alert.alert(t('notification'), t('incompleteMedicineInfo'));
+      showNotification(t('incompleteMedicineInfo'), 'error');
       return;
     }
 
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
-        Alert.alert(t('error'), t('noToken'));
+        showNotification(t('noToken'), 'error');
         navigation.navigate('Login');
         return;
       }
@@ -376,26 +379,30 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
         { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
       );
 
-      Alert.alert(t('success'), t('medicineHistoryAdded'));
+      showNotification(t('medicineHistoryAdded'), 'error');
+
       setMedicineModalVisible(false);
       resetMedicineModal();
     } catch (error: any) {
       console.error('Error saving medicine history:', error.response?.data || error.message);
-      Alert.alert(t('error'), t('saveMedicineHistoryError'));
+      showNotification(t('saveMedicineHistoryError'), 'error');
+
     }
   };
 
   // Save medical history
   const handleSaveMedicalHistory = async () => {
     if (!location || !medicalStatus) {
-      Alert.alert(t('notification'), t('incompleteMedicalInfo'));
+      showNotification(t('incompleteMedicalInfo'), 'error');
+
       return;
     }
 
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
-        Alert.alert(t('error'), t('noToken'));
+        showNotification(t('noToken'), 'error');
+
         navigation.navigate('Login');
         return;
       }
@@ -424,14 +431,16 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
           data,
           { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
         );
-        Alert.alert(t('success'), t('medicalHistoryUpdated'));
+        showNotification(t('medicalHistoryUpdated'), 'error');
+
       } else {
         response = await axios.post(
           `${API_BASE_URL}/api/medical-history`,
           data,
           { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
         );
-        Alert.alert(t('success'), t('medicalHistoryAdded'));
+        showNotification(t('medicalHistoryAdded'), 'error');
+
       }
 
       fetchData(); // Refresh events after saving
@@ -451,7 +460,7 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
       } else {
         errorMessage += `: ${error.message}`;
       }
-      Alert.alert(t('error'), errorMessage);
+      showNotification(t(errorMessage), 'error');
     }
   };
 

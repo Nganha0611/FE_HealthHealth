@@ -1,12 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationProp } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { View, Dimensions, StyleSheet, Text, TouchableOpacity, SafeAreaView, Image, Alert } from 'react-native';
+import { View, Dimensions, StyleSheet, Text, TouchableOpacity, SafeAreaView, Image} from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
 import axios from 'axios';
 import { API_BASE_URL } from '../../../utils/config';
 import { useTranslation } from 'react-i18next';
+import { useNotification } from '../../../contexts/NotificationContext';
 
 type ViewMode = 'monthly' | 'daily' | 'weekly';
 
@@ -26,6 +27,8 @@ type Props = {
 
 const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
+  const { showNotification } = useNotification();
+
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [chartData, setChartData] = useState<any>({
@@ -47,11 +50,13 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
           setAvatarUrl(user.url || null);
           fetchHeartRateData(user.id);
         } else {
-          Alert.alert(t('error'), t('noUserInfo'));
+          showNotification(t('noUserInfo'), 'error');
+
         }
       } catch (error) {
         console.error('Error fetching user info:', error);
-        Alert.alert(t('error'), t('fetchUserError'));
+        showNotification(t('fetchUserError'), 'error');
+
       }
     };
 
@@ -70,14 +75,15 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
           legend: [t('heartRate')],
         });
         setAverageHeartRate(null);
-        Alert.alert(t('notification'), t('noHeartRateData'));
+        showNotification(t('noHeartRateData'), 'error');
+
         return;
       }
 
-      const validData = data.filter(item => 
-        typeof item.heartRate === 'number' && 
-        !isNaN(item.heartRate) && 
-        item.heartRate !== Infinity && 
+      const validData = data.filter(item =>
+        typeof item.heartRate === 'number' &&
+        !isNaN(item.heartRate) &&
+        item.heartRate !== Infinity &&
         item.heartRate !== -Infinity
       );
 
@@ -88,7 +94,8 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
           legend: [t('heartRate')],
         });
         setAverageHeartRate(null);
-        Alert.alert(t('notification'), t('invalidHeartRateData'));
+        showNotification(t('invalidHeartRateData'), 'error');
+
         return;
       }
 
@@ -97,7 +104,7 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
       processHeartRateData(sorted);
     } catch (error) {
       console.error('Error fetching heart rate data:', error);
-      Alert.alert(t('error'), t('fetchHeartRateError'));
+      showNotification(t('fetchHeartRateError'), 'error');
       setChartData({
         labels: [],
         datasets: [{ data: [], color: () => '#FF6384', strokeWidth: 2 }],
@@ -193,8 +200,8 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
       });
 
       if (values.length === 1) {
-        const avgValue = allHeartRateData.length > 0 
-          ? Math.round(allHeartRateData.reduce((sum, item) => sum + item.heartRate, 0) / allHeartRateData.length) 
+        const avgValue = allHeartRateData.length > 0
+          ? Math.round(allHeartRateData.reduce((sum, item) => sum + item.heartRate, 0) / allHeartRateData.length)
           : 0;
         labels.unshift(t('previous'));
         values.unshift(avgValue);
@@ -236,8 +243,8 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
       });
 
       if (values.length === 1) {
-        const avgValue = allHeartRateData.length > 0 
-          ? Math.round(allHeartRateData.reduce((sum, item) => sum + item.heartRate, 0) / allHeartRateData.length) 
+        const avgValue = allHeartRateData.length > 0
+          ? Math.round(allHeartRateData.reduce((sum, item) => sum + item.heartRate, 0) / allHeartRateData.length)
           : 0;
         labels.unshift(t('previous'));
         values.unshift(avgValue);
@@ -250,7 +257,7 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
       if (labels[0] === t('previous')) {
         valuesToAverage.shift();
       }
-      
+
       if (valuesToAverage.length > 0) {
         avgHeartRate = Math.round(valuesToAverage.reduce((sum, val) => sum + val, 0) / valuesToAverage.length);
       }
@@ -298,10 +305,10 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         </View>
         <View style={styles.headerRight}>
           <TouchableOpacity>
-            <Image 
+            <Image
               style={styles.imgProfile}
               source={avatarUrl ? { uri: avatarUrl } : require('../../../assets/avatar.jpg')}
-            />    
+            />
           </TouchableOpacity>
         </View>
       </View>

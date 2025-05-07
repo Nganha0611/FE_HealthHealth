@@ -1,7 +1,7 @@
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, ScrollView, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, ScrollView } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import DropDownPicker from 'react-native-dropdown-picker';
 import DatePicker from 'react-native-date-picker';
@@ -10,6 +10,7 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../../utils/config';
 import { useTranslation } from 'react-i18next';
+import { useNotification } from '../../../contexts/NotificationContext';
 
 type Props = {
   navigation: NavigationProp<any>;
@@ -44,7 +45,8 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
   const [startday, setStartday] = useState('');
   const [currentMedicineId, setCurrentMedicineId] = useState<string | null>(null);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
-  
+  const { showNotification } = useNotification();
+
   const [openForm, setOpenForm] = useState(false);
   const [form, setForm] = useState('');
   const [openUnit, setOpenUnit] = useState(false);
@@ -57,7 +59,7 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
   const [selectedDaysOfWeek, setSelectedDaysOfWeek] = useState<string[]>([]);
   const [selectedDaysOfMonth, setSelectedDaysOfMonth] = useState<string[]>([]);
   const [selectedTimesPerDay, setSelectedTimesPerDay] = useState<string[]>([]);
-  
+
   const [openDate, setOpenDate] = useState(false);
   const [date, setDate] = useState(new Date());
 
@@ -126,7 +128,8 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
-        Alert.alert(t('error'), t('noToken'));
+        showNotification(t('noToken'), 'error');
+
         navigation.navigate('Login');
         return;
       }
@@ -138,7 +141,7 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
 
       if (!data || data.length === 0) {
         setMedicines([]);
-        Alert.alert(t('notification'), t('noPrescriptionData'));
+        showNotification(t('noPrescriptionData'), 'error');
         return;
       }
 
@@ -146,11 +149,13 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
     } catch (error: any) {
       console.error('Error fetching prescriptions:', error);
       if (error.response && error.response.status === 401) {
-        Alert.alert(t('error'), t('sessionExpired'));
+        showNotification(t('sessionExpired'), 'error');
+
         await AsyncStorage.removeItem('token');
         navigation.navigate('Login');
       } else {
-        Alert.alert(t('error'), t('fetchPrescriptionError'));
+        showNotification(t('fetchPrescriptionError'), 'error');
+
       }
     }
   };
@@ -246,12 +251,14 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleSavePrescription = async () => {
     if (!name || !form || !strength || !unit || !amount || !repeatType || !repeatInterval || !startday) {
-      Alert.alert(t('notification'), t('incompleteMedicineInfo'));
+      showNotification(t('incompleteMedicineInfo'), 'error');
+
       return;
     }
 
     if (selectedTimesPerDay.length === 0) {
-      Alert.alert(t('notification'), t('noTimeSelected'));
+      showNotification(t('noTimeSelected'), 'error');
+
       return;
     }
 
@@ -275,7 +282,7 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
-        Alert.alert(t('error'), t('noToken'));
+        showNotification(t('noToken'), 'error');
         navigation.navigate('Login');
         return;
       }
@@ -289,7 +296,8 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
         setMedicines(prev =>
           prev.map(med => (med.id === currentMedicineId ? response.data : med))
         );
-        Alert.alert(t('success'), t('medicineUpdated'));
+        showNotification(t('medicineUpdated'), 'success');
+
       } else {
         const response = await axios.post(
           `${API_BASE_URL}/api/prescriptions`,
@@ -297,7 +305,8 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
           { headers: { Authorization: `Bearer ${token}` } }
         );
         setMedicines(prev => [...prev, response.data]);
-        Alert.alert(t('success'), t('medicineAdded'));
+        showNotification(t('medicineAdded'), 'success');
+
       }
 
       setModalVisible(false);
@@ -305,54 +314,62 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
     } catch (error: any) {
       console.error('Error saving prescription:', error);
       if (error.response && error.response.status === 401) {
-        Alert.alert(t('error'), t('sessionExpired'));
+        showNotification(t('sessionExpired'), 'error');
+
         await AsyncStorage.removeItem('token');
         navigation.navigate('Login');
       } else {
-        Alert.alert(t('error'), t('saveMedicineError'));
+        showNotification(t('saveMedicineError'), 'error');
+
       }
     }
   };
 
   const handleDeleteMedicine = async (id: string) => {
-    Alert.alert(
+    showNotification(
       t('confirmDelete'),
-      t('deleteMedicineConfirmation'),
+      'warning',
       [
-        { text: t('cancel'), style: 'cancel' },
+        {
+          text: t('cancel'),
+          onPress: () => {},
+          color: 'danger',
+        },
         {
           text: t('delete'),
-          style: 'destructive',
           onPress: async () => {
             try {
               const token = await AsyncStorage.getItem('token');
               if (!token) {
-                Alert.alert(t('error'), t('noToken'));
+                showNotification(t('noToken'), 'error');
                 navigation.navigate('Login');
                 return;
               }
-
+  
               await axios.delete(`${API_BASE_URL}/api/prescriptions/${id}`, {
                 headers: { Authorization: `Bearer ${token}` },
               });
+  
               setMedicines(prev => prev.filter(med => med.id !== id));
-              Alert.alert(t('success'), t('medicineDeleted'));
+              showNotification(t('medicineDeleted'), 'success');
               setModalVisible(false);
             } catch (error: any) {
               console.error('Error deleting medicine:', error);
               if (error.response && error.response.status === 401) {
-                Alert.alert(t('error'), t('sessionExpired'));
+                showNotification(t('sessionExpired'), 'error');
                 await AsyncStorage.removeItem('token');
                 navigation.navigate('Login');
               } else {
-                Alert.alert(t('error'), t('deleteMedicineError'));
+                showNotification(t('deleteMedicineError'), 'error');
               }
             }
           },
+          color: 'primary',
         },
       ]
     );
   };
+  
 
   const getMedicineFormLabel = (value: string): string => {
     const item = medicineFormItems.find(item => item.value === value);

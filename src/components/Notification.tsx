@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   },
   success: { backgroundColor: "#4CAF50" },
   error: { backgroundColor: "#F44336" },
-  warning: { backgroundColor: "#FFC107" },
+  warning: { backgroundColor: "e3cf8f" },
   closeButton: {
     position: "absolute",
     top: 10,

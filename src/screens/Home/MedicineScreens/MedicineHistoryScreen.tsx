@@ -1,7 +1,7 @@
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet, TextInput, Alert, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet, TextInput, Platform } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import DropDownPicker from 'react-native-dropdown-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL } from '../../../utils/config';
 import { BottomTabParamList } from '../../../navigation/BottomTabs';
 import { useTranslation } from 'react-i18next';
+import { useNotification } from '../../../contexts/NotificationContext';
 
 type Props = {
   navigation: NavigationProp<any>;
@@ -53,6 +54,7 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [medicineHistory, setMedicineHistory] = useState<MedicineHistory[]>([]);
+  const { showNotification } = useNotification();
 
   const statusItems = [
     { label: t('status.taken'), value: 'Taken' },
@@ -66,7 +68,7 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
-        Alert.alert(t('error'), t('noToken'));
+        showNotification(t('noToken'), 'error');
         navigation.navigate('Login');
         return;
       }
@@ -83,7 +85,8 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
       setMedicineHistory(fetchedHistory);
     } catch (error: any) {
       console.error('Error fetching data:', error);
-      Alert.alert(t('error'), t('fetchDataError'));
+      showNotification(t('fetchDataError'), 'error');
+
     }
   };
 
@@ -93,14 +96,15 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleSaveHistory = async () => {
     if (!selectedMedicine || !status) {
-      Alert.alert(t('notification'), t('incompleteInfo'));
+      showNotification(t('incompleteInfo'), 'error');
+
       return;
     }
 
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
-        Alert.alert(t('error'), t('noToken'));
+        showNotification(t('noToken'), 'error');
         navigation.navigate('Login');
         return;
       }
@@ -122,14 +126,16 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
           data,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        Alert.alert(t('success'), t('historyUpdated'));
+        showNotification(t('historyUpdated'), 'success');
+
       } else {
         await axios.post(
           `${API_BASE_URL}/api/medicine-history`,
           data,
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        Alert.alert(t('success'), t('historyAdded'));
+        showNotification(t('historyAdded'), 'success');
+
       }
 
       fetchData();
@@ -142,7 +148,8 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
       setTime(new Date());
     } catch (error: any) {
       console.error('Error saving history:', error.response?.data || error.message);
-      Alert.alert(t('error'), t('saveHistoryError'));
+      showNotification(t('saveHistoryError'), 'error');
+
     }
   };
 
