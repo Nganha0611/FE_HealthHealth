@@ -84,9 +84,16 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
       setMedicines(fetchedMedicines);
       setMedicineHistory(fetchedHistory);
     } catch (error: any) {
-      console.error('Error fetching data:', error);
       showNotification(t('fetchDataError'), 'error');
-
+       if (error.response && error.response.status === 401) {
+              showNotification(t('sessionExpired'), 'error');
+      
+              await AsyncStorage.removeItem('token');
+              navigation.navigate('Login');
+            } else {
+      showNotification(t('fetchDataError'), 'error');
+      
+            }
     }
   };
 
