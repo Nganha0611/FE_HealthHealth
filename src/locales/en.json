@@ -279,7 +279,7 @@
   "statusLabel": "Status",
   "selectStatus": "Select status",
   "date": "Date",
-  "time": "Time",
+  "Time": "Time",
   "note": "Note",
   "enterNote": "Enter note",
   "location": "Location",
@@ -303,5 +303,10 @@
   "time": {
     "am": "AM",
     "pm": "PM"
-  }
+  },
+  "selectDate": "Select Date",
+  "noHistoryData": "No history data available",
+  "heartRateHistory": "Heart Rate History",
+  "bloodPressureHistory": "Blood Pressure History",
+  "heartRateCreated": "Heart rate history created successfully."
 }
