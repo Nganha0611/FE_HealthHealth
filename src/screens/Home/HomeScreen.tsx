@@ -37,7 +37,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
     <ScrollView>
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>
+          <Text style={[styles.text, { fontSize: 26, marginTop: 5 }]}>
             {t('greeting', { name: userName || 'bạn' })}
           </Text>
         </View>
@@ -62,7 +62,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
         <Text style={[styles.text, styles.boxTitle]}>{t('medicalHistory')}</Text>
         <Image style={styles.boxImg} source={require('../../assets/medical_history.png')} />
       </TouchableOpacity>
-      <TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('MedicalHistory')}>
+      <TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('HealthMonitoring')}>
         <Text style={[styles.text, styles.boxTitle]}>{t('healthmonitor')}</Text>
         <Image style={styles.boxImg} source={require('../../assets/healthmonitor.png')} />
       </TouchableOpacity>

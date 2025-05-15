@@ -1,5 +1,5 @@
 import { StackNavigationProp } from '@react-navigation/stack';
-import { ParamListBase, RouteProp } from '@react-navigation/native';
+import { RouteProp } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   View,
@@ -18,35 +18,14 @@ import Loading from '../../components/Loading';
 import { useTranslation } from 'react-i18next';
 import { useNotification } from '../../contexts/NotificationContext';
 
-type LoginScreenNavigationProp = StackNavigationProp<
-  AuthStackParamList,
-  'Login'
->;
+type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
 type LoginScreenRouteProp = RouteProp<AuthStackParamList, 'Login'>;
 
 type Props = {
   navigation: LoginScreenNavigationProp;
   route: LoginScreenRouteProp;
 };
-type LoginScreenProps = {
-  navigation: StackNavigationProp<ParamListBase, 'Login'>;
-  route: RouteProp<ParamListBase, 'Login'>;
-};
-// type RootStackParamList = {
-//   Login: undefined;
-//   Register: undefined;
-//   VerifyOTP: {
-//     email: string;
-//     name: string;
-//     password: string;
-//     birth: string;
-//     gender: string;
-//     numberPhone: string;
-//     address: string;
-//     otpAction: string;
-//   };
-//   BottomTabs: undefined;
-// };
+
 const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -78,22 +57,17 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         await AsyncStorage.setItem('user', JSON.stringify(user));
         console.log('Login successful:', user.isVerify);
         await login(token, user);
+        // Loại bỏ navigation.reset, để AppNavigator tự động chuyển sang BottomTabs
       } else {
-        showNotification( t('error.loginFailed'), 'error');
+        showNotification(t('error.loginFailed'), 'error');
       }
     } catch (error) {
       if (axios.isAxiosError(error) && error.response) {
         const { status, data } = error.response;
         if (status === 401 && data.result === 'wrongPassword') {
-          showNotification(
-             t('error.incorrectPassword'),
-            'error'
-          );
+          showNotification(t('error.incorrectPassword'), 'error');
         } else if (status === 404 && data.result === 'emailNotExist') {
-          showNotification(
-            t('error.emailNotFound'),
-            'error'
-          );
+          showNotification(t('error.emailNotFound'), 'error');
         } else {
           showNotification(t('error.authError'), 'error');
         }

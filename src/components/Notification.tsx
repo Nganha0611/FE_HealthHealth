@@ -98,21 +98,16 @@ const Notification: React.FC<NotificationProps> = ({
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    zIndex: 10001,
-  },
   container: {
     width: "90%",
     padding: 20,
     borderRadius: 12,
-    elevation: 8,
+    elevation: 20, // Tăng elevation trên Android
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
-    zIndex: 1000,
+    zIndex: 9999, // Z-index cực cao
     alignSelf: "center",
     alignItems: "center",
     position: "absolute",
@@ -127,7 +122,7 @@ const styles = StyleSheet.create({
   },
   success: { backgroundColor: "#4CAF50" },
   error: { backgroundColor: "#F44336" },
-  warning: { backgroundColor: "e3cf8f" },
+  warning: { backgroundColor: "#e3cf8f" },
   closeButton: {
     position: "absolute",
     top: 10,

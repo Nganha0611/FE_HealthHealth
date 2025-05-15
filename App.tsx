@@ -1,10 +1,9 @@
 import React from "react";
 import { I18nextProvider } from "react-i18next";
-import i18n from "../HealthHealth/src/locales/i18n"; 
-import { AuthProvider } from "../HealthHealth/src/contexts/AuthContext"; 
-import AppNavigator from "../HealthHealth/src/navigation/AppNavigator"; 
-import { NotificationProvider } from "../HealthHealth/src/contexts/NotificationContext"; 
-import HeartRateMonitor from "./src/components/HearRateMonitor";
+import i18n from "./src/locales/i18n"; 
+import { AuthProvider } from "./src/contexts/AuthContext"; 
+import AppNavigator from "./src/navigation/AppNavigator"; 
+import { NotificationProvider } from "./src/contexts/NotificationContext"; 
 
 const App = () => {
   return (
@@ -14,8 +13,8 @@ const App = () => {
           <AppNavigator />
         </NotificationProvider>
       </AuthProvider>
-     </I18nextProvider>
-    // <HeartRateMonitor />
-)};
+    </I18nextProvider>
+  );
+};
 
 export default App;
