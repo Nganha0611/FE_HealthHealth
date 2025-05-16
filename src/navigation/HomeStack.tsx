@@ -18,6 +18,10 @@ import MedicineHistoryDetailScreen from '../screens/Home/MedicineScreens/Medicin
 import MonitoringScreen from '../screens/Home/Monitor/MonitoringScreen';
 import MyFollowsScreen from '../screens/Home/Monitor/MyFollowsScreen';
 import IFollowsScreen from '../screens/Home/Monitor/IFollowsScreen';
+import MonitorHealthProfile from '../screens/Home/Monitor/MonitorHealthProfile';
+import MonitorMedicine from '../screens/Home/Monitor/MonitorMedicine';
+import MonitorMedicalHistory from '../screens/Home/Monitor/MonitorMedicalHistory';
+import MonitorSchedule from '../screens/Home/Monitor/MonItorSchedule';
 
 export type HomeStackParamList = {
   Home: undefined;
@@ -38,6 +42,10 @@ export type HomeStackParamList = {
   HealthMonitoring: undefined;
   MyFollows: undefined;
   IFollows: undefined;
+  MonitorHealthProfile: undefined;
+  MonitorMedicine: undefined;
+  MonitorMedical: undefined;
+  MonitorSchedule: undefined;
 };
 
 const Stack = createStackNavigator<HomeStackParamList>();
@@ -64,7 +72,11 @@ const HomeStack = () => {
       <Stack.Screen name="HealthMonitoring" component={MonitoringScreen} />
       <Stack.Screen name="MyFollows" component={MyFollowsScreen} />
       <Stack.Screen name="IFollows" component={IFollowsScreen} />
-      {/* Add other screens here */}
+      <Stack.Screen name="MonitorHealthProfile" component={MonitorHealthProfile} />
+      <Stack.Screen name="MonitorMedicine" component={MonitorMedicine} />
+      <Stack.Screen name="MonitorMedical" component={MonitorMedicalHistory} />
+      <Stack.Screen name="MonitorSchedule" component={MonitorSchedule} />
+   
     </Stack.Navigator>
   );
 };

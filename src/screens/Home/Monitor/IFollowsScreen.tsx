@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Modal, TextInput, Image } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, TextInput, Image } from 'react-native';
 import axios from 'axios';
 import { useTranslation } from 'react-i18next';
-import { NavigationProp } from '@react-navigation/native';
+import { NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { API_BASE_URL } from '../../../utils/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNotification } from '../../../contexts/NotificationContext';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import CustomModal from '../../../components/CustomModal';
 
 interface UserInfo {
   id: string;
@@ -36,10 +37,45 @@ const IFollowsScreen: React.FC<Props> = ({ navigation }) => {
   const [isModalVisible, setModalVisible] = useState(false);
   const [followedEmail, setFollowedEmail] = useState('');
   const { showNotification } = useNotification();
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    url: '',
+    birth: '',
+    sex: '',
+    isVerifyPhone: false,
+  });
+  const [selectedItem, setSelectedItem] = useState<FollowItem | null>(null);
+  const [optionModalVisible, setOptionModalVisible] = useState(false);
 
   useEffect(() => {
     fetchFollows();
   }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      (async () => {
+        const stored = await AsyncStorage.getItem('user');
+        if (stored) {
+          const u = JSON.parse(stored);
+          console.log('>> loaded user in Account:', u);
+          setFormData({
+            name: u.name || '',
+            email: u.email || '',
+            phone: u.numberPhone || '',
+            address: u.address || '',
+            url: u.url || '',
+            birth: u.birth || '',
+            sex: u.sex || '',
+            isVerifyPhone: u.verify || false,
+          });
+        }
+        console.log('>> loaded user in Account:', stored);
+      })();
+    }, [])
+  );
 
   const fetchFollows = async () => {
     try {
@@ -112,10 +148,16 @@ const IFollowsScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const sendFollowRequest = async () => {
+    if (followedEmail === formData.email) {
+      showNotification(t('cannotFollowSelf'), 'error');
+      return;
+    }
+
     if (!followedEmail) {
       showNotification(t('errorEmptyFields'), 'error');
       return;
     }
+
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
@@ -160,30 +202,47 @@ const IFollowsScreen: React.FC<Props> = ({ navigation }) => {
       });
       fetchFollows();
       showNotification(t('deleteFollowSuccess'), 'success');
+      setOptionModalVisible(false); // Đóng modal sau khi xóa
     } catch (error) {
       console.error('Error deleting follow:', error);
       showNotification(t('deleteFollowError'), 'error');
     }
   };
 
-  const handleItemPress = (item: FollowItem) => {
+  // Hàm gọi API và lưu dữ liệu vào AsyncStorage
+  const fetchHealthDataAndStore = async (followedUserId: string) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        showNotification(t('noToken'), 'error');
+        navigation.navigate('Login');
+        return;
+      }
+
+      const response = await axios.get(`${API_BASE_URL}/api/tracking/permissions/${followedUserId}/health-data`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      const healthData = response.data;
+      console.log('Health Data Response:', healthData); // Log dữ liệu để kiểm tra
+
+      // Lưu dữ liệu vào AsyncStorage
+      await AsyncStorage.setItem(`healthData_${followedUserId}`, JSON.stringify(healthData));
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 403) {
+        showNotification(t('noPermission'), 'error');
+      } else {
+        showNotification(t('fetchHealthDataError'), 'error');
+      }
+    }
+  };
+
+  const handleItemPress = async (item: FollowItem) => {
     if (selectedTab === 'approved') {
-      showNotification(
-        t('confirmUnfollow'),
-        'warning',
-        [
-          {
-            text: t('cancel'),
-            onPress: () => {},
-            color: 'danger'
-          },
-          {
-            text: t('unfollow'),
-            onPress: () => deleteFollow(item.id),
-            color: 'primary'
-          }
-        ]
-      );
+      // Gọi API và lưu dữ liệu vào AsyncStorage trước khi mở modal
+      await fetchHealthDataAndStore(item.followedUserId);
+      setSelectedItem(item);
+      setOptionModalVisible(true);
     } else if (selectedTab === 'pending') {
       showNotification(
         t('confirmCancelRequest'),
@@ -207,11 +266,6 @@ const IFollowsScreen: React.FC<Props> = ({ navigation }) => {
         'warning',
         [
           {
-            text: t('ok'),
-            onPress: () => {},
-            color: 'primary'
-          },
-          {
             text: t('sendAgain'),
             onPress: () => {
               setFollowedEmail(item.followedUser?.email || '');
@@ -221,6 +275,13 @@ const IFollowsScreen: React.FC<Props> = ({ navigation }) => {
           }
         ]
       );
+    }
+  };
+
+  const navigateToScreen = (screen: string) => {
+    if (selectedItem) {
+      navigation.navigate(screen, { followedUserId: selectedItem.followedUserId });
+      setOptionModalVisible(false);
     }
   };
 
@@ -251,6 +312,30 @@ const IFollowsScreen: React.FC<Props> = ({ navigation }) => {
         </Text>
       </View>
     </TouchableOpacity>
+  );
+
+  const renderOptionModal = () => (
+    <CustomModal visible={optionModalVisible} onClose={() => setOptionModalVisible(false)}>
+      <TouchableOpacity style={styles.closeButton} onPress={() => setOptionModalVisible(false)}>
+        <FontAwesome name="close" size={24} color="#444" />
+      </TouchableOpacity>
+      <Text style={styles.modalTitle}>{t('selectOption')}</Text>
+      <TouchableOpacity style={styles.optionButton} onPress={() => navigateToScreen('MonitorHealthProfile')}>
+        <Text style={styles.optionText}>{t('profileHealth')}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.optionButton} onPress={() => navigateToScreen('MonitorMedicine')}>
+        <Text style={styles.optionText}>{t('medicines')}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.optionButton} onPress={() => navigateToScreen('MonitorMedical')}>
+        <Text style={styles.optionText}>{t('medicalHistory')}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.optionButton} onPress={() => navigateToScreen('MonitorSchedule')}>
+        <Text style={styles.optionText}>{t('schedule')}</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={[styles.optionButton, styles.deleteButton]} onPress={() => deleteFollow(selectedItem?.id || '')}>
+        <Text style={styles.optionText}>{t('unfollow')}</Text>
+      </TouchableOpacity>
+    </CustomModal>
   );
 
   const filteredFollows = follows.filter(f => f.status === selectedTab);
@@ -308,45 +393,39 @@ const IFollowsScreen: React.FC<Props> = ({ navigation }) => {
         <Text style={styles.noData}>{t('noDataIFollow')}</Text>
       )}
 
-      <Modal visible={isModalVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={() => setModalVisible(false)}
-            >
-              <FontAwesome name="close" size={24} color="#444" />
-            </TouchableOpacity>
+      <CustomModal visible={isModalVisible} onClose={() => setModalVisible(false)}>
+        <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
+          <FontAwesome name="close" size={24} color="#444" />
+        </TouchableOpacity>
+        <Text style={styles.modalTitle}>{t('createFollowRequest')}</Text>
 
-            <Text style={styles.modalTitle}>{t('createFollowRequest')}</Text>
+        <Text style={styles.inputLabel}>{t('followedEmail')}</Text>
+        <TextInput
+          placeholder={t('enterFollowedEmail')}
+          placeholderTextColor="#888"
+          style={styles.input}
+          autoCapitalize="none"
+          onChangeText={setFollowedEmail}
+          value={followedEmail}
+        />
 
-            <Text style={styles.inputLabel}>{t('followedEmail')}</Text>
-            <TextInput
-              placeholder={t('enterFollowedEmail')}
-              placeholderTextColor="#888"
-              style={styles.input}
-              autoCapitalize="none"
-              onChangeText={setFollowedEmail}
-              value={followedEmail}
-            />
-
-            <View style={styles.buttonRow}>
-              <TouchableOpacity
-                style={[styles.button, styles.cancelButton]}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={styles.buttonText}>{t('cancel')}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.button, styles.saveButton]}
-                onPress={sendFollowRequest}
-              >
-                <Text style={styles.buttonText}>{t('send')}</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={[styles.button, styles.cancelButton]}
+            onPress={() => setModalVisible(false)}
+          >
+            <Text style={styles.buttonText}>{t('cancel')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, styles.saveButton]}
+            onPress={sendFollowRequest}
+          >
+            <Text style={styles.buttonText}>{t('send')}</Text>
+          </TouchableOpacity>
         </View>
-      </Modal>
+      </CustomModal>
+
+      {renderOptionModal()}
 
       <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
         <FontAwesome name="plus" size={24} color="#fff" />
@@ -454,20 +533,15 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 20,
   },
   modalContent: {
     backgroundColor: '#fff',
-    borderRadius: 15,
+    borderRadius: 10,
     padding: 20,
-    width: '90%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
+    maxHeight: '80%',
   },
   modalTitle: {
     fontSize: 20,
@@ -478,6 +552,7 @@ const styles = StyleSheet.create({
   },
   closeButton: {
     alignSelf: 'flex-end',
+    marginBottom: 10,
   },
   inputLabel: {
     fontSize: 14,
@@ -538,6 +613,33 @@ const styles = StyleSheet.create({
     color: '#888',
     marginTop: 20,
     fontSize: 16,
+  },
+  optionButton: {
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    marginBottom: 10,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  optionText: {
+    fontSize: 16,
+    color: '#432c81',
+  },
+  deleteButton: {
+    backgroundColor: '#ff4444',
+  },
+  selectOption: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#432c81',
+    textAlign: 'center',
   },
 });
 

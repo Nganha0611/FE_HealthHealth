@@ -54,7 +54,7 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
             sex: u.sex || '',
             isVerifyPhone: u.verify,
           });
-          setAvatarUrl(u.url || null); // Cập nhật avatarUrl từ user data
+          setAvatarUrl(u.url || null); 
         }
         console.log('>> loaded user in Account:', stored);
       })();
@@ -357,10 +357,10 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
               placeholder="Nhập số điện thoại"
             />
             {formData.isVerifyPhone ? (
-              <Text style={styles.verifiedIcon}>Đã xác thực</Text>
+              <Text style={styles.verifiedIcon}>{t("verified")}</Text>
             ) : (
               <TouchableOpacity onPress={handleSendCode}>
-                <Text style={styles.verifyButtonText}>Xác thực ngay</Text>
+                <Text style={styles.verifyButtonText}>{t("verifyNow")}</Text>
               </TouchableOpacity>
             )}
           </View>

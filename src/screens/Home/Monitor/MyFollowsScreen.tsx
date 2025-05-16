@@ -138,9 +138,12 @@ const MyFollowsScreen: React.FC<Props> = ({ navigation }) => {
         navigation.navigate('Login');
         return;
       }
-      await axios.delete(`${API_BASE_URL}/api/tracking/cancel/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await axios.put(
+        `${API_BASE_URL}/api/tracking/update-status/${id}`,
+        { status: "rejected" },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
       fetchFollowers();
       showNotification(t('rejectRequestSuccess'), 'success');
     } catch (error) {
@@ -172,9 +175,10 @@ const MyFollowsScreen: React.FC<Props> = ({ navigation }) => {
         t('confirmFollowRequest'),
         'warning',
         [
+         
           {
-            text: t('cancel'),
-            onPress: () => {},
+            text: t('reject'),
+            onPress: () => rejectRequest(item.id),
             color: 'danger'
           },
           {
@@ -182,11 +186,6 @@ const MyFollowsScreen: React.FC<Props> = ({ navigation }) => {
             onPress: () => acceptRequest(item.id),
             color: 'primary'
           },
-          {
-            text: t('reject'),
-            onPress: () => rejectRequest(item.id),
-            color: 'danger'
-          }
         ]
       );
     }

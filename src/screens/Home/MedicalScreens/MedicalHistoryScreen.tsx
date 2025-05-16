@@ -1,7 +1,7 @@
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Modal, ScrollView, StyleSheet, TextInput, Platform, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, StyleSheet, TextInput, Platform, ActivityIndicator } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import DropDownPicker from 'react-native-dropdown-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -12,6 +12,7 @@ import { BottomTabParamList } from '../../../navigation/BottomTabs';
 import { useTranslation } from 'react-i18next';
 import { useNotification } from '../../../contexts/NotificationContext';
 import Loading from "../../../components/Loading";
+import Modal from '../../../components/CustomModal';
 
 // Define type for navigation prop
 type Props = {
@@ -79,7 +80,6 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
     } catch (error: any) {
       console.error('Error fetching data:', error.response?.data || error.message);
       showNotification(t('fetchDataError'), 'error');
-
     } finally {
       setLoading(false);
     }
@@ -94,7 +94,6 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
   const handleSaveHistory = async () => {
     if (!location || !status) {
       showNotification(t('incompleteMedicalInfo'), 'error');
-
       return;
     }
 
@@ -102,7 +101,6 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
         showNotification(t('noToken'), 'error');
-
         navigation.navigate('Login');
         return;
       }
@@ -137,7 +135,6 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
           }
         );
         showNotification(t('medicalHistoryUpdated'), 'success');
-
       } else {
         response = await axios.post(
           `${API_BASE_URL}/api/medical-history`,
@@ -180,8 +177,7 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
       } else {
         errorMessage += `: ${error.message}`;
       }
-      showNotification(t(t('error')), 'error');
-
+      showNotification(t(errorMessage), 'error');
     }
   };
 
@@ -214,145 +210,133 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
         </View>
 
         {medicalHistory.map((history, index) => (
-  <TouchableOpacity key={index} style={styles.boxFeature} onPress={() => handleEditHistory(history)}>
-    <Text style={[styles.text, styles.boxTitle]}>{history.location}</Text>
-    <Text style={styles.note}>
-      {t('statusLabel')}: {statusItems.find(item => item.value === history.status)?.label || history.status}
-    </Text>
-    <Text style={styles.note}>
-      {t('time')}: {new Date(history.appointmentDate).toLocaleString('vi-VN', {
-        dateStyle: 'short',
-        timeStyle: 'short',
-      })}
-    </Text>
-    <Text style={styles.note}>
-      {t('note')}: {history.note || t('noNote')}
-    </Text>
-  </TouchableOpacity>
-))}
-
-        
+          <TouchableOpacity key={index} style={styles.boxFeature} onPress={() => handleEditHistory(history)}>
+            <Text style={[styles.text, styles.boxTitle]}>{history.location}</Text>
+            <Text style={styles.note}>
+              {t('statusLabel')}: {statusItems.find(item => item.value === history.status)?.label || history.status}
+            </Text>
+            <Text style={styles.note}>
+              {t('Time')}: {new Date(history.appointmentDate).toLocaleString('vi-VN', {
+                dateStyle: 'short',
+                timeStyle: 'short',
+              })}
+            </Text>
+            <Text style={styles.note}>
+              {t('note')}: {history.note || t('noNote')}
+            </Text>
+          </TouchableOpacity>
+        ))}
       </ScrollView>
 
-      <Modal visible={isModalVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
-              <FontAwesome name="close" size={24} color="#444" />
-            </TouchableOpacity>
-            <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-              <Text style={styles.modalTitle}>{selectedHistoryId ? t('editMedicalHistory') : t('addMedicalHistory')}</Text>
+      <Modal visible={isModalVisible} onClose={() => setModalVisible(false)}>
+        <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
+          <FontAwesome name="close" size={24} color="#444" />
+        </TouchableOpacity>
+        <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+          <Text style={styles.modalTitle}>{selectedHistoryId ? t('editMedicalHistory') : t('addMedicalHistory')}</Text>
 
-              <Text style={styles.inputLabel}>{t('location')}</Text>
-              <TextInput
-                placeholder={t('enterLocation')}
-                style={styles.input}
-                value={location}
-                onChangeText={setLocation}
-              />
+          <Text style={styles.inputLabel}>{t('location')}</Text>
+          <TextInput
+            placeholder={t('enterLocation')}
+            style={styles.input}
+            value={location}
+            onChangeText={setLocation}
+          />
 
-              <Text style={styles.inputLabel}>{t('statusLabel')}</Text>
-              <DropDownPicker
-                open={openStatus}
-                setOpen={setOpenStatus}
-                value={status}
-                setValue={setStatus}
-                items={statusItems}
-                containerStyle={styles.dropdownContainer}
-                style={styles.dropdown}
-                dropDownContainerStyle={styles.dropdownList}
-                placeholder={t('selectStatus')}
-                zIndex={1000}
-                listMode="SCROLLVIEW"
-              />
+          <Text style={styles.inputLabel}>{t('statusLabel')}</Text>
+          <DropDownPicker
+            open={openStatus}
+            setOpen={setOpenStatus}
+            value={status}
+            setValue={setStatus}
+            items={statusItems}
+            containerStyle={styles.dropdownContainer}
+            style={styles.dropdown}
+            dropDownContainerStyle={styles.dropdownList}
+            placeholder={t('selectStatus')}
+            zIndex={1000}
+            listMode="SCROLLVIEW"
+          />
 
-              <Text style={styles.inputLabel}>{t('date')}</Text>
-              <TouchableOpacity
-                style={styles.dateButton}
-                onPress={() => setShowDatePicker(true)}
-              >
-                <Text style={styles.dateButtonText}>
-                  {date.toLocaleDateString('vi-VN')}
-                </Text>
-              </TouchableOpacity>
-              {showDatePicker && (
-                <DateTimePicker
-                  value={date}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
-                  onChange={(event, selectedDate) => {
-                    if (selectedDate) {
-                      setDate(selectedDate);
-                      if (Platform.OS === 'android') {
-                        setShowDatePicker(false);
-                      }
-                    } else if (Platform.OS === 'ios') {
-                      setShowDatePicker(false);
-                    }
-                  }}
-                />
-              )}
+          <Text style={styles.inputLabel}>{t('date')}</Text>
+          <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
+            <Text style={styles.dateButtonText}>{date.toLocaleDateString('vi-VN')}</Text>
+          </TouchableOpacity>
+          {showDatePicker && (
+            <DateTimePicker
+              value={date}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+              onChange={(event, selectedDate) => {
+                if (selectedDate) {
+                  setDate(selectedDate);
+                  if (Platform.OS === 'android') {
+                    setShowDatePicker(false);
+                  }
+                } else if (Platform.OS === 'ios') {
+                  setShowDatePicker(false);
+                }
+              }}
+            />
+          )}
 
-              <Text style={styles.inputLabel}>{t('time')}</Text>
-              <TouchableOpacity
-                style={styles.dateButton}
-                onPress={() => setShowTimePicker(true)}
-              >
-                <Text style={styles.dateButtonText}>
-                  {time.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-                </Text>
-              </TouchableOpacity>
-              {showTimePicker && (
-                <DateTimePicker
-                  value={time}
-                  mode="time"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
-                  onChange={(event, selectedTime) => {
-                    if (selectedTime) {
-                      setTime(selectedTime);
-                      if (Platform.OS === 'android') {
-                        setShowTimePicker(false);
-                      }
-                    } else if (Platform.OS === 'ios') {
-                      setShowTimePicker(false);
-                    }
-                  }}
-                />
-              )}
+          <Text style={styles.inputLabel}>{t('Time')}</Text>
+          <TouchableOpacity style={styles.dateButton} onPress={() => setShowTimePicker(true)}>
+            <Text style={styles.dateButtonText}>
+              {time.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          </TouchableOpacity>
+          {showTimePicker && (
+            <DateTimePicker
+              value={time}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
+              onChange={(event, selectedTime) => {
+                if (selectedTime) {
+                  setTime(selectedTime);
+                  if (Platform.OS === 'android') {
+                    setShowTimePicker(false);
+                  }
+                } else if (Platform.OS === 'ios') {
+                  setShowTimePicker(false);
+                }
+              }}
+            />
+          )}
 
-              <Text style={styles.inputLabel}>{t('note')}</Text>
-              <TextInput
-                placeholder={t('enterNote')}
-                style={styles.input}
-                value={note}
-                onChangeText={setNote}
-                multiline
-              />
+          <Text style={styles.inputLabel}>{t('note')}</Text>
+          <TextInput
+            placeholder={t('enterNote')}
+            style={styles.input}
+            value={note}
+            onChangeText={setNote}
+            multiline
+          />
 
-              <TouchableOpacity
-                style={[styles.fab, { alignSelf: 'center', marginTop: 30 }]}
-                onPress={handleSaveHistory}
-              >
-                <Text style={styles.saveButtonText}>{t('save')}</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
+          <TouchableOpacity
+            style={styles.saveButton}
+            onPress={handleSaveHistory}
+          >
+            <Text style={styles.saveButtonText}>{t('save')}</Text>
+          </TouchableOpacity>
+        </ScrollView>
       </Modal>
 
-      <TouchableOpacity style={styles.fab} onPress={() => {
-        setSelectedHistoryId(null);
-        setLocation('');
-        setStatus(null);
-        setNote('');
-        setDate(new Date());
-        setTime(new Date());
-        setModalVisible(true);
-      }}>
+      <TouchableOpacity
+        style={[styles.fab, { zIndex: 2000 }]} // Tăng zIndex để hiển thị trên Modal
+        onPress={() => {
+          setSelectedHistoryId(null);
+          setLocation('');
+          setStatus(null);
+          setNote('');
+          setDate(new Date());
+          setTime(new Date());
+          setModalVisible(true);
+        }}
+      >
         <FontAwesome name="plus" size={24} color="#fff" />
       </TouchableOpacity>
       {loading && <Loading message={t("processing")} />}
-
     </View>
   );
 };
@@ -438,6 +422,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 25,
+    zIndex: 2000, // Đảm bảo hiển thị trên Modal
   },
   modalContainer: {
     flex: 1,
@@ -496,6 +481,14 @@ const styles = StyleSheet.create({
   dateButtonText: {
     fontSize: 16,
     color: '#333',
+  },
+  saveButton: {
+    backgroundColor: '#432c81',
+    paddingVertical: 12,
+    borderRadius: 5,
+    alignItems: 'center',
+    marginTop: 20,
+    width: '100%', // Full width of modal
   },
   saveButtonText: {
     color: '#fff',

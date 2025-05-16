@@ -107,7 +107,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
-    zIndex: 9999, // Z-index cực cao
+    zIndex: 10000, 
     alignSelf: "center",
     alignItems: "center",
     position: "absolute",
@@ -122,7 +122,7 @@ const styles = StyleSheet.create({
   },
   success: { backgroundColor: "#4CAF50" },
   error: { backgroundColor: "#F44336" },
-  warning: { backgroundColor: "#e3cf8f" },
+  warning: { backgroundColor: "#ffc107" },
   closeButton: {
     position: "absolute",
     top: 10,

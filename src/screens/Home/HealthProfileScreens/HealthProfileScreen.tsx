@@ -541,7 +541,6 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
                     style={styles.enhancedInput}
                     keyboardType="numeric"
                     placeholder={t('sysPlaceholder')}
-                    value={sysValue || ''}
                     onChangeText={(text) => setSysValue(text)}
                     placeholderTextColor="#999"
                   />
@@ -553,7 +552,6 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
                     style={styles.enhancedInput}
                     keyboardType="numeric"
                     placeholder={t('diaPlaceholder')}
-                    value={diaValue || ''}
                     onChangeText={(text) => setDiaValue(text)}
                     placeholderTextColor="#999"
                   />
@@ -778,6 +776,7 @@ const styles = StyleSheet.create({
     padding: 15,
     fontSize: 22,
     backgroundColor: '#f9f9f9',
+    color: '#333',
   },
   inputUnit: {
     position: 'absolute',
