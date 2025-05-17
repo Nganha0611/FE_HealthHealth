@@ -20,22 +20,21 @@ type Props = {
 };
 
 const AccountScreen: React.FC<Props> = ({ navigation }) => {
-    const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
-    const { t } = useTranslation();
-    const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
-    const [formData, setFormData] = useState({
-      name: '',
-      email: '',
-      phone: '',
-      address: '',
-      url: '',
-      birth: '',
-      sex: '',
-      isVerifyPhone: false,
-    });
+  const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
+  const { t } = useTranslation();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    address: '',
+    url: '',
+    birth: '',
+    sex: '',
+    isVerifyPhone: false,
+  });
   const { showNotification } = useNotification();
   const [verificationId, setVerificationId] = useState('');
-
   const [loading, setLoading] = useState(false);
 
   useFocusEffect(
@@ -46,45 +45,21 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
           const u = JSON.parse(stored);
           console.log('>> loaded user in Account:', u);
           setFormData({
-            name:          u.name      || '',
-            email:         u.email     || '',
-            phone:         u.numberPhone|| '',
-            address:       u.address   || '',
-            url:           u.url       || '',
-            birth:         u.birth     || '',
-            sex:           u.sex       || '',
-            isVerifyPhone: u.verify, 
-          
+            name: u.name || '',
+            email: u.email || '',
+            phone: u.numberPhone || '',
+            address: u.address || '',
+            url: u.url || '',
+            birth: u.birth || '',
+            sex: u.sex || '',
+            isVerifyPhone: u.verify,
           });
-          console.log('>> loaded user in Account:', u);
+          setAvatarUrl(u.url || null); 
         }
         console.log('>> loaded user in Account:', stored);
-
       })();
-
     }, [])
   );
-  // useEffect(() => {
-  //   const fetchUser = async () => {
-  //     const storedUser = await AsyncStorage.getItem('user');
-  //     if (storedUser) {
-  //       const parsedUser = JSON.parse(storedUser);
-  //       setFormData({
-  //         name: parsedUser.name || '',
-  //         email: parsedUser.email || '',
-  //         phone: parsedUser.numberPhone || '',
-  //         address: parsedUser.address || '',
-  //         url: parsedUser.url || '',
-  //         birth: parsedUser.birth || '',
-  //         sex: parsedUser.sex || '',
-  //         isVerify: parsedUser.isVerifyd,
-  //       });
-  //       setAvatarUrl(parsedUser.url || null);
-  //     }
-  //   };
-  //   fetchUser();
-  //   console.log('User data fetched:', formData.isVerify);
-  // }, []);
 
   const handlePickAndUploadImage = async () => {
     setLoading(true);
@@ -120,11 +95,10 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
 
       formData.append('upload_preset', 'healthhealth');
 
-
       console.log('Uploading to Cloudinary...');
 
       const res = await axios.post(
-        'https://api.cloudinary.com/v1_1/dl4o6bfw5/image/upload', // ✅ Đúng cloud_name
+        'https://api.cloudinary.com/v1_1/dl4o6bfw5/image/upload',
         formData,
         {
           headers: {
@@ -151,9 +125,7 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
       showNotification(t('uploadError') || 'Lỗi khi upload ảnh', 'error');
     }
     setLoading(false);
-
   };
-
 
   const updateProfileImage = async (url: string) => {
     try {
@@ -190,7 +162,6 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
 
       const { result, message } = response.data;
       if (result === "success") {
-        // Update user in AsyncStorage with new avatar URL
         const updatedUser = {
           ...parsedUser,
           url
@@ -289,22 +260,20 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
     }));
   };
 
-const handleSendCode = async () => {
+  const handleSendCode = async () => {
     try {
       setLoading(true);
-  
-      // Chuẩn hóa số điện thoại
+
       let formattedPhoneNumber = formData.phone.trim();
-  
-      // Nếu bắt đầu bằng "0" thì chuyển sang "+84"
+
       if (formattedPhoneNumber.startsWith('0')) {
         formattedPhoneNumber = '+84' + formattedPhoneNumber.slice(1);
       } else if (!formattedPhoneNumber.startsWith('+')) {
         formattedPhoneNumber = '+' + formattedPhoneNumber;
       }
-  
+
       const confirmationResult = await auth().signInWithPhoneNumber(formattedPhoneNumber);
-  
+
       if (confirmationResult.verificationId) {
         setVerificationId(confirmationResult.verificationId);
       }
@@ -312,7 +281,7 @@ const handleSendCode = async () => {
       navigation.navigate("VerifyOTP", {
         numberPhone: formData.phone,
         otpAction: "verify",
-        verificationId: confirmationResult.verificationId, 
+        verificationId: confirmationResult.verificationId,
       });
     } catch (error) {
       console.error('Lỗi khi gửi OTP:', error);
@@ -322,6 +291,7 @@ const handleSendCode = async () => {
       setLoading(false);
     }
   };
+
   return (
     <ScrollView contentContainerStyle={styles.container}>
       {/* Header */}
@@ -338,21 +308,22 @@ const handleSendCode = async () => {
       </View>
 
       {/* Avatar */}
-       <View style={styles.avatar}>
-             <View style={styles.boxImage}>
-                       <Image
-                         style={styles.imgProfile}
-                         source={avatarUrl ? { uri: avatarUrl } : require('../../assets/avatar.jpg')}
-                       />
-                       <TouchableOpacity style={styles.editImage} onPress={handlePickAndUploadImage} disabled={loading}>
-                         <Image
-                           style={styles.editIcon}
-                           source={require('../../assets/edit.png')}
-                         />
-                       </TouchableOpacity>
-                     </View>
-              
-            </View>
+      <View style={styles.avatar}>
+        <View style={styles.boxImage}>
+          <Image
+            style={styles.imgProfile}
+            source={avatarUrl ? { uri: avatarUrl } : require('../../assets/avatar.jpg')}
+          />
+          <TouchableOpacity style={styles.editImage} onPress={handlePickAndUploadImage} disabled={loading}>
+            <Image
+              style={styles.editIcon}
+              source={require('../../assets/edit.png')}
+            />
+          </TouchableOpacity>
+        </View>
+        <Text style={styles.name}>{formData.name}</Text>
+        <Text style={styles.email}>{formData.email}</Text>
+      </View>
 
       {/* Form Container */}
       <View style={styles.formContainer}>
@@ -375,31 +346,26 @@ const handleSendCode = async () => {
         </View>
 
         <View style={styles.inputRow}>
-  <Text style={styles.label}>{t("phone")}:</Text>
+          <Text style={styles.label}>{t("phone")}:</Text>
+          <View style={styles.phoneInputContainer}>
+            <TextInput
+              style={styles.phoneInput}
+              value={formData.phone}
+              editable={!formData.isVerifyPhone}
+              onChangeText={(value) => handleInputChange("phone", value)}
+              keyboardType="phone-pad"
+              placeholder="Nhập số điện thoại"
+            />
+            {formData.isVerifyPhone ? (
+              <Text style={styles.verifiedIcon}>{t("verified")}</Text>
+            ) : (
+              <TouchableOpacity onPress={handleSendCode}>
+                <Text style={styles.verifyButtonText}>{t("verifyNow")}</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
 
-  <View style={styles.phoneInputContainer}>
-    <TextInput
-      style={styles.phoneInput}
-      value={formData.phone}
-      editable={!formData.isVerifyPhone}
-      onChangeText={(value) => handleInputChange("phone", value)}
-      keyboardType="phone-pad"
-      placeholder="Nhập số điện thoại"
-    />
-
-    {formData.isVerifyPhone ? (
-      <Text style={styles.verifiedIcon}>Đã xác thực ✅</Text>
-    ) : (
-      <TouchableOpacity
-        onPress={() => {
-          handleSendCode();
-        }}
-      >
-        <Text style={styles.verifyButtonText}>Xác thực ngay</Text>
-      </TouchableOpacity>
-    )}
-  </View>
-</View>
         <View style={styles.readOnlySection}>
           <View style={styles.readOnlyRow}>
             <Text style={styles.label}>{t("birth") || "Ngày sinh"}:</Text>
@@ -415,6 +381,7 @@ const handleSendCode = async () => {
             </View>
           </View>
         </View>
+
         <View style={styles.inputRow}>
           <Text style={styles.label}>{t("address")}:</Text>
           <TextInput
@@ -455,11 +422,6 @@ const styles = StyleSheet.create({
     color: '#432c81',
     fontWeight: 'bold',
     marginLeft: 10,
-  },
-  headerRight: {
-    backgroundColor: '#e0dee7',
-    borderRadius: 25,
-    padding: 5,
   },
   formContainer: {
     backgroundColor: '#fff',
@@ -529,12 +491,22 @@ const styles = StyleSheet.create({
   editIcon: {
     width: 30,
     height: 30,
-    // tintColor: '#eee',
   },
   imgProfile: {
     width: 120,
     height: 120,
     borderRadius: 60,
+  },
+  name: {
+    color: '#6241c0',
+    fontSize: 25,
+    fontWeight: 'bold',
+    marginTop: 15,
+  },
+  email: {
+    color: '#9f8dd3',
+    marginTop: 10,
+    marginBottom: 20,
   },
   readOnlySection: {
     marginBottom: 15,
@@ -553,11 +525,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#666',
   },
-  separator: {
-    height: 1,
-    backgroundColor: '#e0e0e0',
-    marginVertical: 15,
-  },
   phoneInputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -568,29 +535,26 @@ const styles = StyleSheet.create({
     paddingVertical: 1,
     flex: 1,
   },
-  
   phoneInput: {
     flex: 1,
     fontSize: 16,
     color: '#000',
   },
-  
   verifyButtonText: {
     color: 'white',
     fontWeight: 'bold',
     marginLeft: 10,
-    borderWidth: 1,
+    // borderWidth: 1,
     padding: 5,
     backgroundColor: 'red',
     borderBlockColor: 'red',
+    borderRadius: 10,
   },
-  
   verifiedIcon: {
     fontSize: 18,
     marginLeft: 10,
     color: 'green',
   },
-  
 });
 
 export default AccountScreen;

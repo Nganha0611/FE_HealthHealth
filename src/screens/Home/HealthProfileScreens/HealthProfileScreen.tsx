@@ -1,19 +1,18 @@
 import { NavigationProp, useNavigation, useFocusEffect } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, Button, Image, StyleSheet, TouchableOpacity, Alert, TextInput, Modal, Pressable } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, Image, StyleSheet, TouchableOpacity, TextInput, Modal, Pressable } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
 import Svg, { Circle } from 'react-native-svg';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
-import { Colors } from 'react-native/Libraries/NewAppScreen';
-import { BottomTabParamList } from '../../../navigation/BottomTabs';
 import FontAwesome5 from 'react-native-vector-icons/FontAwesome5';
 import axios from 'axios';
 import { API_BASE_URL } from '../../../utils/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import { useNotification } from '../../../contexts/NotificationContext';
-import Loading from "../../../components/Loading";
+import Loading from '../../../components/Loading';
+import { BottomTabParamList } from '../../../navigation/BottomTabs';
 
 type Props = {
   navigation: NavigationProp<any>;
@@ -24,118 +23,290 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   const [inputValue, setInputValue] = useState('');
   const [modalVisible, setModalVisible] = useState(false);
   const [typeSelectModalVisible, setTypeSelectModalVisible] = useState(false);
-  const [sysValue, setSysValue] = useState('');
-  const [diaValue, setDiaValue] = useState('');
+  const [sysValue, setSysValue] = useState<string | null>(null);
+  const [diaValue, setDiaValue] = useState<string | null>(null);
+  const [heartRate, setHeartRate] = useState<string | null>(null);
+  const [heartRateDate, setHeartRateDate] = useState<string | null>(null);
+  const [bloodPressureDate, setBloodPressureDate] = useState<string | null>(null);
   const { t } = useTranslation();
-  const steps = 1114;
-  const heart_rate = 75;
-  const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
+  // const steps = 1114; // Comment biến steps
   const { showNotification } = useNotification();
-  const [heartRate, setHeartRate] = useState('');
   const [loading, setLoading] = useState<boolean>(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [userId, setUserId] = useState<string>('');
+  const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
 
   const fetchUser = async () => {
     try {
       const userData = await AsyncStorage.getItem('user');
+      console.log('User data from AsyncStorage:', userData);
       if (userData) {
         const user = JSON.parse(userData);
         setUserId(user.id);
         setAvatarUrl(user.url || null);
+      } else {
+        console.log('No user data found in AsyncStorage');
+        showNotification(t('noUserInfo'), 'error');
       }
     } catch (error) {
-      showNotification('Không thể tải dữ liệu người dùng!!!', 'error');
+      console.error('Error fetching user:', error);
+      showNotification(t('fetchUserError'), 'error');
     }
   };
 
   const fetchLatestHeartRate = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
-      const res = await axios.get(`${API_BASE_URL}/api/heart-rates/measure/latest`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (res.data && res.data.heartRate !== undefined) {
-        setHeartRate(res.data.heartRate.toString());
-
+      const token = await AsyncStorage.getItem('token');
+      console.log('Token for heart rate:', token ? 'Found' : 'Not found');
+      if (!token) {
+        showNotification(t('unauthorized'), 'error');
+        return;
       }
-    } catch (err) {
-      showNotification('Không thể tải dữ liệu nhịp tim!!!', 'error');
+      const response = await axios.get(`${API_BASE_URL}/api/heart-rates/measure/latest`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log('Heart rate response status:', response.status);
+      console.log('Heart rate response data:', JSON.stringify(response.data, null, 2));
+      if (response.status === 204) {
+        console.log('No heart rate data (204 No Content)');
+        setHeartRate(null);
+        setHeartRateDate(null);
+        return;
+      }
+      if (response.data && (response.data.rate !== undefined || response.data.heartRate !== undefined)) {
+        const rate = response.data.rate ?? response.data.heartRate;
+        console.log('Setting heart rate:', rate);
+        setHeartRate(rate.toString());
+        setHeartRateDate(response.data.createdAt);
+      } else {
+        console.log('No valid heart rate data found in response');
+        setHeartRate(null);
+        setHeartRateDate(null);
+      }
+    } catch (error: any) {
+      console.error('Error fetching heart rate:', error.message);
+      if (error.response) {
+        console.error('Error response:', error.response.status, error.response.data);
+        if (error.response.status === 401) {
+          showNotification(t('unauthorized'), 'error');
+        } else if (error.response.status === 403) {
+          showNotification(t('forbidden'), 'error');
+        } else if (error.response.status === 204) {
+          console.log('No heart rate data (204 No Content)');
+          setHeartRate(null);
+          setHeartRateDate(null);
+        } else {
+          showNotification(t('fetchHeartRateError'), 'error');
+        }
+      } else {
+        showNotification(t('fetchHeartRateError'), 'error');
+      }
     }
   };
 
   const fetchLatestBloodPressure = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
-      const res = await axios.get(`${API_BASE_URL}/api/blood-pressures/measure/latest`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (res.data) {
-        setSysValue(res.data.systolic.toString());
-        setDiaValue(res.data.diastolic.toString());
+      const token = await AsyncStorage.getItem('token');
+      console.log('Token for blood pressure:', token ? 'Found' : 'Not found');
+      if (!token) {
+        showNotification(t('unauthorized'), 'error');
+        return;
       }
-    } catch (err) {
-      showNotification('Không thể tải dữ liệu huyết áp!!!', 'error');
+      console.log('Fetching blood pressure from:', `${API_BASE_URL}/api/blood-pressures/measure/latest`);
+      const response = await axios.get(`${API_BASE_URL}/api/blood-pressures/measure/latest`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      console.log('Blood pressure response status:', response.status);
+      console.log('Blood pressure response data:', JSON.stringify(response.data, null, 2));
+      if (response.status === 204) {
+        console.log('No blood pressure data (204 No Content)');
+        setSysValue(null);
+        setDiaValue(null);
+        setBloodPressureDate(null);
+        return;
+      }
+      if (response.data && response.data.systolic !== undefined && response.data.diastolic !== undefined) {
+        console.log('Setting blood pressure: systolic=', response.data.systolic, 'diastolic=', response.data.diastolic);
+        setSysValue(response.data.systolic.toString());
+        setDiaValue(response.data.diastolic.toString());
+        setBloodPressureDate(response.data.createdAt);
+      } else {
+        console.log('No valid blood pressure data found in response');
+        setSysValue(null);
+        setDiaValue(null);
+        setBloodPressureDate(null);
+      }
+    } catch (error: any) {
+      console.error('Error fetching blood pressure:', error.message);
+      if (error.response) {
+        console.error('Error response:', error.response.status, error.response.data);
+        if (error.response.status === 401) {
+          showNotification(t('unauthorized'), 'error');
+        } else if (error.response.status === 403) {
+          showNotification(t('forbidden'), 'error');
+        } else if (error.response.status === 204) {
+          console.log('No blood pressure data (204 No Content)');
+          setSysValue(null);
+          setDiaValue(null);
+          setBloodPressureDate(null);
+        } else {
+          showNotification(t('fetchBloodPressureError'), 'error');
+        }
+      } else {
+        showNotification(t('fetchBloodPressureError'), 'error');
+      }
     }
   };
 
   useFocusEffect(
     useCallback(() => {
+      console.log('useFocusEffect triggered for HealthProfileScreen');
       const fetchAll = async () => {
-        await fetchUser();
-        await fetchLatestHeartRate();
-        await fetchLatestBloodPressure();
+        setLoading(true);
+        try {
+          console.log('Fetching user, heart rate, and blood pressure');
+          await Promise.all([fetchUser(), fetchLatestHeartRate(), fetchLatestBloodPressure()]);
+        } catch (error) {
+          console.error('Error in fetchAll:', error);
+        } finally {
+          setLoading(false);
+        }
       };
       fetchAll();
     }, [])
   );
 
   const handleMeasureBloodPressure = async () => {
+    if (!sysValue || !diaValue || isNaN(parseInt(sysValue)) || isNaN(parseInt(diaValue))) {
+      console.log('Invalid blood pressure input:', { sysValue, diaValue });
+      showNotification(t('errorIncompleteInfo'), 'error');
+      return;
+    }
     setLoading(true);
     try {
-      await axios.post(`${API_BASE_URL}/api/blood-pressures/measure`, {
-        userId,
+      const token = await AsyncStorage.getItem('token');
+      console.log('Token for blood pressure:', token ? 'Found' : 'Not found');
+      if (!token) {
+        showNotification(t('unauthorized'), 'error');
+        return;
+      }
+      console.log('Sending blood pressure data:', {
         systolic: parseInt(sysValue),
         diastolic: parseInt(diaValue),
       });
-      showNotification('Đo huyết áp thành công', 'success');
-    } catch (error) {
-      showNotification('Có lỗi xảy ra vui lòng thử lại', 'error');
-      console.error(error);
+      const response = await axios.post(
+        `${API_BASE_URL}/api/blood-pressures/measure`,
+        {
+          systolic: parseInt(sysValue),
+          diastolic: parseInt(diaValue),
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      console.log('Blood pressure created:', response.data);
+      showNotification(t('bloodPressureCreated'), 'success');
+      setSysValue(response.data.systolic.toString());
+      setDiaValue(response.data.diastolic.toString());
+      setBloodPressureDate(response.data.createdAt);
+      setSysValue('');
+      setDiaValue('');
+      fetchLatestBloodPressure();
+    } catch (error: any) {
+      console.error('Error creating blood pressure:', error.message);
+      if (error.response) {
+        console.error('Error response:', error.response.status, error.response.data);
+        if (error.response.status === 401) {
+          showNotification(t('unauthorized'), 'error');
+        } else if (error.response.status === 403) {
+          showNotification(t('forbidden'), 'error');
+        } else {
+          showNotification(t('createBloodPressureError'), 'error');
+        }
+      } else {
+        showNotification(t('createBloodPressureError'), 'error');
+      }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleMeasureHeartRate = async () => {
-    setLoading(true);
-    try {
-      await axios.post(`${API_BASE_URL}/api/heart-rates/measure`, {
-        userId,
-        heartRate: parseInt(inputValue)
-      });
-      showNotification('Đo nhịp tim thành công', 'success');
-      setHeartRate(inputValue);
-    } catch (error) {
-      showNotification('errorUpdate', 'error');
-      console.error(error);
-    } finally {
-      setLoading(false);
+ const handleMeasureHeartRate = async () => {
+  const rateValue = parseInt(inputValue);
+  if (!inputValue.trim() || isNaN(rateValue) || rateValue <= 0 || rateValue > 300) {
+    console.log('Invalid heart rate input:', inputValue, 'parsed value:', rateValue);
+    showNotification(t('errorInvalidHeartRate'), 'error');
+    return;
+  }
+  setLoading(true);
+  try {
+    const token = await AsyncStorage.getItem('token');
+    console.log('Token for heart rate:', token ? 'Found' : 'Not found');
+    if (!token) {
+      showNotification(t('unauthorized'), 'error');
+      return;
     }
-  };
+    const response = await axios.post(
+      `${API_BASE_URL}/api/heart-rates/measure`,
+      {
+        heartRate: rateValue, 
+      },
+      {
+        headers: { Authorization: `Bearer ${token}` }, 
+      }
+    );
+    console.log('Heart rate created:', response.data);
+
+    const newRate = response.data?.heartRate ?? rateValue;
+    setHeartRate(newRate.toString());
+    setHeartRateDate(response.data?.createdAt ?? new Date().toISOString());
+    setInputValue('');
+    showNotification(t('heartRateCreated'), 'success');
+    await fetchLatestHeartRate(); 
+  } catch (error: any) {
+    console.error('Error creating heart rate:', error.message);
+    if (error.response) {
+      console.error('Error response:', error.response.status, error.response.data);
+      if (error.response.status === 401) {
+        showNotification(t('unauthorized'), 'error');
+      } else if (error.response.status === 403) {
+        showNotification(t('forbidden'), 'error');
+      } else {
+        showNotification(t('createHeartRateError'), 'error');
+      }
+    } else {
+      showNotification(t('createHeartRateError'), 'error');
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleMeasurePress = () => {
     setTypeSelectModalVisible(true);
   };
 
-  
-  
+  const formatDateTime = (dateString: string | null) => {
+    if (!dateString) return '-/-';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) {
+        console.log('Invalid date string:', dateString);
+        return '-/-';
+      }
+      return date.toLocaleString('vi-VN', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+    } catch (error) {
+      console.error('Error parsing date:', error);
+      return '-/-';
+    }
+  };
+
   return (
     <ScrollView>
       <View style={styles.header}>
@@ -153,9 +324,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
           <TouchableOpacity onPress={() => navigationMain.navigate('SettingStack', { screen: 'Account' })}>
             <Image
               style={styles.imgProfile}
-              // source={require('../../assets/ avatar.jpg')}
               source={avatarUrl ? { uri: avatarUrl } : require('../../../assets/avatar.jpg')}
-
             />
           </TouchableOpacity>
         </View>
@@ -172,252 +341,268 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         <FontAwesome name="chevron-right" size={22} color="#432c81" />
       </TouchableOpacity>
 
-
       <View style={styles.mainIf}>
-  <View style={styles.infoContainer}>
-    <View style={styles.textContainer}>
-      <View style={styles.row}>
-        <Image style={styles.icon} source={require('../../../assets/step.png')} />
-        <Text style={[styles.number, { color: '#3CB371' }]}>
-          {steps.toLocaleString()} {t('stepsUnit')}
-        </Text>
-      </View>
-    </View>
-    <View style={styles.textContainer}>
-      <View style={styles.row}>
-        <Image style={[styles.icon, { width: 23, height: 23, marginLeft: 3, marginRight: 8 }]} source={require('../../../assets/heart_rate.png')} />
-        <Text style={[styles.number, { color: '#ed1b24' }]}>
-        {heartRate !== null ? `${heartRate}` : "Đang tải..."} {t('bpm')}
-        </Text>
-      </View>
-    </View>
-    <View style={styles.textContainer}>
-      <View style={styles.row}>
-        <Image style={[styles.icon, { width: 23, height: 23, marginLeft: 3, marginRight: 8 }]} source={require('../../../assets/blood_pressure.png')} />
-        <Text style={[styles.number, { color: '#2577f7' }]}>
-          {sysValue}/{diaValue} {t('mmHg')}
-        </Text>
-      </View>
-    </View>
-  </View>
-
-  <View style={styles.circleContainer}>
-    <Svg width={120} height={120} viewBox="0 0 120 120">
-      <Circle cx="60" cy="60" r="55" stroke="#3CB371" strokeWidth="9" fill="none" strokeDasharray="345.6" strokeDashoffset="80" strokeLinecap="round" />
-      <Circle cx="60" cy="60" r="45" stroke="#ed1b24" strokeWidth="9" fill="none" strokeDasharray="282.6" strokeDashoffset="90" strokeLinecap="round" />
-      <Circle cx="60" cy="60" r="35" stroke="#2577f7" strokeWidth="9" fill="none" strokeDasharray="219.2" strokeDashoffset="78" strokeLinecap="round" />
-    </Svg>
-  </View>
-</View>
-
-<TouchableOpacity style={styles.stepContainer} onPress={() => navigation.navigate('Step')}>
-  <View style={styles.stepContent}>
-    <FontAwesome5 name="shoe-prints" size={26} color="#432c81" style={styles.stepIcon} />
-    <View>
-      <Text style={styles.stepTitle}>{steps}</Text>
-      <Text style={styles.stepSubtitle}>/6000</Text>
-    </View>
-  </View>
-  <View style={styles.progressWrapper}>
-    <Text style={styles.progressText}>
-      {Math.min(Math.round((steps / 6000) * 100), 100)}%
-    </Text>
-    <View style={styles.progressBar}>
-      <View style={[styles.progressFill, { width: `${Math.min((steps / 6000) * 100, 100)}%` }]} />
-    </View>
-  </View>
-</TouchableOpacity>
-
-<TouchableOpacity style={styles.heartRateContainer} onPress={() => navigation.navigate('HeartRate')}>
-  <View style={styles.stepContent}>
-    <FontAwesome5 name="heartbeat" size={26} color="#ed1b24" style={styles.heartRateIcon} />
-    <View>
-      <Text style={styles.heartRateTitle}>{heartRate !== null ? `${heartRate}` : "Đang tải..."}</Text>
-      <Text style={styles.heartRateSubtitle}>/{t('bpm')}</Text>
-    </View>
-  </View>
-  <View style={styles.heartRateProgressWrapper}>
-    <Text style={styles.heartRateProgressText}>
-      !
-    </Text>
-    <View style={styles.heartRateProgressBar}>
-      <View style={[styles.heartRateProgressFill, { width: `${Math.min((parseInt(heartRate) / 100) * 100, 100)}%` }]} />
-    </View>
-  </View>
-</TouchableOpacity>
-
-<TouchableOpacity style={styles.bloodPressureContainer} onPress={() => navigation.navigate('BloodPressure')}>
-  <View style={styles.stepContent}>
-    <FontAwesome5 name="heartbeat" size={26} color="#ed1b24" style={styles.bloodPressureIcon} />
-    <View>
-      <Text style={styles.bloodPressureTitle}>{sysValue}</Text>
-      <Text style={styles.bloodPressureSubtitle}>/{diaValue}</Text>
-    </View>
-  </View>
-  <View style={{   }}>
-  <View style={styles.bloodPressureProgressWrapper}>
-    <Text style={styles.bloodPressureProgressText}>
-      SYS
-    </Text>
-    <View style={styles.bloodPressureProgressBar}>
-      <View style={[styles.bloodPressureProgressFill, { width: `${Math.min((parseInt(sysValue) / 140) * 100, 100)}%` }]} />
-    </View>
-  </View>
-  <View style={styles.bloodPressureProgressWrapper}>
-    <Text style={styles.bloodPressureProgressText}>
-      DIA
-    </Text>
-    <View style={styles.bloodPressureProgressBar}>
-      <View style={[styles.bloodPressureProgressFill, { width: `${Math.min((parseInt(diaValue) / 90) * 100, 100)}%` }]} />
-    </View>
-    </View>
-  </View>
-</TouchableOpacity>
-
-<Modal
-  animationType="slide"
-  transparent={true}
-  visible={typeSelectModalVisible}
-  onRequestClose={() => setTypeSelectModalVisible(false)}
->
-  <View style={styles.modalBackground}>
-    <View style={styles.enhancedModalContainer}>
-      <Text style={styles.enhancedModalTitle}>{t('measureSelection')}</Text>
-
-      <Pressable
-        style={[styles.enhancedButton, { backgroundColor: '#2577f7', marginBottom: 20 }]}
-        onPress={() => {
-          setSelectedMeasurement("blood_pressure");
-          setTypeSelectModalVisible(false);
-          setModalVisible(true);
-        }}
-      >
-        <FontAwesome name="heart" size={28} color="white" style={{ marginRight: 10 }} />
-        <Text style={styles.enhancedButtonText}>{t('measureBloodPressure')}</Text>
-      </Pressable>
-
-      <Pressable
-        style={[styles.enhancedButton, { backgroundColor: '#ed1b24' }]}
-        onPress={() => {
-          setSelectedMeasurement("heart_rate");
-          setTypeSelectModalVisible(false);
-          setModalVisible(true);
-        }}
-      >
-        <FontAwesome name="heartbeat" size={28} color="white" style={{ marginRight: 10 }} />
-        <Text style={styles.enhancedButtonText}>{t('measureHeartRate')}</Text>
-      </Pressable>
-
-      <Pressable
-        style={styles.closeButton}
-        onPress={() => setTypeSelectModalVisible(false)}
-      >
-        <Text style={styles.closeButtonText}>{t('close')}</Text>
-      </Pressable>
-    </View>
-  </View>
-</Modal>
-
-<Modal
-  animationType="slide"
-  transparent={true}
-  visible={modalVisible}
-  onRequestClose={() => setModalVisible(false)}
->
-  <View style={styles.modalBackground}>
-    <View style={styles.enhancedModalContainer}>
-      <Text style={styles.enhancedModalTitle}>
-        {selectedMeasurement === "blood_pressure"
-          ? t('enterBloodPressure')
-          : t('enterHeartRate')}
-      </Text>
-
-      {selectedMeasurement === "blood_pressure" ? (
-        <>
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>{t('sysLabel')}:</Text>
-            <TextInput
-              style={styles.enhancedInput}
-              keyboardType="numeric"
-              placeholder={t('sysPlaceholder')}
-              value={sysValue}
-              onChangeText={setSysValue}
-              placeholderTextColor="#999"
-            />
-            <Text style={styles.inputUnit}>mmHg</Text>
+        <View style={styles.infoContainer}>
+          {/* Comment phần hiển thị bước chân */}
+          {/* <View style={styles.textContainer}>
+            <View style={styles.row}>
+              <Image style={styles.icon} source={require('../../../assets/step.png')} />
+              <Text style={[styles.number, { color: '#3CB371' }]}>
+                {steps.toLocaleString()} {t('stepsUnit')}
+              </Text>
+            </View>
+          </View> */}
+          <View style={styles.textContainer}>
+            <View style={styles.row}>
+              <Image
+                style={[styles.icon, { width: 23, height: 23, marginLeft: 3, marginRight: 8 }]}
+                source={require('../../../assets/heart_rate.png')}
+              />
+              <View>
+                <Text style={[styles.number, { color: '#ed1b24' }]}>
+                  {heartRate != null ? `${heartRate} ${t('bpm')}` : `-/- ${t('bpm')}`}
+                </Text>
+              </View>
+            </View>
           </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>{t('diaLabel')}:</Text>
-            <TextInput
-              style={styles.enhancedInput}
-              keyboardType="numeric"
-              placeholder={t('diaPlaceholder')}
-              value={diaValue}
-              onChangeText={setDiaValue}
-              placeholderTextColor="#999"
-            />
-            <Text style={styles.inputUnit}>mmHg</Text>
+          <View style={styles.textContainer}>
+            <View style={styles.row}>
+              <Image
+                style={[styles.icon, { width: 23, height: 23, marginLeft: 3, marginRight: 8 }]}
+                source={require('../../../assets/blood_pressure.png')}
+              />
+              <View>
+                <Text style={[styles.number, { color: '#2577f7' }]}>
+                  {sysValue && diaValue ? `${sysValue}/${diaValue} ${t('mmHg')}` : `-/- ${t('mmHg')}`}
+                </Text>
+              </View>
+            </View>
           </View>
-        </>
-      ) : (
-        <View style={styles.inputContainer}>
-          <Text style={styles.inputLabel}>{t('heartRateLabel')}:</Text>
-          <TextInput
-            style={styles.enhancedInput}
-            keyboardType="numeric"
-            placeholder={t('heartRatePlaceholder')}
-            value={inputValue}
-            onChangeText={setInputValue}
-            placeholderTextColor="#999"
-          />
-          <Text style={styles.inputUnit}>{t('bpm')}</Text>
         </View>
-      )}
 
-      <View style={styles.buttonContainer}>
-        <Pressable
-          style={[styles.actionButton, { backgroundColor: '#ccc' }]}
-          onPress={() => {
-            setModalVisible(false);
-            setInputValue('');
-            setSysValue('');
-            setDiaValue('');
-          }}
-        >
-          <Text style={styles.actionButtonText}>{t('cancel')}</Text>
-        </Pressable>
-
-        <Pressable
-          style={[styles.actionButton, { backgroundColor: '#3CB371' }]}
-          onPress={() => {
-            if (selectedMeasurement === 'blood_pressure') {
-              if (!sysValue || !diaValue) {
-                showNotification(t('errorIncompleteInfo'), "error");
-                return;
-              } else {
-                handleMeasureBloodPressure()
-              }
-            } else {
-              if (inputValue === "") {
-                showNotification(t('errorIncompleteInfo'), "error");
-                return;
-              } else {
-                handleMeasureHeartRate()
-              }
-            }
-            setModalVisible(false);
-            setInputValue('');
-          }}
-        >
-          <Text style={styles.actionButtonText}>{t('save')}</Text>
-        </Pressable>
+        <View style={styles.circleContainer}>
+          <Svg width={120} height={120} viewBox="0 0 120 120">
+            {/* Comment vòng tròn liên quan đến bước chân */}
+            {/* <Circle cx="60" cy="60" r="55" stroke="#3CB371" strokeWidth="9" fill="none" strokeDasharray="345.6" strokeDashoffset="80" strokeLinecap="round" /> */}
+            <Circle
+              cx="60"
+              cy="60"
+              r="45"
+              stroke="#ed1b24"
+              strokeWidth="9"
+              fill="none"
+              strokeDasharray="282.6"
+              strokeDashoffset="90"
+              strokeLinecap="round"
+            />
+            <Circle
+              cx="60"
+              cy="60"
+              r="35"
+              stroke="#2577f7"
+              strokeWidth="9"
+              fill="none"
+              strokeDasharray="219.2"
+              strokeDashoffset="78"
+              strokeLinecap="round"
+            />
+          </Svg>
+        </View>
       </View>
-    </View>
-  </View>
-</Modal>
-{loading && <Loading message={t("processing")} />}
 
+      {/* Comment toàn bộ stepContainer */}
+      {/* <TouchableOpacity style={styles.stepContainer} onPress={() => navigation.navigate('Step')}>
+        <View style={styles.stepContent}>
+          <FontAwesome5 name="shoe-prints" size={26} color="#432c81" style={styles.stepIcon} />
+          <View>
+            <Text style={styles.stepTitle}>{steps}</Text>
+            <Text style={styles.stepSubtitle}>/6000</Text>
+          </View>
+        </View>
+        <View style={styles.progressWrapper}>
+          <Text style={styles.progressText}>{Math.min(Math.round((steps / 6000) * 100), 100)}%</Text>
+          <View style={styles.progressBar}>
+            <View style={[styles.progressFill, { width: `${Math.min((steps / 6000) * 100, 100)}%` }]} />
+          </View>
+        </View>
+      </TouchableOpacity> */}
+
+      <TouchableOpacity style={styles.heartRateContainer} onPress={() => navigation.navigate('HeartRate')}>
+        <View style={styles.stepContent}>
+          <FontAwesome5 name="heartbeat" size={26} color="#ed1b24" style={styles.heartRateIcon} />
+          <View>
+            <Text style={styles.heartRateTitle}>{heartRate != null ? heartRate : '-/-'}</Text>
+            <Text style={styles.heartRateSubtitle}>/{t('bpm')}</Text>
+            <Text style={styles.dateText}>{formatDateTime(heartRateDate)}</Text>
+          </View>
+        </View>
+        <View style={styles.heartRateProgressWrapper}>
+          <Text style={styles.heartRateProgressText}>!</Text>
+          <View style={styles.heartRateProgressBar}>
+            <View
+              style={[
+                styles.heartRateProgressFill,
+                { width: heartRate ? `${Math.min((parseInt(heartRate) / 100) * 100, 100)}%` : '0%' },
+              ]}
+            />
+          </View>
+        </View>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={styles.bloodPressureContainer} onPress={() => navigation.navigate('BloodPressure')}>
+        <View style={styles.stepContent}>
+          <FontAwesome5 name="heartbeat" size={26} color="#2577f7" style={styles.bloodPressureIcon} />
+          <View>
+            <Text style={styles.bloodPressureTitle}>{sysValue != null ? sysValue : '-/-'}</Text>
+            <Text style={styles.bloodPressureSubtitle}>/{diaValue != null ? diaValue : '-/-'}</Text>
+            <Text style={styles.dateText}>{formatDateTime(bloodPressureDate)}</Text>
+          </View>
+        </View>
+        <View>
+          <View style={styles.bloodPressureProgressWrapper}>
+            <Text style={styles.bloodPressureProgressText}>SYS</Text>
+            <View style={styles.bloodPressureProgressBar}>
+              <View
+                style={[
+                  styles.bloodPressureProgressFill,
+                  { width: sysValue ? `${Math.min((parseInt(sysValue) / 140) * 100, 100)}%` : '0%' },
+                ]}
+              />
+            </View>
+          </View>
+          <View style={styles.bloodPressureProgressWrapper}>
+            <Text style={styles.bloodPressureProgressText}>DIA</Text>
+            <View style={styles.bloodPressureProgressBar}>
+              <View
+                style={[
+                  styles.bloodPressureProgressFill,
+                  { width: diaValue ? `${Math.min((parseInt(diaValue) / 90) * 100, 100)}%` : '0%' },
+                ]}
+              />
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={typeSelectModalVisible}
+        onRequestClose={() => setTypeSelectModalVisible(false)}
+      >
+        <View style={styles.modalBackground}>
+          <View style={styles.enhancedModalContainer}>
+            <Text style={styles.enhancedModalTitle}>{t('measureSelection')}</Text>
+            <Pressable
+              style={[styles.enhancedButton, { backgroundColor: '#2577f7', marginBottom: 20 }]}
+              onPress={() => {
+                setSelectedMeasurement('blood_pressure');
+                setTypeSelectModalVisible(false);
+                setModalVisible(true);
+              }}
+            >
+              <FontAwesome name="heart" size={28} color="white" style={{ marginRight: 10 }} />
+              <Text style={styles.enhancedButtonText}>{t('measureBloodPressure')}</Text>
+            </Pressable>
+            <Pressable
+              style={[styles.enhancedButton, { backgroundColor: '#ed1b24' }]}
+              onPress={() => {
+                setSelectedMeasurement('heart_rate');
+                setTypeSelectModalVisible(false);
+                setModalVisible(true);
+              }}
+            >
+              <FontAwesome name="heartbeat" size={28} color="white" style={{ marginRight: 10 }} />
+              <Text style={styles.enhancedButtonText}>{t('measureHeartRate')}</Text>
+            </Pressable>
+            <Pressable style={styles.closeButton} onPress={() => setTypeSelectModalVisible(false)}>
+              <Text style={styles.closeButtonText}>{t('close')}</Text>
+            </Pressable>
+          </View>
+        </View>
+      </Modal>
+
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalBackground}>
+          <View style={styles.enhancedModalContainer}>
+            <Text style={styles.enhancedModalTitle}>
+              {selectedMeasurement === 'blood_pressure' ? t('enterBloodPressure') : t('enterHeartRate')}
+            </Text>
+            {selectedMeasurement === 'blood_pressure' ? (
+              <>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>{t('sysLabel')}:</Text>
+                  <TextInput
+                    style={styles.enhancedInput}
+                    keyboardType="numeric"
+                    placeholder={t('sysPlaceholder')}
+                    onChangeText={(text) => setSysValue(text)}
+                    placeholderTextColor="#999"
+                  />
+                  <Text style={styles.inputUnit}>mmHg</Text>
+                </View>
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>{t('diaLabel')}:</Text>
+                  <TextInput
+                    style={styles.enhancedInput}
+                    keyboardType="numeric"
+                    placeholder={t('diaPlaceholder')}
+                    onChangeText={(text) => setDiaValue(text)}
+                    placeholderTextColor="#999"
+                  />
+                  <Text style={styles.inputUnit}>mmHg</Text>
+                </View>
+              </>
+            ) : (
+              <View style={styles.inputContainer}>
+                <Text style={styles.inputLabel}>{t('heartRateLabel')}:</Text>
+                <TextInput
+                  style={styles.enhancedInput}
+                  keyboardType="numeric"
+                  placeholder={t('heartRatePlaceholder')}
+                  value={inputValue}
+                  onChangeText={setInputValue}
+                  placeholderTextColor="#999"
+                />
+                <Text style={styles.inputUnit}>{t('bpm')}</Text>
+              </View>
+            )}
+            <View style={styles.buttonContainer}>
+              <Pressable
+                style={[styles.actionButton, { backgroundColor: '#ccc' }]}
+                onPress={() => {
+                  setModalVisible(false);
+                  setInputValue('');
+                  setSysValue(null);
+                  setDiaValue(null);
+                }}
+              >
+                <Text style={styles.actionButtonText}>{t('cancel')}</Text>
+              </Pressable>
+              <Pressable
+                style={[styles.actionButton, { backgroundColor: '#3CB371' }]}
+                onPress={() => {
+                  if (selectedMeasurement === 'blood_pressure') {
+                    handleMeasureBloodPressure();
+                  } else {
+                    handleMeasureHeartRate();
+                  }
+                  setModalVisible(false);
+                }}
+              >
+                <Text style={styles.actionButtonText}>{t('save')}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {loading && <Loading message={t('processing')} />}
     </ScrollView>
   );
 };
@@ -434,12 +619,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 15,
-    // shadowColor: "#000",
-    // shadowOpacity: 0.1,
-    // shadowRadius: 5,
-    // elevation: 10,
   },
-  // New measurement container that matches the metrics container
   measureContainer: {
     flexDirection: 'row',
     width: 'auto',
@@ -453,10 +633,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 15,
     paddingHorizontal: 20,
-    // shadowColor: "#000",
-    // shadowOpacity: 0.1,
-    // shadowRadius: 5,
-    // elevation: 10,
   },
   measureContent: {
     flexDirection: 'row',
@@ -491,17 +667,22 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
   number: {
-    fontWeight: "bold",
+    fontWeight: 'bold',
     fontSize: 25,
   },
+  dateText: {
+    fontSize: 12,
+    color: '#666',
+    marginTop: 2,
+  },
   circleContainer: {
-    alignItems: "center",
-    justifyContent: "center",
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   header: {
     flexDirection: 'row',
     marginTop: 10,
-    justifyContent: 'space-between'
+    justifyContent: 'space-between',
   },
   text1: {
     fontSize: 25,
@@ -523,7 +704,7 @@ const styles = StyleSheet.create({
   imgProfile: {
     width: 45,
     height: 45,
-    borderRadius: 30
+    borderRadius: 30,
   },
   modalBackground: {
     flex: 1,
@@ -548,7 +729,7 @@ const styles = StyleSheet.create({
     marginBottom: 25,
     color: '#432c81',
     fontWeight: 'bold',
-    textAlign: 'center'
+    textAlign: 'center',
   },
   enhancedButton: {
     flexDirection: 'row',
@@ -595,6 +776,7 @@ const styles = StyleSheet.create({
     padding: 15,
     fontSize: 22,
     backgroundColor: '#f9f9f9',
+    color: '#333',
   },
   inputUnit: {
     position: 'absolute',
@@ -655,22 +837,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 15,
     paddingHorizontal: 20,
-    // shadowColor: "#000",
-    // shadowOpacity: 0.1,
-    // shadowRadius: 5,
-    // elevation: 10,
   },
   progressWrapper: {
-    alignItems: 'flex-end', // Căn phải cho thanh tiến độ
+    alignItems: 'flex-end',
   },
-
   progressText: {
     color: '#3CB371',
     fontSize: 14,
     marginBottom: 4,
-    fontWeight: '500'
+    fontWeight: '500',
   },
-
   progressBar: {
     width: 100,
     height: 10,
@@ -679,15 +855,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 20,
   },
-
   progressFill: {
     height: '100%',
     backgroundColor: '#3CB371',
     borderRadius: 5,
-  },
-  heartRateContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   heartRateIcon: {
     marginRight: 15,
@@ -717,22 +888,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 15,
     paddingHorizontal: 20,
-    // shadowColor: "#000",
-    // shadowOpacity: 0.1,
-    // shadowRadius: 5,
-    // elevation: 10,
   },
   heartRateProgressWrapper: {
-    alignItems: 'flex-end', // Căn phải cho thanh tiến độ
+    alignItems: 'flex-end',
   },
-
   heartRateProgressText: {
     color: '#ed1b24',
     fontSize: 14,
     marginBottom: 4,
-    fontWeight: '500'
+    fontWeight: '500',
   },
-
   heartRateProgressBar: {
     width: 100,
     height: 10,
@@ -741,15 +906,10 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 20,
   },
-
   heartRateProgressFill: {
     height: '100%',
     backgroundColor: '#ed1b24',
     borderRadius: 5,
-  },
-  bloodPressureContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   bloodPressureIcon: {
     marginRight: 15,
@@ -779,22 +939,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: 15,
     paddingHorizontal: 20,
-    // shadowColor: "#000",
-    // shadowOpacity: 0.1,
-    // shadowRadius: 5,
-    // elevation: 10,
   },
   bloodPressureProgressWrapper: {
-    alignItems: 'center', 
+    alignItems: 'center',
   },
-
   bloodPressureProgressText: {
     color: '#2577f7',
     fontSize: 14,
     marginBottom: 4,
-    fontWeight: '500'
+    fontWeight: '500',
   },
-
   bloodPressureProgressBar: {
     width: 100,
     height: 10,
@@ -803,14 +957,11 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     marginBottom: 10,
   },
-
   bloodPressureProgressFill: {
     height: '100%',
     backgroundColor: '#2577f7',
     borderRadius: 5,
-  }
-
-
+  },
 });
 
 export default HealthProfileScreen;

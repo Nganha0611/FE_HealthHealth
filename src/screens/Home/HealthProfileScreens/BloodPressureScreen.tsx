@@ -1,13 +1,14 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationProp } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { View, Dimensions, StyleSheet, Text, TouchableOpacity, SafeAreaView, Image, Alert } from 'react-native';
+import { View, Dimensions, StyleSheet, Text, TouchableOpacity, ScrollView, Image, FlatList, Platform } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
 import axios from 'axios';
 import { API_BASE_URL } from '../../../utils/config';
 import { useTranslation } from 'react-i18next';
 import { useNotification } from '../../../contexts/NotificationContext';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 type ViewMode = 'monthly' | 'daily' | 'weekly';
 
@@ -46,6 +47,9 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
   });
   const [loading, setLoading] = useState<boolean>(true);
   const [allBloodPressureData, setAllBloodPressureData] = useState<BloodPressureData[]>([]);
+  const [showDatePicker, setShowDatePicker] = useState<boolean>(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [filteredHistory, setFilteredHistory] = useState<BloodPressureData[]>([]);
 
   useEffect(() => {
     const fetchUserAndData = async () => {
@@ -58,11 +62,12 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
           fetchBloodPressureData(user.id);
         } else {
           showNotification(t('noUserInfo'), 'error');
-
         }
       } catch (error) {
         console.error('Error fetching user info:', error);
         showNotification(t('fetchUserError'), 'error');
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -71,73 +76,168 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
 
   const fetchBloodPressureData = async (userId: string) => {
     try {
-      const response = await axios.get<BloodPressureData[]>(`${API_BASE_URL}/api/blood-pressures/user/${userId}`);
-      const data = response.data;
+        console.log(`Fetching blood pressure data for userId: ${userId}`);
+        const token = await AsyncStorage.getItem('token');
+        console.log('Token:', token ? 'Found' : 'Not found');
+        const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
-      if (!data || data.length === 0) {
+        const response = await axios.get(`${API_BASE_URL}/api/blood-pressures/user/${userId}`, config);
+        console.log('API response status:', response.status);
+        console.log('API response data:', response.data);
+
+        const data = response.data;
+
+        if (!data || data.length === 0) {
+            console.log('No blood pressure data returned from API');
+            setChartData({
+                labels: [],
+                datasets: [
+                    { data: [], color: () => '#36A2EB', strokeWidth: 2 },
+                    { data: [], color: () => '#4BC0C0', strokeWidth: 2 },
+                ],
+                legend: [t('systolic'), t('diastolic')],
+            });
+            setAverageBloodPressure({ systolic: null, diastolic: null });
+            setFilteredHistory([]);
+            // showNotification(t('noBloodPressureData'), 'error');
+            return;
+        }
+
+        interface RawBloodPressureData {
+          systolic?: number;
+          systolicPressure?: number;
+          sys?: number;
+          diastolic?: number;
+          diastolicPressure?: number;
+          dia?: number;
+          createdAt?: string;
+          date?: string;
+          timestamp?: string;
+        }
+
+        interface NormalizedBloodPressureData {
+          systolic: number;
+          diastolic: number;
+          createdAt: string;
+        }
+
+            const normalizedData: NormalizedBloodPressureData[] = data.map((item: RawBloodPressureData) => ({
+              systolic: item.systolic ?? item.systolicPressure ?? item.sys,
+              diastolic: item.diastolic ?? item.diastolicPressure ?? item.dia,
+              createdAt: item.createdAt ?? item.date ?? item.timestamp,
+            }));
+
+        console.log('Normalized data:', normalizedData);
+
+        const validData = normalizedData.filter(
+            item =>
+                typeof item.systolic === 'number' &&
+                typeof item.diastolic === 'number' &&
+                !isNaN(item.systolic) &&
+                !isNaN(item.diastolic) &&
+                item.systolic !== Infinity &&
+                item.diastolic !== Infinity &&
+                item.systolic !== -Infinity &&
+                item.diastolic !== -Infinity &&
+                typeof item.createdAt === 'string' &&
+                item.createdAt
+        );
+
+        console.log('Valid data after filtering:', validData);
+        if (validData.length === 0) {
+            console.log('No valid blood pressure data after filtering. Invalid items:', normalizedData);
+            setChartData({
+                labels: [],
+                datasets: [
+                    { data: [], color: () => '#36A2EB', strokeWidth: 2 },
+                    { data: [], color: () => '#4BC0C0', strokeWidth: 2 },
+                ],
+                legend: [t('systolic'), t('diastolic')],
+            });
+            setAverageBloodPressure({ systolic: null, diastolic: null });
+            setFilteredHistory([]);
+            showNotification(t('invalidBloodPressureData'), 'error');
+            return;
+        }
+
+        const sorted = validData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setAllBloodPressureData(sorted);
+        setFilteredHistory(sorted);
+        processBloodPressureData(sorted);
+    } catch (error: any) {
+        console.error('Error fetching blood pressure data:', error.message);
+        if (error.response) {
+            console.error('Error response:', error.response.status, error.response.data);
+            if (error.response.status === 401) {
+                showNotification(t('unauthorized'), 'error');
+            } else if (error.response.status === 403) {
+                showNotification(t('forbidden'), 'error');
+            } else if (error.response.status === 204) {
+                setChartData({
+                    labels: [],
+                    datasets: [
+                        { data: [], color: () => '#36A2EB', strokeWidth: 2 },
+                        { data: [], color: () => '#4BC0C0', strokeWidth: 2 },
+                    ],
+                    legend: [t('systolic'), t('diastolic')],
+                });
+                setAverageBloodPressure({ systolic: null, diastolic: null });
+                setFilteredHistory([]);
+                // showNotification(t('noBloodPressureData'), 'error');
+                return;
+            }
+        }
+        showNotification(t('fetchBloodPressureError'), 'error');
         setChartData({
-          labels: [],
-          datasets: [
-            { data: [], color: () => '#36A2EB', strokeWidth: 2 },
-            { data: [], color: () => '#4BC0C0', strokeWidth: 2 },
-          ],
-          legend: [t('systolic'), t('diastolic')],
+            labels: [],
+            datasets: [
+                { data: [], color: () => '#36A2EB', strokeWidth: 2 },
+                { data: [], color: () => '#4BC0C0', strokeWidth: 2 },
+            ],
+            legend: [t('systolic'), t('diastolic')],
         });
         setAverageBloodPressure({ systolic: null, diastolic: null });
-        showNotification(t('noBloodPressureData'), 'error');
-
-        return;
-      }
-
-      const validData = data.filter(
-        (item) =>
-          typeof item.systolic === 'number' &&
-          typeof item.diastolic === 'number' &&
-          !isNaN(item.systolic) &&
-          !isNaN(item.diastolic) &&
-          item.systolic !== Infinity &&
-          item.diastolic !== Infinity &&
-          item.systolic !== -Infinity &&
-          item.diastolic !== -Infinity
-      );
-
-      if (validData.length === 0) {
-        setChartData({
-          labels: [],
-          datasets: [
-            { data: [], color: () => '#36A2EB', strokeWidth: 2 },
-            { data: [], color: () => '#4BC0C0', strokeWidth: 2 },
-          ],
-          legend: [t('systolic'), t('diastolic')],
-        });
-        setAverageBloodPressure({ systolic: null, diastolic: null });
-        showNotification(t('invalidBloodPressureData'), 'error');
-        return;
-      }
-
-      const sorted = validData.sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
-      setAllBloodPressureData(sorted);
-      processBloodPressureData(sorted);
-    } catch (error) {
-      console.error('Error fetching blood pressure data:', error);
-      showNotification(t('fetchBloodPressureError'), 'error');
-
-      setChartData({
-        labels: [],
-        datasets: [
-          { data: [], color: () => '#36A2EB', strokeWidth: 2 },
-          { data: [], color: () => '#4BC0C0', strokeWidth: 2 },
-        ],
-        legend: [t('systolic'), t('diastolic')],
-      });
-      setAverageBloodPressure({ systolic: null, diastolic: null });
+        setFilteredHistory([]);
     } finally {
-      setLoading(false);
+        setLoading(false);
     }
-  };
+};
 
   const processBloodPressureData = (data: BloodPressureData[]) => {
-    if (!data || data.length === 0) {
+  console.log('Processing blood pressure data:', data);
+  if (!data || data.length === 0) {
+    setChartData({
+      labels: [],
+      datasets: [
+        { data: [], color: () => '#36A2EB', strokeWidth: 2 },
+        { data: [], color: () => '#4BC0C0', strokeWidth: 2 },
+      ],
+      legend: [t('systolic'), t('diastolic')],
+    });
+    setAverageBloodPressure({ systolic: null, diastolic: null });
+    setFilteredHistory([]);
+    return;
+  }
+
+  let filteredData: BloodPressureData[] = [];
+  let labels: string[] = [];
+  let systolicValues: number[] = [];
+  let diastolicValues: number[] = [];
+
+  const referenceDate = selectedDate || new Date(); // Sử dụng selectedDate nếu có, nếu không dùng ngày hiện tại
+  if (viewMode === 'daily') {
+    // Lọc dữ liệu cho ngày được chọn hoặc ngày hiện tại
+    filteredData = data.filter((item) => {
+      const itemDate = new Date(item.createdAt);
+      return (
+        itemDate.getDate() === referenceDate.getDate() &&
+        itemDate.getMonth() === referenceDate.getMonth() &&
+        itemDate.getFullYear() === referenceDate.getFullYear()
+      );
+    });
+
+    console.log('Filtered daily data for chart:', filteredData);
+    if (filteredData.length === 0) {
       setChartData({
         labels: [],
         datasets: [
@@ -147,173 +247,151 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
         legend: [t('systolic'), t('diastolic')],
       });
       setAverageBloodPressure({ systolic: null, diastolic: null });
-      showNotification(t('noBloodPressureData'), 'error');
+      showNotification(t('noDailyData'), 'error');
       return;
     }
 
-    let filteredData: BloodPressureData[] = [];
-    let labels: string[] = [];
-    let systolicValues: number[] = [];
-    let diastolicValues: number[] = [];
-
-    const today = new Date();
-
-    if (viewMode === 'daily') {
-      filteredData = data.filter((item) => {
-        const itemDate = new Date(item.createdAt);
-        return (
-          itemDate.getDate() === today.getDate() &&
-          itemDate.getMonth() === today.getMonth() &&
-          itemDate.getFullYear() === today.getFullYear()
-        );
-      });
-
-      if (filteredData.length === 0) {
-        setChartData({
-          labels: [],
-          datasets: [
-            { data: [], color: () => '#36A2EB', strokeWidth: 2 },
-            { data: [], color: () => '#4BC0C0', strokeWidth: 2 },
-          ],
-          legend: [t('systolic'), t('diastolic')],
-        });
-        setAverageBloodPressure({ systolic: null, diastolic: null });
-        showNotification(t('noDailyBloodPressureData'), 'error');
-
-        return;
+    // Nhóm dữ liệu theo giờ (chỉ các giờ có dữ liệu)
+    const hourlyData: { [hour: string]: { systolic: number[]; diastolic: number[] } } = {};
+    filteredData.forEach((item) => {
+      const date = new Date(item.createdAt);
+      const hourKey = `${date.getHours().toString().padStart(2, '0')}:00`; // Định dạng giờ, ví dụ: "08:00"
+      if (!hourlyData[hourKey]) {
+        hourlyData[hourKey] = { systolic: [], diastolic: [] };
       }
+      hourlyData[hourKey].systolic.push(item.systolic);
+      hourlyData[hourKey].diastolic.push(item.diastolic);
+    });
 
-      const hourlyData: { [hour: string]: { systolic: number[]; diastolic: number[] } } = {};
-      filteredData.forEach((item) => {
-        const date = new Date(item.createdAt);
-        const hourKey = `${date.getHours()}${t('hour')}`;
-        if (!hourlyData[hourKey]) {
-          hourlyData[hourKey] = { systolic: [], diastolic: [] };
-        }
-        hourlyData[hourKey].systolic.push(item.systolic);
-        hourlyData[hourKey].diastolic.push(item.diastolic);
+    console.log('Hourly data:', hourlyData);
+
+    // Tạo labels và values chỉ cho các giờ có dữ liệu
+    labels = Object.keys(hourlyData).sort((a, b) => {
+      const hourA = parseInt(a.split(':')[0]);
+      const hourB = parseInt(b.split(':')[0]);
+      return hourA - hourB;
+    });
+
+    systolicValues = labels.map((hourLabel) => {
+      const rates = hourlyData[hourLabel].systolic;
+      return rates.length > 0 ? Math.round(rates.reduce((sum, val) => sum + val, 0) / rates.length) : 0;
+    });
+
+    diastolicValues = labels.map((hourLabel) => {
+      const rates = hourlyData[hourLabel].diastolic;
+      return rates.length > 0 ? Math.round(rates.reduce((sum, val) => sum + val, 0) / rates.length) : 0;
+    });
+
+    console.log('Labels:', labels);
+    console.log('Systolic values:', systolicValues);
+    console.log('Diastolic values:', diastolicValues);
+  } else if (viewMode === 'weekly') {
+    const sevenDaysAgo = new Date(referenceDate);
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    filteredData = data.filter((item) => {
+      const itemDate = new Date(item.createdAt);
+      return itemDate >= sevenDaysAgo;
+    });
+
+    if (filteredData.length === 0) {
+      setChartData({
+        labels: [],
+        datasets: [
+          { data: [], color: () => '#36A2EB', strokeWidth: 2 },
+          { data: [], color: () => '#4BC0C0', strokeWidth: 2 },
+        ],
+        legend: [t('systolic'), t('diastolic')],
       });
-
-      labels = Object.keys(hourlyData).sort((a, b) => parseInt(a) - parseInt(b));
-      systolicValues = labels.map((hour) => {
-        const rates = hourlyData[hour].systolic;
-        return rates.length > 0 ? Math.round(rates.reduce((sum, val) => sum + val, 0) / rates.length) : 0;
-      });
-      diastolicValues = labels.map((hour) => {
-        const rates = hourlyData[hour].diastolic;
-        return rates.length > 0 ? Math.round(rates.reduce((sum, val) => sum + val, 0) / rates.length) : 0;
-      });
-
-    } else if (viewMode === 'weekly') {
-      const sevenDaysAgo = new Date(today);
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-      filteredData = data.filter((item) => {
-        const itemDate = new Date(item.createdAt);
-        return itemDate >= sevenDaysAgo;
-      });
-
-      if (filteredData.length === 0) {
-        setChartData({
-          labels: [],
-          datasets: [
-            { data: [], color: () => '#36A2EB', strokeWidth: 2 },
-            { data: [], color: () => '#4BC0C0', strokeWidth: 2 },
-          ],
-          legend: [t('systolic'), t('diastolic')],
-        });
-        setAverageBloodPressure({ systolic: null, diastolic: null });
-        showNotification(t('noWeeklyBloodPressureData'), 'error');
-
-        return;
-      }
-
-      const dailyData: { [day: string]: { systolic: number[]; diastolic: number[] } } = {};
-      filteredData.forEach((item) => {
-        const date = new Date(item.createdAt);
-        const dayKey = `${date.getDate()}/${date.getMonth() + 1}`;
-        if (!dailyData[dayKey]) {
-          dailyData[dayKey] = { systolic: [], diastolic: [] };
-        }
-        dailyData[dayKey].systolic.push(item.systolic);
-        dailyData[dayKey].diastolic.push(item.diastolic);
-      });
-
-      labels = Object.keys(dailyData).sort((a, b) => {
-        const [dayA, monthA] = a.split('/').map(Number);
-        const [dayB, monthB] = b.split('/').map(Number);
-        if (monthA !== monthB) return monthA - monthB;
-        return dayA - dayB;
-      });
-
-      systolicValues = labels.map((day) => {
-        const rates = dailyData[day].systolic;
-        return rates.length > 0 ? Math.round(rates.reduce((sum, val) => sum + val, 0) / rates.length) : 0;
-      });
-      diastolicValues = labels.map((day) => {
-        const rates = dailyData[day].diastolic;
-        return rates.length > 0 ? Math.round(rates.reduce((sum, val) => sum + val, 0) / rates.length) : 0;
-      });
-
-    } else if (viewMode === 'monthly') {
-      const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
-
-      filteredData = data.filter((item) => {
-        const itemDate = new Date(item.createdAt);
-        return itemDate >= startOfMonth;
-      });
-
-      if (filteredData.length === 0) {
-        setChartData({
-          labels: [],
-          datasets: [
-            { data: [], color: () => '#36A2EB', strokeWidth: 2 },
-            { data: [], color: () => '#4BC0C0', strokeWidth: 2 },
-          ],
-          legend: [t('systolic'), t('diastolic')],
-        });
-        setAverageBloodPressure({ systolic: null, diastolic: null });
-        showNotification(t('noMonthlyBloodPressureData'), 'error');
-
-        return;
-      }
-
-      const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-      const weekSize = Math.ceil(daysInMonth / 4);
-
-      const weeklyData: { [week: string]: { systolic: number[]; diastolic: number[] } } = {};
-      filteredData.forEach((item) => {
-        const date = new Date(item.createdAt);
-        const dayOfMonth = date.getDate();
-        const weekNumber = Math.floor((dayOfMonth - 1) / weekSize) + 1;
-        const weekKey = `${t('week')} ${weekNumber}`;
-        if (!weeklyData[weekKey]) {
-          weeklyData[weekKey] = { systolic: [], diastolic: [] };
-        }
-        weeklyData[weekKey].systolic.push(item.systolic);
-        weeklyData[weekKey].diastolic.push(item.diastolic);
-      });
-
-      labels = Object.keys(weeklyData).sort((a, b) => {
-        return parseInt(a.replace(`${t('week')} `, '')) - parseInt(b.replace(`${t('week')} `, ''));
-      });
-      systolicValues = labels.map((week) => {
-        const rates = weeklyData[week].systolic;
-        return rates.length > 0 ? Math.round(rates.reduce((sum, val) => sum + val, 0) / rates.length) : 0;
-      });
-      diastolicValues = labels.map((week) => {
-        const rates = weeklyData[week].diastolic;
-        return rates.length > 0 ? Math.round(rates.reduce((sum, val) => sum + val, 0) / rates.length) : 0;
-      });
+      setAverageBloodPressure({ systolic: null, diastolic: null });
+      return;
     }
 
-    let avgSystolic = null;
-    let avgDiastolic = null;
-    if (filteredData.length > 0) {
-      avgSystolic = Math.round(filteredData.reduce((sum, item) => sum + item.systolic, 0) / filteredData.length);
-      avgDiastolic = Math.round(filteredData.reduce((sum, item) => sum + item.diastolic, 0) / filteredData.length);
+    const dailyData: { [day: string]: { systolic: number[]; diastolic: number[] } } = {};
+    filteredData.forEach((item) => {
+      const date = new Date(item.createdAt);
+      const dayKey = `${date.getDate()}/${date.getMonth() + 1}`;
+      if (!dailyData[dayKey]) {
+        dailyData[dayKey] = { systolic: [], diastolic: [] };
+      }
+      dailyData[dayKey].systolic.push(item.systolic);
+      dailyData[dayKey].diastolic.push(item.diastolic);
+    });
+
+    labels = Object.keys(dailyData).sort((a, b) => {
+      const [dayA, monthA] = a.split('/').map(Number);
+      const [dayB, monthB] = b.split('/').map(Number);
+      if (monthA !== monthB) return monthA - monthB;
+      return dayA - dayB;
+    });
+
+    systolicValues = labels.map((day) => {
+      const rates = dailyData[day].systolic;
+      return rates.length > 0 ? Math.round(rates.reduce((sum, val) => sum + val, 0) / rates.length) : 0;
+    });
+    diastolicValues = labels.map((day) => {
+      const rates = dailyData[day].diastolic;
+      return rates.length > 0 ? Math.round(rates.reduce((sum, val) => sum + val, 0) / rates.length) : 0;
+    });
+  } else if (viewMode === 'monthly') {
+    const startOfMonth = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1);
+
+    filteredData = data.filter((item) => {
+      const itemDate = new Date(item.createdAt);
+      return itemDate >= startOfMonth;
+    });
+
+    if (filteredData.length === 0) {
+      setChartData({
+        labels: [],
+        datasets: [
+          { data: [], color: () => '#36A2EB', strokeWidth: 2 },
+          { data: [], color: () => '#4BC0C0', strokeWidth: 2 },
+        ],
+        legend: [t('systolic'), t('diastolic')],
+      });
+      setAverageBloodPressure({ systolic: null, diastolic: null });
+      return;
     }
 
+    const daysInMonth = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0).getDate();
+    const weekSize = Math.ceil(daysInMonth / 4);
+
+    const weeklyData: { [week: string]: { systolic: number[]; diastolic: number[] } } = {};
+    filteredData.forEach((item) => {
+      const date = new Date(item.createdAt);
+      const dayOfMonth = date.getDate();
+      const weekNumber = Math.floor((dayOfMonth - 1) / weekSize) + 1;
+      const weekKey = `${t('week')} ${weekNumber}`;
+      if (!weeklyData[weekKey]) {
+        weeklyData[weekKey] = { systolic: [], diastolic: [] };
+      }
+      weeklyData[weekKey].systolic.push(item.systolic);
+      weeklyData[weekKey].diastolic.push(item.diastolic);
+    });
+
+    labels = Object.keys(weeklyData).sort((a, b) => {
+      return parseInt(a.replace(`${t('week')} `, '')) - parseInt(b.replace(`${t('week')} `, ''));
+    });
+    systolicValues = labels.map((week) => {
+      const rates = weeklyData[week].systolic;
+      return rates.length > 0 ? Math.round(rates.reduce((sum, val) => sum + val, 0) / rates.length) : 0;
+    });
+    diastolicValues = labels.map((week) => {
+      const rates = weeklyData[week].diastolic;
+      return rates.length > 0 ? Math.round(rates.reduce((sum, val) => sum + val, 0) / rates.length) : 0;
+    });
+  }
+
+  let avgSystolic = null;
+  let avgDiastolic = null;
+  if (filteredData.length > 0) {
+    avgSystolic = Math.round(filteredData.reduce((sum, item) => sum + item.systolic, 0) / filteredData.length);
+    avgDiastolic = Math.round(filteredData.reduce((sum, item) => sum + item.diastolic, 0) / filteredData.length);
+  }
+
+  // Cập nhật chartData
+  if (systolicValues.length > 0 && diastolicValues.length > 0 && labels.length > 0) {
     setChartData({
       labels,
       datasets: [
@@ -322,14 +400,70 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
       ],
       legend: [t('systolic'), t('diastolic')],
     });
-    setAverageBloodPressure({ systolic: avgSystolic, diastolic: avgDiastolic });
-  };
+  } else {
+    setChartData({
+      labels: [],
+      datasets: [
+        { data: [], color: () => '#36A2EB', strokeWidth: 2 },
+        { data: [], color: () => '#4BC0C0', strokeWidth: 2 },
+      ],
+      legend: [t('systolic'), t('diastolic')],
+    });
+    showNotification(t('noDataForChart'), 'error');
+  }
+  setAverageBloodPressure({ systolic: avgSystolic, diastolic: avgDiastolic });
+};
 
   useEffect(() => {
     if (allBloodPressureData.length > 0) {
       processBloodPressureData(allBloodPressureData);
+      filterHistoryByDate(selectedDate);
     }
-  }, [viewMode, t]);
+  }, [viewMode, t, selectedDate]);
+
+  const filterHistoryByDate = (date: Date | null) => {
+    console.log('Filtering history by date:', date);
+    if (!date) {
+      setFilteredHistory(allBloodPressureData);
+      return;
+    }
+
+    const filtered = allBloodPressureData.filter(item => {
+      const itemDate = new Date(item.createdAt);
+      return (
+        itemDate.getDate() === date.getDate() &&
+        itemDate.getMonth() === date.getMonth() &&
+        itemDate.getFullYear() === date.getFullYear()
+      );
+    });
+    setFilteredHistory(filtered);
+  };
+
+  const onDateChange = (event: any, selected: Date | undefined) => {
+    setShowDatePicker(Platform.OS === 'ios');
+    if (selected) {
+      setSelectedDate(selected);
+    }
+  };
+
+  const clearDateSelection = () => {
+    setSelectedDate(null);
+    setShowDatePicker(false);
+  };
+
+  const renderHistoryItem = ({ item }: { item: BloodPressureData }) => {
+    const date = new Date(item.createdAt);
+    const formattedDate = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
+    const formattedTime = `${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+
+    return (
+      <View style={styles.historyItem}>
+        <Text style={styles.historyDate}>{formattedDate}</Text>
+        <Text style={styles.historyTime}>{formattedTime}</Text>
+        <Text style={styles.historyBloodPressure}>{`${item.systolic}/${item.diastolic} ${t('mmHg')}`}</Text>
+      </View>
+    );
+  };
 
   const getChartTitle = () => {
     switch (viewMode) {
@@ -345,7 +479,11 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.contentContainer}
+      nestedScrollEnabled={true}
+    >
       <View style={styles.header}>
         <View style={styles.headerLeft}>
           <FontAwesome5Icon
@@ -428,12 +566,65 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
           </Text>
         </View>
       </View>
-    </SafeAreaView>
+
+      <View style={styles.historyContainer}>
+        <View style={styles.historyHeader}>
+          <Text style={styles.historyTitle}>{t('bloodPressureHistory')}</Text>
+          <View style={styles.datePickerContainer}>
+            <TouchableOpacity
+              style={styles.datePickerButton}
+              onPress={() => setShowDatePicker(true)}
+            >
+              <Text style={styles.datePickerButtonText}>
+                {selectedDate
+                  ? `${selectedDate.getDate()}/${selectedDate.getMonth() + 1}/${selectedDate.getFullYear()}`
+                  : t('selectDate')}
+              </Text>
+              <FontAwesome5Icon name="calendar-alt" size={20} color="#432c81" />
+            </TouchableOpacity>
+            {selectedDate && (
+              <TouchableOpacity
+                style={styles.clearDateButton}
+                onPress={clearDateSelection}
+              >
+                <FontAwesome5Icon name="times" size={20} color="#432c81" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {showDatePicker && (
+          <DateTimePicker
+            value={selectedDate || new Date()}
+            mode="date"
+            display="default"
+            onChange={onDateChange}
+            maximumDate={new Date()}
+          />
+        )}
+
+        {filteredHistory.length > 0 ? (
+          <FlatList
+            data={filteredHistory}
+            renderItem={renderHistoryItem}
+            keyExtractor={(item, index) => `${item.createdAt}-${index}`}
+            style={styles.historyList}
+            scrollEnabled={false}
+            initialNumToRender={10}
+            windowSize={5}
+            showsVerticalScrollIndicator={false}
+          />
+        ) : (
+          <Text style={styles.noDataText}>{t('noHistoryData')}</Text>
+        )}
+      </View>
+    </ScrollView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, padding: 10, backgroundColor: '#f5f5f5' },
+  container: { flex: 1, backgroundColor: '#f5f5f5' },
+  contentContainer: { padding: 10, paddingBottom: 20 },
   header: { flexDirection: 'row', justifyContent: 'space-between' },
   text1: { fontSize: 25, color: '#432c81', fontWeight: 'bold' },
   headerLeft: { marginLeft: 10, marginTop: 5, flexDirection: 'row', justifyContent: 'flex-start' },
@@ -476,6 +667,75 @@ const styles = StyleSheet.create({
   infoValue: { fontSize: 18, fontWeight: 'bold' },
   loadingText: { fontSize: 16, color: '#666', textAlign: 'center', marginVertical: 20 },
   noDataText: { fontSize: 16, color: '#666', textAlign: 'center', marginVertical: 20 },
+  historyContainer: {
+    marginTop: 20,
+    marginBottom: 20,
+    backgroundColor: 'white',
+    borderRadius: 16,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  historyHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  historyTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  datePickerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  datePickerButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 8,
+    backgroundColor: '#f0f0f0',
+    borderRadius: 8,
+  },
+  datePickerButtonText: {
+    marginRight: 8,
+    color: '#333',
+    fontSize: 14,
+  },
+  clearDateButton: {
+    padding: 8,
+    marginLeft: 8,
+  },
+  historyList: {},
+  historyItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#eee',
+  },
+  historyDate: {
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
+  },
+  historyTime: {
+    fontSize: 14,
+    color: '#333',
+    flex: 1,
+  },
+  historyBloodPressure: {
+    fontSize: 14,
+    color: '#36A2EB',
+    fontWeight: 'bold',
+    flex: 1,
+    textAlign: 'right',
+  },
 });
 
 export default BloodPressureScreen;

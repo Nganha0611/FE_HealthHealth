@@ -56,6 +56,7 @@ export const NotificationProvider = ({ children }: { children: ReactNode }) => {
   return (
     <NotificationContext.Provider value={{ showNotification }}>
       {children}
+      {/* Đảm bảo Notification component được render ở cuối, để nó nằm trên cùng */}
       <Notification
         message={notification.message}
         type={notification.type}

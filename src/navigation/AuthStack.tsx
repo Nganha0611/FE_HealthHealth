@@ -4,20 +4,16 @@ import WelcomeScreen from "../screens/Auth/WelcomeScreen";
 import LoginScreen from "../screens/Auth/LoginScreen";
 import SignUpScreen from "../screens/Auth/SignUpScreen";
 import ForgotPasswordScreen from "../screens/Auth/ForgotPasswordScreen";
-import BottomTabs from "./BottomTabs";
-import SettingsScreen from "../screens/Setting/SettingsScreen";
 import VerifyOTPScreen from "../screens/Auth/VerifyOTPScreen";
 
 export type AuthStackParamList = {
   Welcome: undefined;
   Login: undefined;
-  SignUp: undefined;
+  SignUp: undefined; 
   ForgotPassword: undefined;
-  BottomTabs: undefined;
-  Settings: undefined;
   VerifyOTP: {
     phoneNumber: string;
-    otpAction: "verify" | "register"; // hoặc string nếu bạn muốn thoải mái hơn
+    otpAction: "verify" | "register";
   };
 };
 
@@ -30,10 +26,7 @@ const AuthStack = () => {
       <Stack.Screen name="Login" component={LoginScreen} />
       <Stack.Screen name="SignUp" component={SignUpScreen} />
       <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
-      <Stack.Screen name="BottomTabs" component={BottomTabs} />
-      <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="VerifyOTP" component={VerifyOTPScreen} />
-
     </Stack.Navigator>
   );
 };

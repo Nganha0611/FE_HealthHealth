@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Button, ActivityIndicator, TouchableOpacity, Modal, TextInput, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Button, ActivityIndicator, TouchableOpacity, TextInput, Platform } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import CalendarPicker from 'react-native-calendar-picker';
 import { useTranslation } from 'react-i18next';
@@ -9,6 +9,7 @@ import { API_BASE_URL } from '../../utils/config';
 import DropDownPicker from 'react-native-dropdown-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNotification } from '../../contexts/NotificationContext';
+import Modal from '../../components/CustomModal';
 
 interface Event {
   name: string;
@@ -150,7 +151,6 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
       const endDate = new Date(Date.UTC(2025, 11, 31));
 
       const addEvent = (date: Date, time: string) => {
-        // Ensure date is on or after startDate
         if (date < startDate) return;
         const dateKey = getDateKey(date);
         if (!eventsMap[dateKey]) {
@@ -196,8 +196,6 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
           });
         }
 
-        // Advance by one day in UTC
-        currentDate = new Date(currentDate);
         currentDate.setUTCDate(currentDate.getUTCDate() + 1);
       }
     });
@@ -235,12 +233,10 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
         showNotification(t('noToken'), 'error');
-
         navigation.navigate('Login');
         return;
       }
 
-      // Fetch medicines and medical history
       const [medicineResponse, historyResponse] = await Promise.all([
         axios.get<Medicine[]>(`${API_BASE_URL}/api/prescriptions`, {
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -256,11 +252,9 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
       setMedicines(medicines);
       setMedicalHistory(medicalHistory);
 
-      // Process events
       const medicineEvents = processMedicineEvents(medicines);
       const historyEvents = processMedicalHistoryEvents(medicalHistory);
 
-      // Merge events
       const combinedEvents: { [key: string]: Event[] } = {};
       Object.keys(medicineEvents).forEach((dateKey) => {
         combinedEvents[dateKey] = [...(combinedEvents[dateKey] || []), ...medicineEvents[dateKey]];
@@ -269,7 +263,6 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
         combinedEvents[dateKey] = [...(combinedEvents[dateKey] || []), ...historyEvents[dateKey]];
       });
 
-      // Sort events by time (morning to evening) within each date
       Object.keys(combinedEvents).forEach((dateKey) => {
         combinedEvents[dateKey].sort((a, b) => {
           const timeA = parseTimeToDate(a.time);
@@ -379,14 +372,12 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
         { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
       );
 
-      showNotification(t('medicineHistoryAdded'), 'error');
-
+      showNotification(t('medicineHistoryAdded'), 'success');
       setMedicineModalVisible(false);
       resetMedicineModal();
     } catch (error: any) {
       console.error('Error saving medicine history:', error.response?.data || error.message);
       showNotification(t('saveMedicineHistoryError'), 'error');
-
     }
   };
 
@@ -394,7 +385,6 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
   const handleSaveMedicalHistory = async () => {
     if (!location || !medicalStatus) {
       showNotification(t('incompleteMedicalInfo'), 'error');
-
       return;
     }
 
@@ -402,7 +392,6 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
         showNotification(t('noToken'), 'error');
-
         navigation.navigate('Login');
         return;
       }
@@ -432,7 +421,6 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
           { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
         );
         showNotification(t('medicalHistoryUpdated'), 'error');
-
       } else {
         response = await axios.post(
           `${API_BASE_URL}/api/medical-history`,
@@ -440,10 +428,9 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
           { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
         );
         showNotification(t('medicalHistoryAdded'), 'error');
-
       }
 
-      fetchData(); // Refresh events after saving
+      fetchData();
       setMedicalModalVisible(false);
       resetMedicalModal();
     } catch (error: any) {
@@ -508,22 +495,22 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
   };
 
   return (
-    <ScrollView>
-      <View style={styles.header}>
-        <View style={styles.headerLeft}>
-          <FontAwesome
-            name="chevron-left"
-            size={20}
-            color="#432c81"
-            style={{ marginRight: 15, marginTop: 17 }}
-            onPress={() => navigation.goBack()}
-          />
-          <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>{t('schedule')}</Text>
+    <View style={styles.container}>
+      <ScrollView>
+        <View style={styles.header}>
+          <View style={styles.headerLeft}>
+            <FontAwesome
+              name="chevron-left"
+              size={20}
+              color="#432c81"
+              style={{ marginRight: 15, marginTop: 17 }}
+              onPress={() => navigation.goBack()}
+            />
+            <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>{t('schedule')}</Text>
+          </View>
+          {/* <Button title={`${t('language')}: ${language.toUpperCase()}`} onPress={toggleLanguage} /> */}
         </View>
-        {/* <Button title={`${t('language')}: ${language.toUpperCase()}`} onPress={toggleLanguage} /> */}
-      </View>
 
-      <View style={styles.container}>
         <CalendarPicker
           onDateChange={onDateChange}
           selectedStartDate={selectedDate}
@@ -544,217 +531,208 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
         <ScrollView style={styles.eventsContainer}>
           {renderEvents()}
         </ScrollView>
-      </View>
+      </ScrollView>
 
-      {/* Medicine History Modal */}
-      <Modal visible={isMedicineModalVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <TouchableOpacity style={styles.closeButton} onPress={() => setMedicineModalVisible(false)}>
-              <FontAwesome name="close" size={24} color="#444" />
-            </TouchableOpacity>
-            <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
-              <Text style={styles.modalTitle}>{t('addMedicineHistory')}</Text>
-              <Text style={styles.inputLabel}>{t('medicine')}</Text>
-              <DropDownPicker
-                open={openMedicine}
-                setOpen={setOpenMedicine}
-                value={selectedMedicine}
-                setValue={setSelectedMedicine}
-                items={medicineItems}
-                containerStyle={styles.dropdownContainer}
-                style={styles.dropdown}
-                dropDownContainerStyle={styles.dropdownList}
-                placeholder={t('selectMedicine')}
-                zIndex={2000}
-                listMode="SCROLLVIEW"
-                disabled={true}
-              />
-              <Text style={styles.inputLabel}>{t('statusLabel')}</Text>
-              <DropDownPicker
-                open={openMedicineStatus}
-                setOpen={setOpenMedicineStatus}
-                value={medicineStatus}
-                setValue={setMedicineStatus}
-                items={medicineStatusItems}
-                containerStyle={styles.dropdownContainer}
-                style={styles.dropdown}
-                dropDownContainerStyle={styles.dropdownList}
-                placeholder={t('selectStatus')}
-                zIndex={1000}
-                listMode="SCROLLVIEW"
-              />
-              <Text style={styles.inputLabel}>{t('date')}</Text>
-              <TouchableOpacity
-                style={styles.dateButton}
-                onPress={() => setShowMedicineDatePicker(true)}
-              >
-                <Text style={styles.dateButtonText}>
-                  {medicineDate.toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}
-                </Text>
-              </TouchableOpacity>
-              {showMedicineDatePicker && (
-                <DateTimePicker
-                  value={medicineDate}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
-                  onChange={(event, selectedDate) => {
-                    if (selectedDate) {
-                      setMedicineDate(selectedDate);
-                      if (Platform.OS === 'android') {
-                        setShowMedicineDatePicker(false);
-                      }
-                    } else if (Platform.OS === 'ios') {
-                      setShowMedicineDatePicker(false);
-                    }
-                  }}
-                />
-              )}
-              <Text style={styles.inputLabel}>{t('time')}</Text>
-              <TouchableOpacity
-                style={styles.dateButton}
-                onPress={() => setShowMedicineTimePicker(true)}
-              >
-                <Text style={styles.dateButtonText}>
-                  {medicineTime.toLocaleTimeString(language === 'vi' ? 'vi-VN' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
-                </Text>
-              </TouchableOpacity>
-              {showMedicineTimePicker && (
-                <DateTimePicker
-                  value={medicineTime}
-                  mode="time"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
-                  onChange={(event, selectedTime) => {
-                    if (selectedTime) {
-                      setMedicineTime(selectedTime);
-                      if (Platform.OS === 'android') {
-                        setShowMedicineTimePicker(false);
-                      }
-                    } else if (Platform.OS === 'ios') {
-                      setShowMedicineTimePicker(false);
-                    }
-                  }}
-                />
-              )}
-              <Text style={styles.inputLabel}>{t('note')}</Text>
-              <TextInput
-                placeholder={t('enterNote')}
-                style={styles.input}
-                value={medicineNote}
-                onChangeText={setMedicineNote}
-                multiline
-              />
-              <TouchableOpacity
-                style={styles.saveButton}
-                onPress={handleSaveMedicineHistory}
-              >
-                <Text style={styles.saveButtonText}>{t('save')}</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
+      <Modal visible={isMedicineModalVisible} onClose={() => setMedicineModalVisible(false)}>
+        <TouchableOpacity style={styles.closeButton} onPress={() => setMedicineModalVisible(false)}>
+          <FontAwesome name="close" size={24} color="#444" />
+        </TouchableOpacity>
+        <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
+          <Text style={styles.modalTitle}>{t('addMedicineHistory')}</Text>
+          <Text style={styles.inputLabel}>{t('medicine')}</Text>
+          <DropDownPicker
+            open={openMedicine}
+            setOpen={setOpenMedicine}
+            value={selectedMedicine}
+            setValue={setSelectedMedicine}
+            items={medicineItems}
+            containerStyle={styles.dropdownContainer}
+            style={styles.dropdown}
+            dropDownContainerStyle={styles.dropdownList}
+            placeholder={t('selectMedicine')}
+            zIndex={2000}
+            listMode="SCROLLVIEW"
+            disabled={true}
+          />
+          <Text style={styles.inputLabel}>{t('statusLabel')}</Text>
+          <DropDownPicker
+            open={openMedicineStatus}
+            setOpen={setOpenMedicineStatus}
+            value={medicineStatus}
+            setValue={setMedicineStatus}
+            items={medicineStatusItems}
+            containerStyle={styles.dropdownContainer}
+            style={styles.dropdown}
+            dropDownContainerStyle={styles.dropdownList}
+            placeholder={t('selectStatus')}
+            zIndex={1000}
+            listMode="SCROLLVIEW"
+          />
+          <Text style={styles.inputLabel}>{t('date')}</Text>
+          <TouchableOpacity
+            style={styles.dateButton}
+            onPress={() => setShowMedicineDatePicker(true)}
+          >
+            <Text style={styles.dateButtonText}>
+              {medicineDate.toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}
+            </Text>
+          </TouchableOpacity>
+          {showMedicineDatePicker && (
+            <DateTimePicker
+              value={medicineDate}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+              onChange={(event, selectedDate) => {
+                if (selectedDate) {
+                  setMedicineDate(selectedDate);
+                  if (Platform.OS === 'android') {
+                    setShowMedicineDatePicker(false);
+                  }
+                } else if (Platform.OS === 'ios') {
+                  setShowMedicineDatePicker(false);
+                }
+              }}
+            />
+          )}
+          <Text style={styles.inputLabel}>{t('Time')}</Text>
+          <TouchableOpacity
+            style={styles.dateButton}
+            onPress={() => setShowMedicineTimePicker(true)}
+          >
+            <Text style={styles.dateButtonText}>
+              {medicineTime.toLocaleTimeString(language === 'vi' ? 'vi-VN' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          </TouchableOpacity>
+          {showMedicineTimePicker && (
+            <DateTimePicker
+              value={medicineTime}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
+              onChange={(event, selectedTime) => {
+                if (selectedTime) {
+                  setMedicineTime(selectedTime);
+                  if (Platform.OS === 'android') {
+                    setShowMedicineTimePicker(false);
+                  }
+                } else if (Platform.OS === 'ios') {
+                  setShowMedicineTimePicker(false);
+                }
+              }}
+            />
+          )}
+          <Text style={styles.inputLabel}>{t('note')}</Text>
+          <TextInput
+            placeholder={t('enterNote')}
+            style={styles.input}
+            value={medicineNote}
+            onChangeText={setMedicineNote}
+            multiline
+          />
+          <TouchableOpacity
+            style={styles.saveButton}
+            onPress={handleSaveMedicineHistory}
+          >
+            <Text style={styles.saveButtonText}>{t('save')}</Text>
+          </TouchableOpacity>
+        </ScrollView>
       </Modal>
-      {/* Medical History Modal */}
-      <Modal visible={isMedicalModalVisible} animationType="slide" transparent={true}>
-        <View style={styles.modalContainer}>
-          <View style={styles.modalContent}>
-            <TouchableOpacity style={styles.closeButton} onPress={() => setMedicalModalVisible(false)}>
-              <FontAwesome name="close" size={24} color="#444" />
-            </TouchableOpacity>
-            <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
-              <Text style={styles.modalTitle}>{selectedMedicalHistoryId ? t('editMedicalHistory') : t('addMedicalHistory')}</Text>
-              <Text style={styles.inputLabel}>{t('location')}</Text>
-              <TextInput
-                placeholder={t('enterLocation')}
-                style={styles.input}
-                value={location}
-                onChangeText={setLocation}
-              />
-              <Text style={styles.inputLabel}>{t('statusLabel')}</Text>
-              <DropDownPicker
-                open={openMedicalStatus}
-                setOpen={setOpenMedicalStatus}
-                value={medicalStatus}
-                setValue={setMedicalStatus}
-                items={medicalStatusItems}
-                containerStyle={styles.dropdownContainer}
-                style={styles.dropdown}
-                dropDownContainerStyle={styles.dropdownList}
-                placeholder={t('selectStatus')}
-                zIndex={1000}
-                listMode="SCROLLVIEW"
-              />
-              <Text style={styles.inputLabel}>{t('date')}</Text>
-              <TouchableOpacity
-                style={styles.dateButton}
-                onPress={() => setShowMedicalDatePicker(true)}
-              >
-                <Text style={styles.dateButtonText}>
-                  {medicalDate.toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}
-                </Text>
-              </TouchableOpacity>
-              {showMedicalDatePicker && (
-                <DateTimePicker
-                  value={medicalDate}
-                  mode="date"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
-                  onChange={(event, selectedDate) => {
-                    if (selectedDate) {
-                      setMedicalDate(selectedDate);
-                      if (Platform.OS === 'android') {
-                        setShowMedicalDatePicker(false);
-                      }
-                    } else if (Platform.OS === 'ios') {
-                      setShowMedicalDatePicker(false);
-                    }
-                  }}
-                />
-              )}
-              <Text style={styles.inputLabel}>{t('time')}</Text>
-              <TouchableOpacity
-                style={styles.dateButton}
-                onPress={() => setShowMedicalTimePicker(true)}
-              >
-                <Text style={styles.dateButtonText}>
-                  {medicalTime.toLocaleTimeString(language === 'vi' ? 'vi-VN' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
-                </Text>
-              </TouchableOpacity>
-              {showMedicalTimePicker && (
-                <DateTimePicker
-                  value={medicalTime}
-                  mode="time"
-                  display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
-                  onChange={(event, selectedTime) => {
-                    if (selectedTime) {
-                      setMedicalTime(selectedTime);
-                      if (Platform.OS === 'android') {
-                        setShowMedicalTimePicker(false);
-                      }
-                    } else if (Platform.OS === 'ios') {
-                      setShowMedicalTimePicker(false);
-                    }
-                  }}
-                />
-              )}
-              <Text style={styles.inputLabel}>{t('note')}</Text>
-              <TextInput
-                placeholder={t('enterNote')}
-                style={styles.input}
-                value={medicalNote}
-                onChangeText={setMedicalNote}
-                multiline
-              />
-              <TouchableOpacity
-                style={styles.saveButton}
-                onPress={handleSaveMedicalHistory}
-              >
-                <Text style={styles.saveButtonText}>{t('save')}</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-        </View>
+
+      <Modal visible={isMedicalModalVisible} onClose={() => setMedicalModalVisible(false)}>
+        <TouchableOpacity style={styles.closeButton} onPress={() => setMedicalModalVisible(false)}>
+          <FontAwesome name="close" size={24} color="#444" />
+        </TouchableOpacity>
+        <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
+          <Text style={styles.modalTitle}>{selectedMedicalHistoryId ? t('editMedicalHistory') : t('addMedicalHistory')}</Text>
+          <Text style={styles.inputLabel}>{t('location')}</Text>
+          <TextInput
+            placeholder={t('enterLocation')}
+            style={styles.input}
+            value={location}
+            onChangeText={setLocation}
+          />
+          <Text style={styles.inputLabel}>{t('statusLabel')}</Text>
+          <DropDownPicker
+            open={openMedicalStatus}
+            setOpen={setOpenMedicalStatus}
+            value={medicalStatus}
+            setValue={setMedicalStatus}
+            items={medicalStatusItems}
+            containerStyle={styles.dropdownContainer}
+            style={styles.dropdown}
+            dropDownContainerStyle={styles.dropdownList}
+            placeholder={t('selectStatus')}
+            zIndex={1000}
+            listMode="SCROLLVIEW"
+          />
+          <Text style={styles.inputLabel}>{t('date')}</Text>
+          <TouchableOpacity
+            style={styles.dateButton}
+            onPress={() => setShowMedicalDatePicker(true)}
+          >
+            <Text style={styles.dateButtonText}>
+              {medicalDate.toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}
+            </Text>
+          </TouchableOpacity>
+          {showMedicalDatePicker && (
+            <DateTimePicker
+              value={medicalDate}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+              onChange={(event, selectedDate) => {
+                if (selectedDate) {
+                  setMedicalDate(selectedDate);
+                  if (Platform.OS === 'android') {
+                    setShowMedicalDatePicker(false);
+                  }
+                } else if (Platform.OS === 'ios') {
+                  setShowMedicalDatePicker(false);
+                }
+              }}
+            />
+          )}
+          <Text style={styles.inputLabel}>{t('Time')}</Text>
+          <TouchableOpacity
+            style={styles.dateButton}
+            onPress={() => setShowMedicalTimePicker(true)}
+          >
+            <Text style={styles.dateButtonText}>
+              {medicalTime.toLocaleTimeString(language === 'vi' ? 'vi-VN' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          </TouchableOpacity>
+          {showMedicalTimePicker && (
+            <DateTimePicker
+              value={medicalTime}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
+              onChange={(event, selectedTime) => {
+                if (selectedTime) {
+                  setMedicalTime(selectedTime);
+                  if (Platform.OS === 'android') {
+                    setShowMedicalTimePicker(false);
+                  }
+                } else if (Platform.OS === 'ios') {
+                  setShowMedicalTimePicker(false);
+                }
+              }}
+            />
+          )}
+          <Text style={styles.inputLabel}>{t('note')}</Text>
+          <TextInput
+            placeholder={t('enterNote')}
+            style={styles.input}
+            value={medicalNote}
+            onChangeText={setMedicalNote}
+            multiline
+          />
+          <TouchableOpacity
+            style={styles.saveButton}
+            onPress={handleSaveMedicalHistory}
+          >
+            <Text style={styles.saveButtonText}>{t('save')}</Text>
+          </TouchableOpacity>
+        </ScrollView>
       </Modal>
-    </ScrollView>
+    </View>
   );
 };
 
@@ -835,7 +813,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 10,
     padding: 20,
-    maxHeight: '80%',
+    maxHeight: '90%', // Giới hạn chiều cao để tránh tràn màn hình
   },
   closeButton: {
     alignSelf: 'flex-end',
