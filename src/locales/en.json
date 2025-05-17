@@ -373,6 +373,6 @@
   "medicineHistoryDetails": "Medicine History Details",
   "medicineDetails": "Medicine Details",
   "medicineEventDetails": "Medicine Event Details",
-  "appointmentDetails": "Appointment Details"
-
+  "appointmentDetails": "Appointment Details",
+  "uploadSuccess" : "Upload successful!"
 }

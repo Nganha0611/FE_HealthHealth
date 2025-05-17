@@ -374,7 +374,8 @@
   "medicineHistoryDetails": "Chi tiết lịch sử thuốc",
   "medicineDetails": "Chi tiết thuốc",
   "medicineEventDetails": "Chi tiết sự kiện thuốc",
-  "appointmentDetails": "Chi tiết cuộc hẹn"
+  "appointmentDetails": "Chi tiết cuộc hẹn",
+  "uploadSuccess": "Tải lên thành công"
  
 
 }
