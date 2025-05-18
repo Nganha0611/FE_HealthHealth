@@ -8,12 +8,14 @@ import { BottomTabParamList } from '../../navigation/BottomTabs';
 import { useTranslation } from 'react-i18next';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import { CLOUD_URL, CLOUD_PRESET, API_BASE_URL, CLOUD_NAME } from "../../utils/config";
-import Notification from "../../components/Notification";
+import { CLOUD_URL, CLOUD_PRESET, API_BASE_URL, CLOUD_NAME } from '../../utils/config';
+import Notification from '../../components/Notification';
 import { launchImageLibrary } from 'react-native-image-picker';
 import Loading from '../../components/Loading';
 import { useNotification } from '../../contexts/NotificationContext';
-import auth from '@react-native-firebase/auth';
+import { getAuth, signInWithPhoneNumber } from '@react-native-firebase/auth';
+import { CommonActions } from '@react-navigation/native';
+import { useAuth } from '../../contexts/AuthContext';
 
 type Props = {
   navigation: NavigationProp<any>;
@@ -36,6 +38,7 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
   const { showNotification } = useNotification();
   const [verificationId, setVerificationId] = useState('');
   const [loading, setLoading] = useState(false);
+  const { setIsLoggedIn } = useAuth();
 
   useFocusEffect(
     React.useCallback(() => {
@@ -54,7 +57,7 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
             sex: u.sex || '',
             isVerifyPhone: u.verify,
           });
-          setAvatarUrl(u.url || null); 
+          setAvatarUrl(u.url || null);
         }
         console.log('>> loaded user in Account:', stored);
       })();
@@ -129,23 +132,23 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
 
   const updateProfileImage = async (url: string) => {
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await AsyncStorage.getItem('token');
       if (!token) {
-        console.error("No authentication token found");
+        console.error('No authentication token found');
         showNotification(t('authError') || 'Lỗi xác thực', 'error');
         return;
       }
 
-      const storedUser = await AsyncStorage.getItem("user");
+      const storedUser = await AsyncStorage.getItem('user');
       if (!storedUser) {
-        console.error("User data not found");
+        console.error('User data not found');
         throw new Error('User data not found');
       }
 
       const parsedUser = JSON.parse(storedUser);
       const email = parsedUser.email;
 
-      console.log("Updating profile image with:", { email, url });
+      console.log('Updating profile image with:', { email, url });
 
       const response = await axios.put(
         `${API_BASE_URL}/api/auth/update-profile-image`,
@@ -153,27 +156,27 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
         {
           headers: {
             Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
           },
         }
       );
 
-      console.log("Update image response:", response.data);
+      console.log('Update image response:', response.data);
 
       const { result, message } = response.data;
-      if (result === "success") {
+      if (result === 'success') {
         const updatedUser = {
           ...parsedUser,
-          url
+          url,
         };
-        await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
-        console.log("User data updated in storage with new image URL");
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+        console.log('User data updated in storage with new image URL');
       } else {
-        console.error("Error message from API:", message);
+        console.error('Error message from API:', message);
         throw new Error(message);
       }
     } catch (error) {
-      console.error("Error updating profile image:", error);
+      console.error('Error updating profile image:', error);
       throw error;
     }
   };
@@ -182,28 +185,28 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
     const { name, email, phone, address } = formData;
 
     if (!name || !email || !phone || !address) {
-      showNotification(t("errorEmptyFields") || "Vui lòng điền đầy đủ thông tin", 'error');
+      showNotification(t('errorEmptyFields') || 'Vui lòng điền đầy đủ thông tin', 'error');
       return;
     }
 
     setLoading(true);
     try {
-      const token = await AsyncStorage.getItem("token");
+      const token = await AsyncStorage.getItem('token');
       if (!token) {
         showNotification(t('authError') || 'Lỗi xác thực', 'error');
         return;
       }
 
-      const storedUser = await AsyncStorage.getItem("user");
+      const storedUser = await AsyncStorage.getItem('user');
       if (!storedUser) {
-        showNotification(t("userDataError") || "Không tìm thấy dữ liệu người dùng", 'error');
+        showNotification(t('userDataError') || 'Không tìm thấy dữ liệu người dùng', 'error');
         return;
       }
 
       const parsedUser = JSON.parse(storedUser);
       const currentEmail = parsedUser.email;
 
-      console.log("Sending data to update:", {
+      console.log('Sending data to update:', {
         currentEmail,
         name,
         email,
@@ -214,8 +217,8 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
       const response = await fetch(`${API_BASE_URL}/api/auth/update-info`, {
         method: 'PUT',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           currentEmail,
@@ -223,14 +226,14 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
           email,
           numberPhone: phone,
           address,
-        })
+        }),
       });
 
       const responseData = await response.json();
-      console.log("Update info response:", responseData);
+      console.log('Update info response:', responseData);
 
       const { result, message } = responseData;
-      if (result === "success") {
+      if (result === 'success') {
         const updatedUser = {
           ...parsedUser,
           name,
@@ -238,16 +241,16 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
           numberPhone: phone,
           address,
         };
-        await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
-        console.log("User data updated in storage");
-        showNotification(t("successUpdate") || "Cập nhật thành công", 'success');
+        await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+        console.log('User data updated in storage');
+        showNotification(t('successUpdate') || 'Cập nhật thành công', 'success');
       } else {
-        console.error("Error message from API:", message);
-        showNotification(message || t("errorUpdate") || "Cập nhật thất bại", 'error');
+        console.error('Error message from API:', message);
+        showNotification(message || t('errorUpdate') || 'Cập nhật thất bại', 'error');
       }
     } catch (error) {
-      console.error("Error updating user info:", error);
-      showNotification(t("errorUpdate") || "Lỗi khi cập nhật thông tin", 'error');
+      console.error('Error updating user info:', error);
+      showNotification(t('errorUpdate') || 'Lỗi khi cập nhật thông tin', 'error');
     } finally {
       setLoading(false);
     }
@@ -264,25 +267,52 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
     try {
       setLoading(true);
 
-      let formattedPhoneNumber = formData.phone.trim();
+      const phoneNumber = formData.phone.trim();
+      if (!phoneNumber) {
+        Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại');
+        setLoading(false);
+        return;
+      }
 
+      let formattedPhoneNumber = phoneNumber;
       if (formattedPhoneNumber.startsWith('0')) {
         formattedPhoneNumber = '+84' + formattedPhoneNumber.slice(1);
       } else if (!formattedPhoneNumber.startsWith('+')) {
         formattedPhoneNumber = '+' + formattedPhoneNumber;
       }
 
-      const confirmationResult = await auth().signInWithPhoneNumber(formattedPhoneNumber);
+      const authInstance = getAuth();
+      const confirmationResult = await signInWithPhoneNumber(authInstance, formattedPhoneNumber);
 
       if (confirmationResult.verificationId) {
         setVerificationId(confirmationResult.verificationId);
-      }
+        console.log('Verification ID set:', confirmationResult.verificationId);
 
-      navigation.navigate("VerifyOTP", {
-        numberPhone: formData.phone,
-        otpAction: "verify",
-        verificationId: confirmationResult.verificationId,
-      });
+        // Đặt isLoggedIn về false để chuyển sang AuthStack
+        setIsLoggedIn(false);
+
+        // Reset navigator với delay để đảm bảo isLoggedIn được cập nhật
+        setTimeout(() => {
+          navigation.dispatch(
+            CommonActions.reset({
+              index: 0,
+              routes: [
+                {
+                  name: 'AuthStack',
+                  params: {
+                    screen: 'VerifyOTP',
+                    params: {
+                      numberPhone: phoneNumber, // Sử dụng numberPhone để khớp với VerifyOTPScreen
+                      otpAction: 'verify',
+                      verificationId: confirmationResult.verificationId,
+                    },
+                  },
+                },
+              ],
+            })
+          );
+        }, 100); // Delay 100ms để đảm bảo re-render
+      }
     } catch (error) {
       console.error('Lỗi khi gửi OTP:', error);
       const errorMessage = error instanceof Error ? error.message : 'Đã xảy ra lỗi';
@@ -328,39 +358,39 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
       {/* Form Container */}
       <View style={styles.formContainer}>
         <View style={styles.inputRow}>
-          <Text style={styles.label}>{t("name")}:</Text>
+          <Text style={styles.label}>{t('name')}:</Text>
           <TextInput
             style={styles.input}
             value={formData.name}
-            onChangeText={(value) => handleInputChange("name", value)}
+            onChangeText={(value) => handleInputChange('name', value)}
           />
         </View>
 
         <View style={styles.inputRow}>
-          <Text style={styles.label}>{t("email")}:</Text>
+          <Text style={styles.label}>{t('email')}:</Text>
           <TextInput
             style={styles.input}
             value={formData.email}
-            onChangeText={(value) => handleInputChange("email", value)}
+            onChangeText={(value) => handleInputChange('email', value)}
           />
         </View>
 
         <View style={styles.inputRow}>
-          <Text style={styles.label}>{t("phone")}:</Text>
+          <Text style={styles.label}>{t('phone')}:</Text>
           <View style={styles.phoneInputContainer}>
             <TextInput
               style={styles.phoneInput}
               value={formData.phone}
               editable={!formData.isVerifyPhone}
-              onChangeText={(value) => handleInputChange("phone", value)}
-              keyboardType="phone-pad"
-              placeholder="Nhập số điện thoại"
+              onChangeText={(value) => handleInputChange('phone', value)}
+              keyboardType='phone-pad'
+              placeholder='Nhập số điện thoại'
             />
             {formData.isVerifyPhone ? (
-              <Text style={styles.verifiedIcon}>{t("verified")}</Text>
+              <Text style={styles.verifiedIcon}>{t('verified')}</Text>
             ) : (
               <TouchableOpacity onPress={handleSendCode}>
-                <Text style={styles.verifyButtonText}>{t("verifyNow")}</Text>
+                <Text style={styles.verifyButtonText}>{t('verifyNow')}</Text>
               </TouchableOpacity>
             )}
           </View>
@@ -368,14 +398,14 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
 
         <View style={styles.readOnlySection}>
           <View style={styles.readOnlyRow}>
-            <Text style={styles.label}>{t("birth") || "Ngày sinh"}:</Text>
+            <Text style={styles.label}>{t('birth') || 'Ngày sinh'}:</Text>
             <View style={styles.readOnlyField}>
               <Text style={styles.readOnlyText}>{formData.birth}</Text>
             </View>
           </View>
 
           <View style={styles.readOnlyRow}>
-            <Text style={styles.label}>{t("gender") || "Giới tính"}:</Text>
+            <Text style={styles.label}>{t('gender') || 'Giới tính'}:</Text>
             <View style={styles.readOnlyField}>
               <Text style={styles.readOnlyText}>{formData.sex}</Text>
             </View>
@@ -383,11 +413,11 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
         </View>
 
         <View style={styles.inputRow}>
-          <Text style={styles.label}>{t("address")}:</Text>
+          <Text style={styles.label}>{t('address')}:</Text>
           <TextInput
             style={styles.input}
             value={formData.address}
-            onChangeText={(value) => handleInputChange("address", value)}
+            onChangeText={(value) => handleInputChange('address', value)}
           />
         </View>
       </View>
@@ -396,7 +426,7 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
       <TouchableOpacity style={styles.saveButton} onPress={handleSave} disabled={loading}>
         <Text style={styles.buttonText}>{loading ? t('saving') : t('save')}</Text>
       </TouchableOpacity>
-      {loading && <Loading message={t("processing")} />}
+      {loading && <Loading message={t('processing')} />}
     </ScrollView>
   );
 };
@@ -544,7 +574,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     marginLeft: 10,
-    // borderWidth: 1,
     padding: 5,
     backgroundColor: 'red',
     borderBlockColor: 'red',
