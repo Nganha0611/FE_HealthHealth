@@ -121,5 +121,6 @@ dependencies {
         
         implementation jscFlavor
     }
+    implementation "androidx.health.connect:connect-client:1.1.0-alpha06"
 }
 apply from: "../../node_modules/react-native-vector-icons/fonts.gradle"
