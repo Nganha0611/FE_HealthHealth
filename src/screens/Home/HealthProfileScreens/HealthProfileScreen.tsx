@@ -1,5 +1,4 @@
 import { NavigationProp, useNavigation, useFocusEffect } from '@react-navigation/native';
-import { StackNavigationProp } from '@react-navigation/stack';
 import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, TextInput } from 'react-native';
 import { ScrollView } from 'react-native-gesture-handler';
@@ -12,7 +11,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import Loading from '../../../components/Loading';
 import CustomModal from '../../../components/CustomModal';
-import { BottomTabParamList } from '../../../navigation/BottomTabs';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   initialize,
@@ -21,22 +19,25 @@ import {
   readRecords,
   SdkAvailabilityStatus,
 } from 'react-native-health-connect';
+import { useNotification } from '../../../contexts/NotificationContext';
 
-// Định nghĩa interface cho dữ liệu đo lường
 interface BloodPressurePayload {
   systolic: number;
   diastolic: number;
   createdAt: string;
+  userId?: string;
 }
 
 interface HeartRatePayload {
   heartRate: number;
   createdAt: string;
+  userId?: string;
 }
 
 interface StepsPayload {
   steps: number;
   createdAt: string;
+  userId?: string;
 }
 
 interface BloodPressureData {
@@ -73,20 +74,17 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   const [steps, setSteps] = useState<string | null>(null);
   const [stepsDate, setStepsDate] = useState<string | null>(null);
   const [measurementDate, setMeasurementDate] = useState<Date>(new Date());
-  const [measurementTime, setMeasurementTime] = useState<Date>(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [showTimePicker, setShowTimePicker] = useState(false);
   const [heartRate, setHeartRate] = useState<string | null>(null);
   const [heartRateDate, setHeartRateDate] = useState<string | null>(null);
   const [bloodPressureDate, setBloodPressureDate] = useState<string | null>(null);
   const { t } = useTranslation();
   const [loading, setLoading] = useState<boolean>(true);
   const [userId, setUserId] = useState<string>('');
-  const [dataLoaded, setDataLoaded] = useState(false);
-
   const [allHeartRateData, setAllHeartRateData] = useState<HeartRateData[]>([]);
   const [allBloodPressureData, setAllBloodPressureData] = useState<BloodPressureData[]>([]);
   const [allStepsData, setAllStepsData] = useState<StepsData[]>([]);
+  const { showNotification } = useNotification();
 
   const fetchUser = async () => {
     try {
@@ -94,19 +92,43 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
       if (userData) {
         const user: User = JSON.parse(userData);
         setUserId(user.id);
+        return user.id;
       }
+      showNotification(t('noUserData'), 'error');
+      return '';
     } catch (error) {
-      console.error('Error fetching user:', error);
+      showNotification(t('fetchUserError'), 'error');
+      return '';
     }
+  };
+
+  const tryEndpoints = async (endpoints: string[], method: 'get' | 'post', data?: any, headers?: any) => {
+    for (const endpoint of endpoints) {
+      try {
+        const response = method === 'get'
+          ? await axios.get(endpoint, { headers, timeout: 10000 })
+          : await axios.post(endpoint, data, { headers, timeout: 10000 });
+        return response;
+      } catch (error: any) {}
+    }
+    throw new Error('All endpoints failed');
   };
 
   const fetchLatestHeartRate = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
-      if (!token) return;
-      const response = await axios.get(`${API_BASE_URL}/api/heart-rates/measure/latest`, {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 5000,
+      if (!token) {
+        showNotification(t('noAuthToken'), 'error');
+        return;
+      }
+      const endpoints = [
+        `${API_BASE_URL}/api/heart-rate/measure/latest`,
+        `${API_BASE_URL}/api/heart-rate/latest`,
+        `${API_BASE_URL}/api/heart-rates/measure/latest`,
+      ];
+      const response = await tryEndpoints(endpoints, 'get', null, {
+        Authorization: `Bearer ${token}`,
+        'Cache-Control': 'no-cache',
       });
       if (response.status === 204 || !response.data) {
         setHeartRate('--');
@@ -125,10 +147,18 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   const fetchLatestBloodPressure = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
-      if (!token) return;
-      const response = await axios.get(`${API_BASE_URL}/api/blood-pressures/measure/latest`, {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 5000,
+      if (!token) {
+        showNotification(t('noAuthToken'), 'error');
+        return;
+      }
+      const endpoints = [
+        `${API_BASE_URL}/api/blood-pressure/measure/latest`,
+        `${API_BASE_URL}/api/blood-pressure/latest`,
+        `${API_BASE_URL}/api/blood-pressures/measure/latest`,
+      ];
+      const response = await tryEndpoints(endpoints, 'get', null, {
+        Authorization: `Bearer ${token}`,
+        'Cache-Control': 'no-cache',
       });
       if (response.status === 204 || !response.data) {
         setSysValue('--');
@@ -149,10 +179,13 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   const fetchLatestSteps = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
-      if (!token) return;
+      if (!token) {
+        showNotification(t('noAuthToken'), 'error');
+        return;
+      }
       const response = await axios.get(`${API_BASE_URL}/api/steps/measure/latest`, {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 5000,
+        headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' },
+        timeout: 10000,
       });
       if (response.status === 204 || !response.data) {
         setSteps('--');
@@ -170,13 +203,13 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   const fetchHeartRateData = async (userId: string) => {
     try {
       const token = await AsyncStorage.getItem('token');
-      const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-      let response = await axios.get(`${API_BASE_URL}/api/heart-rates/user/${userId}`, { ...config, timeout: 5000 });
-      let data = response.data;
-      if (!data || data.length === 0) {
-        response = await axios.get(`${API_BASE_URL}/api/heart-rate/user/${userId}`, { ...config, timeout: 5000 });
-        data = response.data;
-      }
+      const config = token ? { headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' } } : {};
+      const endpoints = [
+        `${API_BASE_URL}/api/heart-rate/user/${userId}`,
+        `${API_BASE_URL}/api/heart-rates/user/${userId}`,
+      ];
+      const response = await tryEndpoints(endpoints, 'get', null, config.headers);
+      const data = response.data;
       if (!data || data.length === 0) {
         setHeartRate('--');
         setHeartRateDate(null);
@@ -207,8 +240,12 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   const fetchBloodPressureData = async (userId: string) => {
     try {
       const token = await AsyncStorage.getItem('token');
-      const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-      const response = await axios.get(`${API_BASE_URL}/api/blood-pressures/user/${userId}`, { ...config, timeout: 5000 });
+      const config = token ? { headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' } } : {};
+      const endpoints = [
+        `${API_BASE_URL}/api/blood-pressure/user/${userId}`,
+        `${API_BASE_URL}/api/blood-pressures/user/${userId}`,
+      ];
+      const response = await tryEndpoints(endpoints, 'get', null, config.headers);
       const data = response.data;
       if (!data || data.length === 0) {
         setSysValue('--');
@@ -245,8 +282,8 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   const fetchStepsData = async (userId: string) => {
     try {
       const token = await AsyncStorage.getItem('token');
-      const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-      const response = await axios.get(`${API_BASE_URL}/api/steps/user/${userId}`, { ...config, timeout: 5000 });
+      const config = token ? { headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' } } : {};
+      const response = await axios.get(`${API_BASE_URL}/api/steps/user/${userId}`, { ...config, timeout: 10000 });
       const data = response.data;
       if (!data || data.length === 0) {
         setSteps('--');
@@ -281,10 +318,16 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
       const status = await getSdkStatus();
       if (status === SdkAvailabilityStatus.SDK_AVAILABLE) {
         return true;
-      } else {
-        return false;
       }
+      showNotification(
+        status === SdkAvailabilityStatus.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED
+          ? t('healthConnectUpdateRequired')
+          : t('healthConnectNotAvailable'),
+        'error'
+      );
+      return false;
     } catch (err) {
+      showNotification(t('healthConnectInitError'), 'error');
       return false;
     }
   };
@@ -292,8 +335,13 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   const requestHealthPermissions = async (recordType: 'HeartRate' | 'BloodPressure' | 'Steps') => {
     try {
       const permissions = await requestPermission([{ accessType: 'read', recordType }]);
-      return permissions.length > 0;
+      if (permissions.length === 0) {
+        showNotification(t('healthConnectPermissionError'), 'error');
+        return false;
+      }
+      return true;
     } catch (err) {
+      showNotification(t('healthConnectPermissionError'), 'error');
       return false;
     }
   };
@@ -302,7 +350,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const endTime = new Date();
       const startTime = new Date();
-      startTime.setDate(endTime.getDate() - 7);
+      startTime.setDate(endTime.getDate() - 1);
       const response = await readRecords('HeartRate', {
         timeRangeFilter: { operator: 'between', startTime: startTime.toISOString(), endTime: endTime.toISOString() },
       });
@@ -313,10 +361,12 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         .filter((record) => record.samples && record.samples.length > 0 && record.startTime)
         .map((record) => ({
           rate: record.samples[0]?.beatsPerMinute ?? 0,
-          createdAt: record.startTime ?? '',
-        }));
-      return heartRateData;
+          createdAt: new Date(record.startTime).toISOString(),
+        }))
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return heartRateData.slice(0, 1);
     } catch (err) {
+      showNotification(t('healthConnectFetchError'), 'error');
       return [];
     }
   };
@@ -325,7 +375,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const endTime = new Date();
       const startTime = new Date();
-      startTime.setDate(endTime.getDate() - 7);
+      startTime.setDate(endTime.getDate() - 1);
       const response = await readRecords('BloodPressure', {
         timeRangeFilter: { operator: 'between', startTime: startTime.toISOString(), endTime: endTime.toISOString() },
       });
@@ -337,10 +387,12 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         .map((record) => ({
           systolic: record.systolic?.inMillimetersOfMercury ?? 0,
           diastolic: record.diastolic?.inMillimetersOfMercury ?? 0,
-          createdAt: record.time ?? '',
-        }));
-      return bloodPressureData;
+          createdAt: new Date(record.time).toISOString(),
+        }))
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      return bloodPressureData.slice(0, 1);
     } catch (err) {
+      showNotification(t('healthConnectFetchError'), 'error');
       return [];
     }
   };
@@ -349,7 +401,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const endTime = new Date();
       const startTime = new Date();
-      startTime.setDate(endTime.getDate() - 30);
+      startTime.setDate(endTime.getDate() - 1);
       const response = await readRecords('Steps', {
         timeRangeFilter: { operator: 'between', startTime: startTime.toISOString(), endTime: endTime.toISOString() },
       });
@@ -358,231 +410,205 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
       }
       const dailySteps: { [date: string]: number } = {};
       response.records.forEach((record) => {
-        const recordDate = new Date(record.startTime).toDateString();
-        dailySteps[recordDate] = (dailySteps[recordDate] || 0) + (record.count || 0);
+        const dateKey = new Date(record.startTime).toISOString().split('T')[0];
+        dailySteps[dateKey] = (dailySteps[dateKey] || 0) + (record.count || 0);
       });
       const stepsData: StepsData[] = Object.entries(dailySteps).map(([date, steps]) => ({
         steps,
-        createdAt: new Date(date).toISOString(),
+        createdAt: `${date}T00:00:00Z`,
       }));
       return stepsData;
     } catch (err) {
+      showNotification(t('healthConnectFetchError'), 'error');
       return [];
     }
   };
 
   const getDateKey = (timestamp: string) => {
-    return new Date(timestamp).toDateString();
+    return new Date(timestamp).toISOString();
   };
 
   const syncHeartRateFromHealthConnect = async () => {
-    const isInitialized = await initializeHealthConnect();
-    if (!isInitialized) return;
-    const granted = await requestHealthPermissions('HeartRate');
-    if (!granted) return;
-    const healthConnectData = await readHeartRateData();
-    if (healthConnectData.length === 0) return;
+    setLoading(true);
+    try {
+      const isInitialized = await initializeHealthConnect();
+      if (!isInitialized) return;
 
-    const dbDataByDate: { [date: string]: HeartRateData } = {};
-    allHeartRateData.forEach((item) => {
-      const dateKey = getDateKey(item.createdAt);
-      dbDataByDate[dateKey] = item;
-    });
+      const granted = await requestHealthPermissions('HeartRate');
+      if (!granted) return;
 
-    const healthConnectDataByDate: { [date: string]: HeartRateData } = {};
-    healthConnectData.forEach((item) => {
-      const dateKey = getDateKey(item.createdAt);
-      healthConnectDataByDate[dateKey] = {
-        rate: item.rate,
-        createdAt: item.createdAt,
-      };
-    });
+      const healthConnectData = await readHeartRateData();
+      if (healthConnectData.length === 0) return;
 
-    const token = await AsyncStorage.getItem('token');
-    if (!token) return;
-
-    for (const [dateKey, hcItem] of Object.entries(healthConnectDataByDate)) {
-      const dbItem = dbDataByDate[dateKey];
-      if (dbItem) {
-        try {
-          console.log(`Updating heart rate for ${dateKey}: ${hcItem.rate}`);
-          await axios.put(
-            `${API_BASE_URL}/api/heart-rates/measure/update-by-date`,
-            { date: hcItem.createdAt, heartRate: hcItem.rate },
-            { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 }
-          );
-        } catch (error) {
-          console.error(`Error updating heart rate for ${dateKey}:`, error);
-        }
-      } else {
-        try {
-          console.log(`Adding new heart rate for ${dateKey}: ${hcItem.rate}`);
-          await axios.post(
-            `${API_BASE_URL}/api/heart-rates/measure`,
-            { heartRate: hcItem.rate, createdAt: hcItem.createdAt },
-            { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 }
-          );
-        } catch (error) {
-          console.error(`Error adding heart rate for ${dateKey}:`, error);
-        }
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        showNotification(t('noAuthToken'), 'error');
+        return;
       }
-    }
 
-    const userData = await AsyncStorage.getItem('user');
-    if (userData) {
-      const user: User = JSON.parse(userData);
-      await fetchHeartRateData(user.id);
+      const endpoints = [
+        `${API_BASE_URL}/api/heart-rate/measure`,
+        `${API_BASE_URL}/api/heart-rate`,
+        `${API_BASE_URL}/api/heart-rates/measure`,
+      ];
+      const hcItem = healthConnectData[0];
+      const dateKey = getDateKey(hcItem.createdAt);
+
+      try {
+        await tryEndpoints(endpoints, 'post', {
+          heartRate: hcItem.rate,
+          createdAt: hcItem.createdAt,
+          userId,
+        }, {
+          Authorization: `Bearer ${token}`,
+          'Cache-Control': 'no-cache',
+        });
+      } catch (error: any) {
+        showNotification(t('syncError'), 'error');
+      }
+
+      if (userId) {
+        await fetchHeartRateData(userId);
+        await fetchLatestHeartRate();
+      }
+    } catch (error) {
+      showNotification(t('syncError'), 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
   const syncBloodPressureFromHealthConnect = async () => {
-    const isInitialized = await initializeHealthConnect();
-    if (!isInitialized) return;
-    const granted = await requestHealthPermissions('BloodPressure');
-    if (!granted) return;
-    const healthConnectData = await readBloodPressureData();
-    if (healthConnectData.length === 0) return;
+    setLoading(true);
+    try {
+      const isInitialized = await initializeHealthConnect();
+      if (!isInitialized) return;
 
-    const dbDataByDate: { [date: string]: BloodPressureData } = {};
-    allBloodPressureData.forEach((item) => {
-      const dateKey = getDateKey(item.createdAt);
-      dbDataByDate[dateKey] = item;
-    });
+      const granted = await requestHealthPermissions('BloodPressure');
+      if (!granted) return;
 
-    const healthConnectDataByDate: { [date: string]: BloodPressureData } = {};
-    healthConnectData.forEach((item) => {
-      const dateKey = getDateKey(item.createdAt);
-      healthConnectDataByDate[dateKey] = {
-        systolic: item.systolic,
-        diastolic: item.diastolic,
-        createdAt: item.createdAt,
-      };
-    });
+      const healthConnectData = await readBloodPressureData();
+      if (healthConnectData.length === 0) return;
 
-    const token = await AsyncStorage.getItem('token');
-    if (!token) return;
-
-    for (const [dateKey, hcItem] of Object.entries(healthConnectDataByDate)) {
-      const dbItem = dbDataByDate[dateKey];
-      if (dbItem) {
-        try {
-          console.log(`Updating blood pressure for ${dateKey}: ${hcItem.systolic}/${hcItem.diastolic}`);
-          await axios.put(
-            `${API_BASE_URL}/api/blood-pressures/measure/update-by-date`,
-            { date: hcItem.createdAt, systolic: hcItem.systolic, diastolic: hcItem.diastolic },
-            { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 }
-          );
-        } catch (error) {
-          console.error(`Error updating blood pressure for ${dateKey}:`, error);
-        }
-      } else {
-        try {
-          console.log(`Adding new blood pressure for ${dateKey}: ${hcItem.systolic}/${hcItem.diastolic}`);
-          await axios.post(
-            `${API_BASE_URL}/api/blood-pressures/measure`,
-            { systolic: hcItem.systolic, diastolic: hcItem.diastolic, createdAt: hcItem.createdAt },
-            { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 }
-          );
-        } catch (error) {
-          console.error(`Error adding blood pressure for ${dateKey}:`, error);
-        }
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        showNotification(t('noAuthToken'), 'error');
+        return;
       }
-    }
 
-    const userData = await AsyncStorage.getItem('user');
-    if (userData) {
-      const user: User = JSON.parse(userData);
-      await fetchBloodPressureData(user.id);
+      const endpoints = [
+        `${API_BASE_URL}/api/blood-pressure/measure`,
+        `${API_BASE_URL}/api/blood-pressure`,
+        `${API_BASE_URL}/api/blood-pressures/measure`,
+      ];
+      const hcItem = healthConnectData[0];
+      const dateKey = getDateKey(hcItem.createdAt);
+
+      try {
+        await tryEndpoints(endpoints, 'post', {
+          systolic: hcItem.systolic,
+          diastolic: hcItem.diastolic,
+          createdAt: hcItem.createdAt,
+          userId,
+        }, {
+          Authorization: `Bearer ${token}`,
+          'Cache-Control': 'no-cache',
+        });
+      } catch (error: any) {
+        showNotification(t('syncError'), 'error');
+      }
+
+      if (userId) {
+        await fetchBloodPressureData(userId);
+        await fetchLatestBloodPressure();
+      }
+    } catch (error) {
+      showNotification(t('syncError'), 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
   const syncStepsFromHealthConnect = async () => {
-    const isInitialized = await initializeHealthConnect();
-    if (!isInitialized) return;
-    const granted = await requestHealthPermissions('Steps');
-    if (!granted) return;
-    const healthConnectData = await readStepsData();
-    if (healthConnectData.length === 0) return;
+    setLoading(true);
+    try {
+      const isInitialized = await initializeHealthConnect();
+      if (!isInitialized) return;
 
-    const dbDataByDate: { [date: string]: StepsData } = {};
-    allStepsData.forEach((item) => {
-      const dateKey = getDateKey(item.createdAt);
-      dbDataByDate[dateKey] = item;
-    });
+      const granted = await requestHealthPermissions('Steps');
+      if (!granted) return;
 
-    const healthConnectDataByDate: { [date: string]: StepsData } = {};
-    healthConnectData.forEach((item) => {
-      const dateKey = getDateKey(item.createdAt);
-      healthConnectDataByDate[dateKey] = {
-        steps: item.steps,
-        createdAt: item.createdAt,
-      };
-    });
+      const healthConnectData = await readStepsData();
+      if (healthConnectData.length === 0) return;
 
-    const token = await AsyncStorage.getItem('token');
-    if (!token) return;
+      const dbDataByDate: { [date: string]: StepsData } = {};
+      allStepsData.forEach((item) => {
+        const dateKey = getDateKey(item.createdAt);
+        dbDataByDate[dateKey] = item;
+      });
 
-    for (const [dateKey, hcItem] of Object.entries(healthConnectDataByDate)) {
-      const dbItem = dbDataByDate[dateKey];
-      if (dbItem) {
-        try {
-          console.log(`Updating steps for ${dateKey}: ${hcItem.steps}`);
-          await axios.put(
-            `${API_BASE_URL}/api/steps/measure/update-by-date`,
-            { date: hcItem.createdAt, steps: hcItem.steps },
-            { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 }
-          );
-        } catch (error) {
-          console.error(`Error updating steps for ${dateKey}:`, error);
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        showNotification(t('noAuthToken'), 'error');
+        return;
+      }
+
+      for (const hcItem of healthConnectData) {
+        const dateKey = getDateKey(hcItem.createdAt);
+        const dbItem = dbDataByDate[dateKey];
+
+        if (dbItem && dbItem.steps === hcItem.steps) {
+          continue;
         }
-      } else {
+
         try {
-          console.log(`Adding new steps for ${dateKey}: ${hcItem.steps}`);
           await axios.post(
             `${API_BASE_URL}/api/steps/measure`,
-            { steps: hcItem.steps, createdAt: hcItem.createdAt },
-            { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 }
+            { steps: hcItem.steps, createdAt: hcItem.createdAt, userId },
+            { headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' }, timeout: 10000 }
           );
-        } catch (error) {
-          console.error(`Error adding steps for ${dateKey}:`, error);
+        } catch (error: any) {
+          showNotification(t('syncError'), 'error');
         }
       }
-    }
 
-    const userData = await AsyncStorage.getItem('user');
-    if (userData) {
-      const user: User = JSON.parse(userData);
-      await fetchStepsData(user.id);
+      if (userId) {
+        await fetchStepsData(userId);
+        await fetchLatestSteps();
+      }
+    } catch (error) {
+      showNotification(t('syncError'), 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleReload = async () => {
     setLoading(true);
     try {
-      const lastSyncTime = await AsyncStorage.getItem('lastSyncTime');
-      const now = new Date().getTime();
-      const oneHour = 60 * 60 * 1000; // 1 giờ
-
-      if (!lastSyncTime || (now - parseInt(lastSyncTime) > oneHour)) {
-        await Promise.all([
-          fetchUser(),
-          fetchLatestHeartRate(),
-          fetchLatestBloodPressure(),
-          fetchLatestSteps(),
-          syncHeartRateFromHealthConnect(),
-          syncBloodPressureFromHealthConnect(),
-          syncStepsFromHealthConnect(),
-        ]);
-        await AsyncStorage.setItem('lastSyncTime', now.toString());
-      } else {
-        await Promise.all([
-          fetchUser(),
-          fetchLatestHeartRate(),
-          fetchLatestBloodPressure(),
-          fetchLatestSteps(),
-        ]);
+      const userId = await fetchUser();
+      if (!userId) {
+        return;
       }
+
+      await Promise.all([
+        syncHeartRateFromHealthConnect(),
+        syncBloodPressureFromHealthConnect(),
+        syncStepsFromHealthConnect(),
+      ]);
+
+      await Promise.all([
+        fetchLatestHeartRate(),
+        fetchLatestBloodPressure(),
+        fetchLatestSteps(),
+        fetchHeartRateData(userId),
+        fetchBloodPressureData(userId),
+        fetchStepsData(userId),
+      ]);
+
+      await AsyncStorage.setItem('lastSyncTime', new Date().getTime().toString());
     } catch (error) {
+      showNotification(t('reloadError'), 'error');
       setHeartRate('--');
       setHeartRateDate(null);
       setSysValue('--');
@@ -596,18 +622,32 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   useEffect(() => {
-    const fetchAll = async () => {
-      if (dataLoaded) return; // Skip if data is already loaded
+    const fetchAndSyncAll = async () => {
       setLoading(true);
       try {
+        const userId = await fetchUser();
+        if (!userId) {
+          return;
+        }
+
         await Promise.all([
-          fetchUser(),
+          syncHeartRateFromHealthConnect(),
+          syncBloodPressureFromHealthConnect(),
+          syncStepsFromHealthConnect(),
+        ]);
+
+        await Promise.all([
           fetchLatestHeartRate(),
           fetchLatestBloodPressure(),
           fetchLatestSteps(),
+          fetchHeartRateData(userId),
+          fetchBloodPressureData(userId),
+          fetchStepsData(userId),
         ]);
-        setDataLoaded(true); // Mark data as loaded
+
+        await AsyncStorage.setItem('lastSyncTime', new Date().getTime().toString());
       } catch (error) {
+        showNotification(t('fetchError'), 'error');
         setHeartRate('--');
         setHeartRateDate(null);
         setSysValue('--');
@@ -616,29 +656,28 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         setSteps('--');
         setStepsDate(null);
       } finally {
-        setLoading(false); // Always reset loading state
+        setLoading(false);
       }
     };
-    fetchAll();
-  }, [dataLoaded]);
+    fetchAndSyncAll();
+  }, []);
 
   useFocusEffect(
     useCallback(() => {
       let isActive = true;
 
-      const fetchAll = async () => {
-        if (!isActive || dataLoaded) return; // Skip if data is already loaded or screen is not active
+      const fetchLatest = async () => {
+        if (!isActive) return;
         setLoading(true);
         try {
           await Promise.all([
-            fetchUser(),
             fetchLatestHeartRate(),
             fetchLatestBloodPressure(),
             fetchLatestSteps(),
           ]);
-          setDataLoaded(true); // Mark data as loaded
         } catch (error) {
           if (isActive) {
+            showNotification(t('fetchError'), 'error');
             setHeartRate('--');
             setHeartRateDate(null);
             setSysValue('--');
@@ -648,73 +687,103 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
             setStepsDate(null);
           }
         } finally {
-          if (isActive) setLoading(false); // Always reset loading state
+          if (isActive) {
+            setLoading(false);
+          }
         }
       };
 
-      fetchAll();
+      fetchLatest();
 
       return () => {
-        isActive = false; // Cleanup to prevent state updates after navigation
+        isActive = false;
       };
-    }, [dataLoaded])
+    }, [])
   );
 
-  const combineDateTime = (date: Date, time: Date): string => {
-    const combined = new Date(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
-      time.getHours(),
-      time.getMinutes(),
-      time.getSeconds()
-    );
-    return combined.toISOString();
+  const combineDateTime = (date: Date): string => {
+    return new Date(date).toISOString();
   };
 
   const handleMeasureBloodPressure = async () => {
-    if (!sysValue || !diaValue || isNaN(parseInt(sysValue)) || isNaN(parseInt(diaValue))) return;
+    if (!sysValue || !diaValue || isNaN(parseInt(sysValue)) || isNaN(parseInt(diaValue))) {
+      showNotification(t('invalidInput'), 'error');
+      return;
+    }
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem('token');
-      if (!token) return;
+      if (!token) {
+        showNotification(t('noAuthToken'), 'error');
+        return;
+      }
       const payload: BloodPressurePayload = {
         systolic: parseInt(sysValue),
         diastolic: parseInt(diaValue),
-        createdAt: combineDateTime(measurementDate, measurementTime),
+        createdAt: combineDateTime(measurementDate),
+        userId,
       };
-      await axios.post(`${API_BASE_URL}/api/blood-pressures/measure`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 5000,
+      const endpoints = [
+        `${API_BASE_URL}/api/blood-pressure/measure`,
+        `${API_BASE_URL}/api/blood-pressure`,
+        `${API_BASE_URL}/api/blood-pressures/measure`,
+      ];
+      await tryEndpoints(endpoints, 'post', payload, {
+        Authorization: `Bearer ${token}`,
+        'Cache-Control': 'no-cache',
       });
-      setSysValue('');
-      setDiaValue('');
-      fetchLatestBloodPressure();
-    } catch (error) { } finally {
+      setSysValue(null);
+      setDiaValue(null);
+      setMeasurementDate(new Date());
+      await fetchLatestBloodPressure();
+      if (userId) {
+        await fetchBloodPressureData(userId);
+      }
+    } catch (error) {
+      showNotification(t('measureError'), 'error');
+    } finally {
       setLoading(false);
     }
   };
 
   const handleMeasureHeartRate = async () => {
     const rateValue = parseInt(inputValue);
-    if (!inputValue.trim() || isNaN(rateValue) || rateValue <= 0 || rateValue > 300) return;
+    if (!inputValue.trim() || isNaN(rateValue) || rateValue <= 0 || rateValue > 300) {
+      showNotification(t('invalidInput'), 'error');
+      return;
+    }
     setLoading(true);
     try {
       const token = await AsyncStorage.getItem('token');
-      if (!token) return;
+      if (!token) {
+        showNotification(t('noAuthToken'), 'error');
+        return;
+      }
       const payload: HeartRatePayload = {
         heartRate: rateValue,
-        createdAt: combineDateTime(measurementDate, measurementTime),
+        createdAt: combineDateTime(measurementDate),
+        userId,
       };
-      const response = await axios.post(`${API_BASE_URL}/api/heart-rates/measure`, payload, {
-        headers: { Authorization: `Bearer ${token}` },
-        timeout: 5000,
+      const endpoints = [
+        `${API_BASE_URL}/api/heart-rate/measure`,
+        `${API_BASE_URL}/api/heart-rate`,
+        `${API_BASE_URL}/api/heart-rates/measure`,
+      ];
+      const response = await tryEndpoints(endpoints, 'post', payload, {
+        Authorization: `Bearer ${token}`,
+        'Cache-Control': 'no-cache',
       });
       setHeartRate(response.data?.heartRate.toString() ?? rateValue.toString());
-      setHeartRateDate(response.data?.createdAt ?? new Date().toISOString());
+      setHeartRateDate(response.data?.createdAt ?? combineDateTime(measurementDate));
       setInputValue('');
+      setMeasurementDate(new Date());
       await fetchLatestHeartRate();
-    } catch (error) { } finally {
+      if (userId) {
+        await fetchHeartRateData(userId);
+      }
+    } catch (error) {
+      showNotification(t('measureError'), 'error');
+    } finally {
       setLoading(false);
     }
   };
@@ -732,8 +801,6 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
       });
     } catch (error) {
       return '-/-';
@@ -745,13 +812,6 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
-    });
-  };
-
-  const formatTime = (time: Date) => {
-    return time.toLocaleString('vi-VN', {
-      hour: '2-digit',
-      minute: '2-digit',
     });
   };
 
@@ -801,23 +861,6 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
               />
             )}
           </View>
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>{t('measurementTime')} (Required):</Text>
-            <TouchableOpacity style={styles.datePickerButton} onPress={() => setShowTimePicker(true)}>
-              <Text style={styles.datePickerText}>{formatTime(measurementTime)}</Text>
-            </TouchableOpacity>
-            {showTimePicker && (
-              <DateTimePicker
-                value={measurementTime}
-                mode="time"
-                display="default"
-                onChange={(event, selected) => {
-                  setShowTimePicker(false);
-                  if (selected) setMeasurementTime(selected);
-                }}
-              />
-            )}
-          </View>
           <View style={styles.buttonContainer}>
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: '#ccc' }]}
@@ -826,7 +869,6 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
                 setSysValue(null);
                 setDiaValue(null);
                 setMeasurementDate(new Date());
-                setMeasurementTime(new Date());
               }}
             >
               <Text style={styles.actionButtonText}>{t('cancel')}</Text>
@@ -873,23 +915,6 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
               />
             )}
           </View>
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>{t('measurementTime')} (Required):</Text>
-            <TouchableOpacity style={styles.datePickerButton} onPress={() => setShowTimePicker(true)}>
-              <Text style={styles.datePickerText}>{formatTime(measurementTime)}</Text>
-            </TouchableOpacity>
-            {showTimePicker && (
-              <DateTimePicker
-                value={measurementTime}
-                mode="time"
-                display="default"
-                onChange={(event, selected) => {
-                  setShowTimePicker(false);
-                  if (selected) setMeasurementTime(selected);
-                }}
-              />
-            )}
-          </View>
           <View style={styles.buttonContainer}>
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: '#ccc' }]}
@@ -897,7 +922,6 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
                 setModalVisible(false);
                 setInputValue('');
                 setMeasurementDate(new Date());
-                setMeasurementTime(new Date());
               }}
             >
               <Text style={styles.actionButtonText}>{t('cancel')}</Text>
@@ -940,7 +964,9 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         <FontAwesome name="heartbeat" size={28} color="white" style={{ marginRight: 10 }} />
         <Text style={styles.enhancedButtonText}>{t('measureHeartRate')}</Text>
       </TouchableOpacity>
-      <TouchableOpacity style={styles.closeButton} onPress={() => setTypeSelectModalVisible(false)}>
+      <TouchableOpacity style={styles.closeButton} onPress={() => {
+        setTypeSelectModalVisible(false);
+      }}>
         <Text style={styles.closeButtonText}>{t('close')}</Text>
       </TouchableOpacity>
     </>
@@ -955,7 +981,9 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
             size={20}
             color="#432c81"
             style={{ marginRight: 15, marginTop: 17 }}
-            onPress={() => navigation.goBack()}
+            onPress={() => {
+              navigation.goBack();
+            }}
           />
           <Text style={[styles.text1, { fontSize: 30, marginTop: 5 }]}>{t('healthProfile')}</Text>
         </View>
@@ -976,7 +1004,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
             strokeWidth="9"
             fill="none"
             strokeDasharray="345.6"
-            strokeDashoffset={heartRate ? `${345.6 - (parseInt(heartRate) / 100) * 345.6}` : '90'}
+            strokeDashoffset={heartRate && !isNaN(parseInt(heartRate)) ? `${345.6 - (parseInt(heartRate) / 100) * 345.6}` : '90'}
             strokeLinecap="round"
           />
           <Circle
@@ -987,7 +1015,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
             strokeWidth="9"
             fill="none"
             strokeDasharray="282.6"
-            strokeDashoffset={sysValue ? `${282.6 - (parseInt(sysValue) / 140) * 282.6}` : '78'}
+            strokeDashoffset={sysValue && !isNaN(parseInt(sysValue)) ? `${282.6 - (parseInt(sysValue) / 140) * 282.6}` : '78'}
             strokeLinecap="round"
           />
           <Circle
@@ -998,7 +1026,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
             strokeWidth="9"
             fill="none"
             strokeDasharray="219.8"
-            strokeDashoffset={steps ? `${219.8 - (parseInt(steps) / 10000) * 219.8}` : '50'}
+            strokeDashoffset={steps && !isNaN(parseInt(steps)) ? `${219.8 - (parseInt(steps) / 10000) * 219.8}` : '50'}
             strokeLinecap="round"
           />
         </Svg>
@@ -1020,7 +1048,9 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.measurementContainer}>
           <TouchableOpacity
             style={styles.measurementItem}
-            onPress={() => navigation.navigate('HeartRate')}
+            onPress={() => {
+              navigation.navigate('HeartRate');
+            }}
           >
             <FontAwesome5 name="heartbeat" size={24} color="#ed1b24" />
             <Text style={styles.measurementLabel}>{t('heartRate')}</Text>
@@ -1029,7 +1059,9 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.measurementItem}
-            onPress={() => navigation.navigate('BloodPressure')}
+            onPress={() => {
+              navigation.navigate('BloodPressure');
+            }}
           >
             <FontAwesome5 name="tint" size={24} color="#2577f7" />
             <Text style={styles.measurementLabel}>{t('bloodPressure')}</Text>
@@ -1040,7 +1072,9 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.measurementItem}
-            onPress={() => navigation.navigate('Step')}
+            onPress={() => {
+              navigation.navigate('Step');
+            }}
           >
             <FontAwesome5 name="walking" size={24} color="#3CB371" />
             <Text style={styles.measurementLabel}>{t('steps')}</Text>
@@ -1094,7 +1128,6 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
             setInputValue('');
           }
           setMeasurementDate(new Date());
-          setMeasurementTime(new Date());
         }}
         children={getModalContent()}
       />
@@ -1105,13 +1138,38 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f5' },
-  contentContainer: { paddingBottom: 20 },
-  header: { flexDirection: 'row', marginTop: 10, justifyContent: 'space-between', paddingHorizontal: 15, paddingVertical: 10 },
-  headerLeft: { flexDirection: 'row', alignItems: 'center' },
-  headerRight: { flexDirection: 'row', alignItems: 'center' },
-  text1: { fontSize: 25, color: '#432c81', fontWeight: 'bold' },
-  circleContainer: { alignItems: 'center', justifyContent: 'center', marginTop: 20 },
+  container: {
+    flex: 1,
+    backgroundColor: '#f5f5f5'
+  },
+  contentContainer: {
+    paddingBottom: 20
+  },
+  header: {
+    flexDirection: 'row',
+    marginTop: 10,
+    justifyContent: 'space-between',
+    paddingHorizontal: 15,
+    paddingVertical: 10
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  headerRight: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  text1: {
+    fontSize: 25,
+    color: '#432c81',
+    fontWeight: 'bold'
+  },
+  circleContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 20
+  },
   measureContainer: {
     flexDirection: 'row',
     width: 'auto',
@@ -1124,15 +1182,40 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 15,
-    paddingHorizontal: 20,
+    paddingHorizontal: 20
   },
-  measureContent: { flexDirection: 'row', alignItems: 'center' },
-  measureIcon: { marginRight: 15 },
-  measureTitle: { fontSize: 18, fontWeight: 'bold', color: '#432c81' },
-  measureSubtitle: { fontSize: 14, color: '#666', marginTop: 3 },
-  section: { marginTop: 20, marginHorizontal: 15 },
-  sectionTitle: { fontSize: 20, fontWeight: 'bold', color: '#333', marginBottom: 10 },
-  measurementContainer: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap' },
+  measureContent: {
+    flexDirection: 'row',
+    alignItems: 'center'
+  },
+  measureIcon: {
+    marginRight: 15
+  },
+  measureTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#432c81'
+  },
+  measureSubtitle: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 3
+  },
+  section: {
+    marginTop: 20,
+    marginHorizontal: 15
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10
+  },
+  measurementContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap'
+  },
   measurementItem: {
     backgroundColor: '#fff',
     borderRadius: 10,
@@ -1144,9 +1227,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 2,
-    elevation: 2,
+    elevation: 2
   },
-  disabledItem: { position: 'relative', opacity: 0.6 },
+  disabledItem: {
+    position: 'relative',
+    opacity: 0.6
+  },
   comingSoonOverlay: {
     position: 'absolute',
     top: 0,
@@ -1156,22 +1242,96 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 10,
+    borderRadius: 10
   },
-  comingSoonText: { color: '#fff', fontSize: 14, fontWeight: 'bold', transform: [{ rotate: '-45deg' }] },
-  measurementLabel: { fontSize: 16, color: '#666', marginTop: 5 },
-  measurementValue: { fontSize: 18, fontWeight: 'bold', color: '#333', marginTop: 5 },
-  measurementDate: { fontSize: 12, color: '#999', marginTop: 5 },
-  inputContainer: { width: '100%', marginBottom: 20 },
-  inputLabel: { fontSize: 20, fontWeight: 'bold', color: '#333', marginBottom: 10 },
-  enhancedInput: { borderWidth: 2, borderColor: '#ccc', borderRadius: 10, width: '100%', padding: 15, fontSize: 22, backgroundColor: '#f9f9f9', color: '#333' },
-  inputUnit: { position: 'absolute', right: 15, top: 60, fontSize: 18, color: '#666' },
-  buttonContainer: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
-  actionButton: { flex: 1, marginHorizontal: 10, paddingVertical: 15, borderRadius: 12, alignItems: 'center', justifyContent: 'center', elevation: 2 },
-  actionButtonText: { color: 'white', fontWeight: 'bold', fontSize: 20 },
-  datePickerButton: { borderWidth: 2, borderColor: '#ccc', borderRadius: 10, padding: 15, backgroundColor: '#f9f9f9', justifyContent: 'center', alignItems: 'center' },
-  datePickerText: { fontSize: 18, color: '#333' },
-  enhancedModalTitle: { fontSize: 26, marginBottom: 25, color: '#432c81', fontWeight: 'bold', textAlign: 'center' },
+  comingSoonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    transform: [{ rotate: '-45deg' }]
+  },
+  measurementLabel: {
+    fontSize: 16,
+    color: '#666',
+    marginTop: 5
+  },
+  measurementValue: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333',
+    marginTop: 5
+  },
+  measurementDate: {
+    fontSize: 12,
+    color: '#999',
+    marginTop: 5
+  },
+  inputContainer: {
+    width: '100%',
+    marginBottom: 20
+  },
+  inputLabel: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10
+  },
+  enhancedInput: {
+    borderWidth: 2,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    width: '100%',
+    padding: 15,
+    fontSize: 22,
+    backgroundColor: '#f9f9f9',
+    color: '#333'
+  },
+  inputUnit: {
+    position: 'absolute',
+    right: 15,
+    top: 60,
+    fontSize: 18,
+    color: '#666'
+  },
+  buttonContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 10
+  },
+  actionButton: {
+    flex: 1,
+    marginHorizontal: 10,
+    paddingVertical: 15,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2
+  },
+  actionButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 20
+  },
+  datePickerButton: {
+    borderWidth: 2,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    padding: 15,
+    backgroundColor: '#f9f9f9',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  datePickerText: {
+    fontSize: 18,
+    color: '#333'
+  },
+  enhancedModalTitle: {
+    fontSize: 26,
+    marginBottom: 25,
+    color: '#432c81',
+    fontWeight: 'bold',
+    textAlign: 'center'
+  },
   enhancedButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1181,11 +1341,26 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     borderRadius: 12,
     elevation: 3,
-    marginBottom: 10,
+    marginBottom: 10
   },
-  enhancedButtonText: { color: 'white', fontWeight: 'bold', fontSize: 22 },
-  closeButton: { backgroundColor: '#888', paddingVertical: 15, paddingHorizontal: 30, borderRadius: 12, marginTop: 20 },
-  closeButtonText: { color: 'white', fontWeight: 'bold', fontSize: 18, textAlign: 'center' },
+  enhancedButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 22
+  },
+  closeButton: {
+    backgroundColor: '#888',
+    paddingVertical: 15,
+    paddingHorizontal: 30,
+    borderRadius: 12,
+    marginTop: 20
+  },
+  closeButtonText: {
+    color: 'white',
+    fontWeight: 'bold',
+    fontSize: 18,
+    textAlign: 'center'
+  },
 });
 
 export default HealthProfileScreen;
