@@ -61,12 +61,11 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
         const userData = await AsyncStorage.getItem('user');
         if (userData) {
           const user: User = JSON.parse(userData);
-          fetchStepsData(user.id);
+          await fetchStepsData(user.id);
         } else {
           showNotification(t('noUserInfo'), 'error');
         }
       } catch (error) {
-        console.error('Error fetching user info:', error);
         showNotification(t('fetchUserError'), 'error');
       } finally {
         setLoading(false);
@@ -78,22 +77,16 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
 
   const fetchStepsData = async (userId: string) => {
     try {
-      console.log(`Fetching steps data for userId: ${userId}`);
       const token = await AsyncStorage.getItem('token');
       const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
       const response = await axios.get(`${API_BASE_URL}/api/steps/user/${userId}`, config);
-      console.log('API response status:', response.status);
-      console.log('API response data:', response.data);
+    
 
       const data = response.data;
 
       if (!data || data.length === 0) {
-        console.log('No steps data returned from API');
-        setChartData({
-          labels: [],
-          datasets: [{ data: [] }],
-        });
+        setChartData({ labels: [], datasets: [{ data: [] }] });
         setAverageSteps(null);
         setMaxSteps(null);
         setFilteredHistory([]);
@@ -124,11 +117,7 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
       );
 
       if (validData.length === 0) {
-        console.log('No valid steps data after filtering. Invalid items:', normalizedData);
-        setChartData({
-          labels: [],
-          datasets: [{ data: [] }],
-        });
+        setChartData({ labels: [], datasets: [{ data: [] }] });
         setAverageSteps(null);
         setMaxSteps(null);
         setFilteredHistory([]);
@@ -136,39 +125,28 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
         return;
       }
 
-      // Nhóm dữ liệu theo ngày (bỏ qua giờ)
+      // Nhóm dữ liệu theo ngày duy nhất
       const groupedByDay: { [date: string]: number } = {};
       validData.forEach((item) => {
-        const date = new Date(item.createdAt);
-        const dateKey = `${date.getDate()}/${date.getMonth() + 1}/${date.getFullYear()}`;
-        groupedByDay[dateKey] = (groupedByDay[dateKey] || 0) + item.steps;
+        const date = new Date(item.createdAt).toDateString();
+        groupedByDay[date] = (groupedByDay[date] || 0) + item.steps;
       });
 
-      const groupedData: StepsData[] = Object.entries(groupedByDay).map(([date, steps]) => {
-        const [day, month, year] = date.split('/').map(Number);
-        return {
-          steps,
-          createdAt: new Date(year, month - 1, day).toISOString(),
-        };
-      });
+      const groupedData: StepsData[] = Object.entries(groupedByDay).map(([date, steps]) => ({
+        steps,
+        createdAt: new Date(date).toISOString(),
+      }));
 
       const sorted = groupedData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
       setAllStepsData(sorted);
       setFilteredHistory(sorted);
       processStepsData(sorted);
     } catch (error: any) {
-      console.error('Error fetching steps data:', error.message);
       if (error.response) {
-        console.error('Error response:', error.response.status, error.response.data);
-        if (error.response.status === 401) {
-          showNotification(t('unauthorized'), 'error');
-        } else if (error.response.status === 403) {
-          showNotification(t('forbidden'), 'error');
-        } else if (error.response.status === 204) {
-          setChartData({
-            labels: [],
-            datasets: [{ data: [] }],
-          });
+        if (error.response.status === 401) showNotification(t('unauthorized'), 'error');
+        else if (error.response.status === 403) showNotification(t('forbidden'), 'error');
+        else if (error.response.status === 204) {
+          setChartData({ labels: [], datasets: [{ data: [] }] });
           setAverageSteps(null);
           setMaxSteps(null);
           setFilteredHistory([]);
@@ -176,10 +154,7 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
         }
       }
       showNotification(t('fetchStepsError'), 'error');
-      setChartData({
-        labels: [],
-        datasets: [{ data: [] }],
-      });
+      setChartData({ labels: [], datasets: [{ data: [] }] });
       setAverageSteps(null);
       setMaxSteps(null);
       setFilteredHistory([]);
@@ -191,22 +166,16 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
   const initializeHealthConnect = async () => {
     try {
       const result = await initialize();
-      console.log('Health Connect initialization result:', result);
       const status = await getSdkStatus();
-      console.log('Health Connect status:', status);
-      if (status === SdkAvailabilityStatus.SDK_AVAILABLE) {
-        return true;
-      } else {
-        showNotification(
-          status === SdkAvailabilityStatus.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED
-            ? t('healthConnectUpdateRequired')
-            : t('healthConnectNotAvailable'),
-          'error'
-        );
-        return false;
-      }
+      if (status === SdkAvailabilityStatus.SDK_AVAILABLE) return true;
+      showNotification(
+        status === SdkAvailabilityStatus.SDK_UNAVAILABLE_PROVIDER_UPDATE_REQUIRED
+          ? t('healthConnectUpdateRequired')
+          : t('healthConnectNotAvailable'),
+        'error'
+      );
+      return false;
     } catch (err) {
-      console.error('Error initializing Health Connect:', err);
       showNotification(t('healthConnectInitError') + (err as Error).message, 'error');
       return false;
     }
@@ -215,13 +184,8 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
   const requestHealthPermissions = async () => {
     try {
       const permissions = await requestPermission([{ accessType: 'read', recordType: 'Steps' }]);
-      console.log('Granted permissions:', permissions);
-      if (permissions.length === 0) {
-        throw new Error('No permissions granted for Steps');
-      }
-      return true;
+      return permissions.length > 0;
     } catch (err) {
-      console.error('Error requesting permissions:', err);
       showNotification(t('healthConnectPermissionError') + (err as Error).message, 'error');
       return false;
     }
@@ -231,7 +195,7 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const endTime = new Date();
       const startTime = new Date();
-      startTime.setDate(endTime.getDate() - 30); // Lấy dữ liệu 30 ngày gần nhất
+      startTime.setDate(endTime.getDate() - 30);
 
       const response = await readRecords('Steps', {
         timeRangeFilter: {
@@ -240,39 +204,30 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
           endTime: endTime.toISOString(),
         },
       });
-      console.log('Health Connect steps records:', JSON.stringify(response, null, 2));
       if (!response.records || response.records.length === 0) {
-        console.warn('No steps records found in Health Connect');
         return [];
       }
 
-      // Tổng hợp dữ liệu theo ngày (bỏ qua giờ)
       const dailySteps: { [date: string]: number } = {};
       response.records.forEach((record) => {
-        const recordDate = new Date(record.startTime);
-        const dateKey = `${recordDate.getDate()}/${recordDate.getMonth() + 1}/${recordDate.getFullYear()}`;
-        dailySteps[dateKey] = (dailySteps[dateKey] || 0) + (record.count || 0);
+        const recordDate = new Date(record.startTime).toDateString();
+        dailySteps[recordDate] = (dailySteps[recordDate] || 0) + (record.count || 0);
       });
 
-      const stepsData: StepsData[] = Object.entries(dailySteps).map(([date, steps]) => {
-        const [day, month, year] = date.split('/').map(Number);
-        return {
-          steps,
-          createdAt: new Date(year, month - 1, day).toISOString(),
-        };
-      });
+      const stepsData: StepsData[] = Object.entries(dailySteps).map(([date, steps]) => ({
+        steps,
+        createdAt: new Date(date).toISOString(),
+      }));
 
       return stepsData;
     } catch (err) {
-      console.error('Error reading steps data from Health Connect:', err);
       showNotification(t('healthConnectFetchError') + (err as Error).message, 'error');
       return [];
     }
   };
 
-  const normalizeTimestamp = (timestamp: string) => {
-    const date = new Date(timestamp);
-    return date.toISOString().split('.')[0] + 'Z';
+  const getDateKey = (timestamp: string) => {
+    return new Date(timestamp).toDateString(); // Chỉ lấy ngày, bỏ giờ phút giây
   };
 
   const syncStepsFromHealthConnect = async () => {
@@ -280,62 +235,90 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const isInitialized = await initializeHealthConnect();
       if (!isInitialized) {
-        setLoading(false);
+        showNotification(t('healthConnectNotAvailable'), 'error');
         return;
       }
+
       const granted = await requestHealthPermissions();
       if (!granted) {
         showNotification(t('healthConnectPermissionError'), 'error');
-        setLoading(false);
         return;
       }
 
       const healthConnectData = await readStepsData();
       if (healthConnectData.length === 0) {
-        setLoading(false);
         return;
       }
 
-      const normalizedDbData = allStepsData.map((item) => ({
-        ...item,
-        createdAt: normalizeTimestamp(item.createdAt),
-      }));
-
-      const normalizedHealthConnectData = healthConnectData.map((item) => ({
-        ...item,
-        createdAt: normalizeTimestamp(item.createdAt),
-      }));
-
-      const newData = normalizedHealthConnectData.filter((hcItem) => {
-        return !normalizedDbData.some((dbItem) => dbItem.createdAt === hcItem.createdAt);
+      // Nhóm dữ liệu từ cơ sở dữ liệu theo ngày
+      const dbDataByDate: { [date: string]: StepsData } = {};
+      allStepsData.forEach((item) => {
+        const dateKey = getDateKey(item.createdAt);
+        if (dbDataByDate[dateKey]) {
+          // Nếu đã có dữ liệu cho ngày đó, cộng dồn số bước
+          dbDataByDate[dateKey].steps += item.steps;
+        } else {
+          dbDataByDate[dateKey] = { ...item };
+        }
       });
 
-      console.log('New steps data to sync:', newData);
-      if (newData.length === 0) {
-        setLoading(false);
-        return;
-      }
+
+      // Nhóm dữ liệu từ Health Connect theo ngày
+      const healthConnectDataByDate: { [date: string]: StepsData } = {};
+      healthConnectData.forEach((item) => {
+        const dateKey = getDateKey(item.createdAt);
+        if (healthConnectDataByDate[dateKey]) {
+          // Nếu đã có dữ liệu cho ngày đó, cộng dồn số bước
+          healthConnectDataByDate[dateKey].steps += item.steps;
+        } else {
+          healthConnectDataByDate[dateKey] = { ...item };
+        }
+      });
+
 
       const token = await AsyncStorage.getItem('token');
       if (!token) {
         showNotification(t('unauthorized'), 'error');
-        setLoading(false);
         return;
       }
 
-      for (const item of newData) {
-        try {
-          console.log('Sending steps data:', { steps: item.steps, createdAt: item.createdAt });
-          const response = await axios.post(
-            `${API_BASE_URL}/api/steps/measure`,
-            { steps: item.steps, createdAt: item.createdAt },
-            { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 }
-          );
-          console.log(`Steps data synced:`, response.data);
-        } catch (error: any) {
-          console.error('Error syncing steps data:', error.message);
-          if (error.response) {
-            console.error('Error response:', error.response.status, error.response.data);
+      // So sánh và đồng bộ
+      for (const [dateKey, hcItem] of Object.entries(healthConnectDataByDate)) {
+        const dbItem = dbDataByDate[dateKey];
+        if (dbItem) {
+          // Nếu ngày đã tồn tại, cập nhật số bước
+          const updatedSteps = hcItem.steps; // Sử dụng số bước từ Health Connect thay vì cộng dồn
+          try {
+            await axios.put(
+              `${API_BASE_URL}/api/steps/measure/update-by-date`,
+              { date: hcItem.createdAt, steps: updatedSteps },
+              { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 }
+            );
+          } catch (error: any) {
+            // Nếu không có endpoint PUT, thử xóa và thêm mới
+            try {
+              await axios.delete(`${API_BASE_URL}/api/steps/measure/delete-by-date`, {
+                headers: { Authorization: `Bearer ${token}` },
+                data: { date: hcItem.createdAt },
+              });
+              await axios.post(
+                `${API_BASE_URL}/api/steps/measure`,
+                { steps: updatedSteps, createdAt: hcItem.createdAt },
+                { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 }
+              );
+            } catch (deleteError) {
+              showNotification(t('syncStepsError'), 'error');
+            }
+          }
+        } else {
+          // Nếu ngày chưa tồn tại, thêm mới
+          try {
+            await axios.post(
+              `${API_BASE_URL}/api/steps/measure`,
+              { steps: hcItem.steps, createdAt: hcItem.createdAt },
+              { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 }
+            );
+          } catch (error: any) {
             showNotification(t('syncStepsError'), 'error');
           }
         }
@@ -349,7 +332,6 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
         await fetchStepsData(user.id);
       }
     } catch (error) {
-      console.error('Error during sync:', error);
       showNotification(t('syncStepsError'), 'error');
     } finally {
       setLoading(false);
@@ -357,12 +339,8 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const processStepsData = (data: StepsData[]) => {
-    console.log('Processing steps data:', data);
     if (!data || data.length === 0) {
-      setChartData({
-        labels: [],
-        datasets: [{ data: [] }],
-      });
+      setChartData({ labels: [], datasets: [{ data: [] }] });
       setAverageSteps(null);
       setMaxSteps(null);
       setFilteredHistory([]);
@@ -375,20 +353,13 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
 
     const referenceDate = selectedDate || new Date();
     if (viewMode === 'daily') {
-      // Hiển thị 30 ngày gần nhất, cho phép kéo ngang
       const thirtyDaysAgo = new Date(referenceDate);
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
-      filteredData = data.filter((item) => {
-        const itemDate = new Date(item.createdAt);
-        return itemDate >= thirtyDaysAgo;
-      });
+      filteredData = data.filter((item) => new Date(item.createdAt) >= thirtyDaysAgo);
 
       if (filteredData.length === 0) {
-        setChartData({
-          labels: [],
-          datasets: [{ data: [] }],
-        });
+        setChartData({ labels: [], datasets: [{ data: [] }] });
         setAverageSteps(null);
         setMaxSteps(null);
         return;
@@ -400,20 +371,13 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
       });
       stepsValues = filteredData.map((item) => item.steps);
     } else if (viewMode === 'yearly') {
-      // Hiển thị tổng số bước theo 12 tháng trong năm
       const currentYear = referenceDate.getFullYear();
       const monthlySteps: { [month: number]: number } = {};
 
-      filteredData = data.filter((item) => {
-        const itemDate = new Date(item.createdAt);
-        return itemDate.getFullYear() === currentYear;
-      });
+      filteredData = data.filter((item) => new Date(item.createdAt).getFullYear() === currentYear);
 
       if (filteredData.length === 0) {
-        setChartData({
-          labels: [],
-          datasets: [{ data: [] }],
-        });
+        setChartData({ labels: [], datasets: [{ data: [] }] });
         setAverageSteps(null);
         setMaxSteps(null);
         return;
@@ -431,16 +395,10 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
     } else if (viewMode === 'monthly') {
       const startOfMonth = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1);
 
-      filteredData = data.filter((item) => {
-        const itemDate = new Date(item.createdAt);
-        return itemDate >= startOfMonth;
-      });
+      filteredData = data.filter((item) => new Date(item.createdAt) >= startOfMonth);
 
       if (filteredData.length === 0) {
-        setChartData({
-          labels: [],
-          datasets: [{ data: [] }],
-        });
+        setChartData({ labels: [], datasets: [{ data: [] }] });
         setAverageSteps(null);
         setMaxSteps(null);
         return;
@@ -458,30 +416,23 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
         weeklyData[weekKey] = (weeklyData[weekKey] || 0) + item.steps;
       });
 
-      labels = Object.keys(weeklyData).sort((a, b) => {
-        return parseInt(a.replace(`${t('week')} `, '')) - parseInt(b.replace(`${t('week')} `, ''));
-      });
+      labels = Object.keys(weeklyData).sort((a, b) => parseInt(a.replace(`${t('week')} `, '')) - parseInt(b.replace(`${t('week')} `, '')));
       stepsValues = labels.map((week) => weeklyData[week]);
     }
 
     let avgSteps = null;
     let maxStepsValue = null;
     if (filteredData.length > 0) {
+      const uniqueDays = new Set(filteredData.map((item) => new Date(item.createdAt).toDateString())).size;
       const totalSteps = filteredData.reduce((sum, item) => sum + item.steps, 0);
-      avgSteps = Math.round(totalSteps / filteredData.length);
+      avgSteps = uniqueDays > 0 ? Math.round(totalSteps / uniqueDays) : null;
       maxStepsValue = Math.max(...filteredData.map((item) => item.steps));
     }
 
     if (stepsValues.length > 0 && labels.length > 0) {
-      setChartData({
-        labels,
-        datasets: [{ data: stepsValues }],
-      });
+      setChartData({ labels, datasets: [{ data: stepsValues }] });
     } else {
-      setChartData({
-        labels: [],
-        datasets: [{ data: [] }],
-      });
+      setChartData({ labels: [], datasets: [{ data: [] }] });
       showNotification(t('noDataForChart'), 'error');
     }
     setAverageSteps(avgSteps);
@@ -496,7 +447,6 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
   }, [viewMode, t, selectedDate]);
 
   const filterHistoryByDate = (date: Date | null) => {
-    console.log('Filtering history by date:', date);
     if (!date) {
       setFilteredHistory(allStepsData);
       return;
@@ -515,9 +465,7 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
 
   const onDateChange = (event: any, selected: Date | undefined) => {
     setShowDatePicker(Platform.OS === 'ios');
-    if (selected) {
-      setSelectedDate(selected);
-    }
+    if (selected) setSelectedDate(selected);
   };
 
   const clearDateSelection = () => {
@@ -583,7 +531,7 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
       <Text style={styles.subtitle}>{getChartTitle()}</Text>
 
       {loading ? (
-        <Text style={styles.loadingText}>{t('loading_message')}</Text>
+        <Text style={styles.loadingText}>{t('loading')}</Text>
       ) : chartData.datasets[0].data.length > 0 ? (
         <View style={styles.chartOuterContainer}>
           <ScrollView

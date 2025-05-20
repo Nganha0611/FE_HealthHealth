@@ -421,7 +421,6 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
           legend: [t('systolic'), t('diastolic')],
         });
         setAverageBloodPressure({ systolic: null, diastolic: null });
-        showNotification(t('noDailyData'), 'error');
         return;
       }
 
@@ -682,7 +681,7 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
       <Text style={styles.subtitle}>{getChartTitle()}</Text>
 
       {loading ? (
-        <Text style={styles.loadingText}>{t('loading_message')}</Text>
+        <Text style={styles.loadingText}>{t('loading')}</Text>
       ) : chartData.datasets[0].data.length > 0 ? (
         <View style={styles.chartContainer}>
           <LineChart

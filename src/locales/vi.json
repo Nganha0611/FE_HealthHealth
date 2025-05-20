@@ -398,10 +398,21 @@
   "year": "Năm",
   "month": "Tháng",
   "selectTime": "Chọn thời gian",
-  "measurementDate": "Ngày đo (Bắt buộc)",
-  "measurementTime": "Giờ đo (Bắt buộc)",
-  "errorIncompleteInfo": "Vui lòng nhập đầy đủ thông tin, bao gồm ngày và giờ!",
-  "errorInvalidHeartRate": "Nhịp tim không hợp lệ hoặc thiếu ngày/giờ!"
+  "measurementDate": "Ngày đo",
+  "measurementTime": "Giờ đo",
+  "errorInvalidHeartRate": "Nhịp tim không hợp lệ hoặc thiếu ngày/giờ!",
+    "enterSteps": "Nhập số bước của bạn",
+  "stepsLabel": "Số bước",
+  "stepsPlaceholder": "Ví dụ: 5000",
+  "stepsCreated": "Số bước đã được lưu",
+  "measureSteps": "Đo số bước",
+  "measurements": "Chỉ số sức khỏe",
+ "bloodSugar": "Đường huyết",
+  "bmi": "Chỉ số BMI",
+  "cholesterol": "Cholesterol",
+  "comingSoon": "Sắp ra mắt",
+  "syncBloodPressureSuccess": "Đồng bộ huyết áp thành công!",
+  "syncHeartRateSuccess": "Đồng bộ nhịp tim thành công!"
  
 
 }

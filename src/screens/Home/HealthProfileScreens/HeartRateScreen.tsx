@@ -36,7 +36,7 @@ type Props = {
 const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
   const { showNotification } = useNotification();
-
+  const [dataLoaded, setDataLoaded] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>('daily');
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [chartData, setChartData] = useState<any>({
@@ -57,21 +57,17 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
       try {
         setLoading(true);
         const userData = await AsyncStorage.getItem('user');
-        console.log('User data from AsyncStorage:', userData);
         if (userData) {
           const user: User = JSON.parse(userData);
           if (!user.id) {
             throw new Error('User ID is missing');
           }
-          console.log('User ID:', user.id);
           setAvatarUrl(user.url || null);
           await fetchHeartRateData(user.id);
         } else {
-          console.error('No user data found in AsyncStorage');
           showNotification(t('noUserInfo'), 'error');
         }
       } catch (error) {
-        console.error('Error fetching user info:', error);
         showNotification(t('fetchUserError'), 'error');
       } finally {
         setLoading(false);
@@ -83,33 +79,27 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
 
   const fetchHeartRateData = async (userId: string) => {
     try {
-      console.log(`Fetching heart rate data for userId: ${userId}`);
       const token = await AsyncStorage.getItem('token');
-      console.log('Token:', token ? 'Found' : 'Not found');
       const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
 
       let response = await axios.get(`${API_BASE_URL}/api/heart-rates/user/${userId}`, {
         ...config,
         timeout: 5000,
       });
-      console.log('API response status:', response.status);
-      console.log('API response data:', response.data);
+  
 
       let data = response.data;
 
       if (!data || data.length === 0) {
-        console.log('No data from /api/heart-rates, trying /api/heart-rate');
         response = await axios.get(`${API_BASE_URL}/api/heart-rate/user/${userId}`, {
           ...config,
           timeout: 5000,
         });
-        console.log('Alternative API response status:', response.status);
-        console.log('Alternative API response data:', response.data);
+   
         data = response.data;
       }
 
       if (!data || data.length === 0) {
-        console.log('No heart rate data returned from API');
         setChartData({
           labels: [],
           datasets: [{ data: [], color: () => '#FF6384', strokeWidth: 2 }],
@@ -134,7 +124,6 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         createdAt: item.createdAt ?? item.date ?? item.timestamp,
       }));
 
-      console.log('Normalized data:', normalizedData);
 
       const validData = normalizedData.filter(
         (item) =>
@@ -146,9 +135,7 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
           item.createdAt
       );
 
-      console.log('Valid data after filtering:', validData);
       if (validData.length === 0) {
-        console.log('No valid heart rate data after filtering. Invalid items:', normalizedData);
         setChartData({
           labels: [],
           datasets: [{ data: [], color: () => '#FF6384', strokeWidth: 2 }],
@@ -165,12 +152,9 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
       setFilteredHistory(sorted);
       processHeartRateData(sorted);
     } catch (error: any) {
-      console.error('Error fetching heart rate data:', error.message);
       if (error.code === 'ECONNABORTED') {
-        console.log('Server timeout or unavailable');
       }
       if (error.response) {
-        console.error('Error response:', error.response.status, error.response.data);
         if (error.response.status === 401) {
           showNotification(t('unauthorized'), 'error');
         } else if (error.response.status === 403) {
@@ -186,7 +170,6 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
           return;
         }
       }
-      showNotification(t('fetchHeartRateError'), 'error');
       setChartData({
         labels: [],
         datasets: [{ data: [], color: () => '#FF6384', strokeWidth: 2 }],
@@ -202,9 +185,7 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
   const initializeHealthConnect = async () => {
     try {
       const result = await initialize();
-      console.log('Health Connect initialization result:', result);
       const status = await getSdkStatus();
-      console.log('Health Connect status:', status);
       if (status === SdkAvailabilityStatus.SDK_AVAILABLE) {
         return true;
       } else {
@@ -217,7 +198,6 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         return false;
       }
     } catch (err) {
-      console.error('Error initializing Health Connect:', err);
       showNotification(t('healthConnectInitError') + (err as Error).message, 'error');
       return false;
     }
@@ -226,13 +206,11 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
   const requestHealthPermissions = async () => {
     try {
       const permissions = await requestPermission([{ accessType: 'read', recordType: 'HeartRate' }]);
-      console.log('Granted permissions:', permissions);
       if (permissions.length === 0) {
         throw new Error('No permissions granted for HeartRate');
       }
       return true;
     } catch (err) {
-      console.error('Error requesting permissions:', err);
       showNotification(t('healthConnectPermissionError') + (err as Error).message, 'error');
       return false;
     }
@@ -251,9 +229,7 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
           endTime: endTime.toISOString(),
         },
       });
-      console.log('Health Connect heart rate records:', JSON.stringify(response, null, 2));
       if (!response.records || response.records.length === 0) {
-        console.warn('No heart rate records found in Health Connect');
         return [];
       }
 
@@ -266,7 +242,6 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
 
       return heartRateData;
     } catch (err) {
-      console.error('Error reading heart rate data from Health Connect:', err);
       showNotification(t('healthConnectFetchError') + (err as Error).message, 'error');
       return [];
     }
@@ -312,7 +287,6 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         return !normalizedDbData.some((dbItem) => dbItem.createdAt === hcItem.createdAt);
       });
 
-      console.log('New heart rate data to sync:', newData);
       if (newData.length === 0) {
         setLoading(false);
         return;
@@ -342,11 +316,8 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
               timeout: 5000,
             }
           );
-          console.log(`Heart rate data synced:`, response.data);
         } catch (error: any) {
-          console.error('Error syncing heart rate data:', error.message);
           if (error.response) {
-            console.error('Error response:', error.response.status, error.response.data);
             showNotification(t('syncHeartRateError'), 'error');
           }
         }
@@ -360,7 +331,6 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         await fetchHeartRateData(user.id);
       }
     } catch (error) {
-      console.error('Error during sync:', error);
       showNotification(t('syncHeartRateError'), 'error');
     } finally {
       setLoading(false);
@@ -368,7 +338,6 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const processHeartRateData = (data: HeartRateData[]) => {
-    console.log('Processing heart rate data:', data);
     if (!data || data.length === 0) {
       setChartData({
         labels: [],
@@ -395,7 +364,6 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         );
       });
 
-      console.log('Filtered daily data for chart:', filteredData);
       if (filteredData.length === 0) {
         setChartData({
           labels: [],
@@ -403,7 +371,6 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
           legend: [t('heartRate')],
         });
         setAverageHeartRate(null);
-        showNotification(t('noDailyData'), 'error');
         return;
       }
 
@@ -417,7 +384,6 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         hourlyData[hourKey].push(item.rate);
       });
 
-      console.log('Hourly data:', hourlyData);
 
       labels = Object.keys(hourlyData).sort((a, b) => {
         const hourA = parseInt(a.split(':')[0]);
@@ -430,8 +396,7 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         return rates.length > 0 ? Math.round(rates.reduce((sum, val) => sum + val, 0) / rates.length) : 0;
       });
 
-      console.log('Labels:', labels);
-      console.log('Heart rate values:', heartRateValues);
+  
     } else if (viewMode === 'weekly') {
       const sevenDaysAgo = new Date(referenceDate);
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -544,7 +509,6 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
   }, [viewMode, t, selectedDate]);
 
   const filterHistoryByDate = (date: Date | null) => {
-    console.log('Filtering history by date:', date);
     if (!date) {
       setFilteredHistory(allHeartRateData);
       return;
@@ -638,7 +602,7 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
       <Text style={styles.subtitle}>{getChartTitle()}</Text>
 
       {loading ? (
-        <Text style={styles.loadingText}>{t('loading_message')}</Text>
+        <Text style={styles.loadingText}>{t('loading')}</Text>
       ) : chartData.datasets[0].data.length > 0 ? (
         <View style={styles.chartContainer}>
           <LineChart
