@@ -5,37 +5,32 @@ import {
   getSdkStatus,
   requestPermission,
   readRecords,
-  aggregateGroupByPeriod,
   SdkAvailabilityStatus,
   openHealthConnectSettings,
 } from 'react-native-health-connect';
 
-interface StepData {
-  startTime: string;
-  endTime: string;
-  count: number;
+// Định nghĩa kiểu PressureResult
+interface PressureResult {
+  inMillimetersOfMercury: number;
 }
 
-interface StepAggregateResult {
-  startTime: string;
-  endTime: string;
-  result: {
-    count?: number;
-  };
+interface BloodPressureData {
+  time: string;
+  systolic: number;
+  diastolic: number;
 }
 
-const StepsScreen: React.FC = () => {
-  const [steps, setSteps] = useState<StepData[]>([]);
-  const [aggregatedSteps, setAggregatedSteps] = useState<{ startTime: string; count: number }[]>([]);
+const BloodPressureTest: React.FC = () => {
+  const [bloodPressure, setBloodPressure] = useState<BloodPressureData[]>([]);
+  const [aggregatedBloodPressure, setAggregatedBloodPressure] = useState<
+    { startTime: string; systolic: number; diastolic: number }[]
+  >([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isHealthConnectAvailable, setIsHealthConnectAvailable] = useState<boolean | null>(null);
 
-  const getBeginningOfLast7Days = () => {
-    const date = new Date();
-    date.setDate(date.getDate() - 7);
-    date.setHours(0, 0, 0, 0);
-    return date;
+  const getEarliestTime = () => {
+    return new Date(0); // Từ thời điểm Unix epoch (01/01/1970)
   };
 
   const now = () => new Date();
@@ -67,9 +62,12 @@ const StepsScreen: React.FC = () => {
 
   const requestHealthPermissions = async () => {
     try {
-      const permissions = await requestPermission([{ accessType: 'read', recordType: 'Steps' }]);
+      const permissions = await requestPermission([{ accessType: 'read', recordType: 'BloodPressure' }]);
       console.log('Granted permissions:', permissions);
-      return permissions.length > 0;
+      if (permissions.length === 0) {
+        throw new Error('No permissions granted for BloodPressure');
+      }
+      return true;
     } catch (err) {
       console.error('Error requesting permissions:', err);
       setError('Không thể yêu cầu quyền truy cập: ' + (err as Error).message);
@@ -77,53 +75,67 @@ const StepsScreen: React.FC = () => {
     }
   };
 
-  const readStepsData = async () => {
+  const readBloodPressureData = async () => {
     try {
-      const response = await readRecords('Steps', {
+      const response = await readRecords('BloodPressure', {
         timeRangeFilter: {
           operator: 'between',
-          startTime: getBeginningOfLast7Days().toISOString(),
+          startTime: getEarliestTime().toISOString(),
           endTime: now().toISOString(),
         },
       });
-      console.log('Steps records:', response);
-      const stepsData: StepData[] = response.records.map((record) => ({
-        startTime: record.startTime,
-        endTime: record.endTime,
-        count: record.count || 0,
+      console.log('Blood pressure records:', JSON.stringify(response, null, 2));
+      if (!response.records || response.records.length === 0) {
+        console.warn('No blood pressure records found');
+        return [];
+      }
+      const bloodPressureData: BloodPressureData[] = response.records.map((record) => ({
+        time: record.time ?? '',
+        systolic: record.systolic?.inMillimetersOfMercury ?? 0,
+        diastolic: record.diastolic?.inMillimetersOfMercury ?? 0,
       }));
-      return stepsData;
+      return bloodPressureData;
     } catch (err) {
-      console.error('Error reading steps data:', err);
+      console.error('Error reading blood pressure data:', err);
       throw err;
     }
   };
 
-  const aggregateStepsData = async () => {
-    try {
-      const result = await aggregateGroupByPeriod({
-        recordType: 'Steps',
-        timeRangeFilter: {
-          operator: 'between',
-          startTime: getBeginningOfLast7Days().toISOString(),
-          endTime: now().toISOString(),
-        },
-        timeRangeSlicer: {
-          period: 'DAYS',
-          length: 1,
-        },
-      }) as StepAggregateResult[];
-      console.log('Aggregated steps data (raw):', JSON.stringify(result, null, 2));
-      const formattedResult = result.map((item) => ({
-        startTime: item.startTime,
-        count: item.result.count ?? 0,
-      }));
-      return formattedResult;
-    } catch (err) {
-      console.error('Error aggregating steps data:', err);
-      setError('Lỗi khi tổng hợp dữ liệu: ' + (err as Error).message);
+  const manualAggregateBloodPressureData = (bpData: BloodPressureData[]) => {
+    if (!bpData || bpData.length === 0) {
+      console.warn('No data to aggregate manually');
       return [];
     }
+
+    // Nhóm dữ liệu theo ngày
+    const dailyBuckets: { [key: string]: { systolic: number; diastolic: number; count: number; startTime: string } } = {};
+    bpData.forEach((record) => {
+      const recordDate = new Date(record.time);
+      if (isNaN(recordDate.getTime())) {
+        console.warn('Invalid date encountered:', record.time);
+        return; // Bỏ qua bản ghi có thời gian không hợp lệ
+      }
+      // Lấy ngày bắt đầu của ngày (00:00:00)
+      recordDate.setHours(0, 0, 0, 0);
+      const dateKey = recordDate.toISOString(); // Sử dụng ISO string làm key để nhóm
+
+      if (!dailyBuckets[dateKey]) {
+        dailyBuckets[dateKey] = { systolic: 0, diastolic: 0, count: 0, startTime: dateKey };
+      }
+      dailyBuckets[dateKey].systolic += record.systolic;
+      dailyBuckets[dateKey].diastolic += record.diastolic;
+      dailyBuckets[dateKey].count += 1;
+    });
+
+    // Chuyển đổi dữ liệu thành định dạng mong muốn
+    const aggregatedData = Object.entries(dailyBuckets).map(([_, { systolic, diastolic, count, startTime }]) => ({
+      startTime,
+      systolic: systolic / count,
+      diastolic: diastolic / count,
+    }));
+
+    console.log('Manually aggregated blood pressure data:', JSON.stringify(aggregatedData, null, 2));
+    return aggregatedData;
   };
 
   const fetchHealthData = async () => {
@@ -137,16 +149,19 @@ const StepsScreen: React.FC = () => {
       }
       const granted = await requestHealthPermissions();
       if (!granted) {
-        setError('Không được cấp quyền truy cập dữ liệu sức khỏe');
+        setError('Không được cấp quyền truy cập dữ liệu huyết áp');
         setIsLoading(false);
         return;
       }
-      const stepsData = await readStepsData();
-      setSteps(stepsData);
-      const aggregatedData = await aggregateStepsData();
-      setAggregatedSteps(aggregatedData);
-      if (stepsData.length === 0 && aggregatedData.length === 0) {
-        setError('Không có dữ liệu số bước trong khoảng thời gian này. Vui lòng kiểm tra Health Connect.');
+      const bloodPressureData = await readBloodPressureData();
+      setBloodPressure(bloodPressureData);
+
+      // Tổng hợp thủ công
+      const aggregatedData = manualAggregateBloodPressureData(bloodPressureData);
+      setAggregatedBloodPressure(aggregatedData);
+
+      if (bloodPressureData.length === 0 && aggregatedData.length === 0) {
+        setError('Không có dữ liệu huyết áp từ trước đến giờ. Vui lòng kiểm tra Health Connect.');
       }
     } catch (err) {
       console.error('Lỗi khi lấy dữ liệu Health Connect:', err);
@@ -173,7 +188,7 @@ const StepsScreen: React.FC = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Dữ liệu bước chân</Text>
+      <Text style={styles.title}>Dữ liệu huyết áp</Text>
       {isHealthConnectAvailable === false && (
         <View style={styles.warningContainer}>
           <Text style={styles.warningText}>{error}</Text>
@@ -190,29 +205,32 @@ const StepsScreen: React.FC = () => {
         <Text style={styles.error}>{error}</Text>
       ) : (
         <>
-          {aggregatedSteps.length > 0 ? (
+          {aggregatedBloodPressure.length > 0 ? (
             <>
-              <Text style={styles.subtitle}>Tổng hợp theo ngày (7 ngày qua):</Text>
-              {aggregatedSteps.map((item, index) => (
+              <Text style={styles.subtitle}>Tổng hợp theo ngày (từ trước đến giờ):</Text>
+              {aggregatedBloodPressure.map((item, index) => (
                 <View key={`agg-${index}`} style={styles.dataItem}>
                   <Text style={styles.dataDate}>
                     Ngày: {new Date(item.startTime).toLocaleDateString('vi-VN')}
                   </Text>
-                  <Text style={styles.dataText}>Số bước: {item.count}</Text>
+                  <Text style={styles.dataText}>
+                    Huyết áp: {item.systolic.toFixed(1)}/{item.diastolic.toFixed(1)} mmHg
+                  </Text>
                 </View>
               ))}
             </>
           ) : (
             <Text style={styles.status}>Không có dữ liệu tổng hợp để hiển thị</Text>
           )}
-          {steps.length > 0 && (
+          {bloodPressure.length > 0 && (
             <>
               <Text style={styles.subtitle}>Dữ liệu chi tiết:</Text>
-              {steps.map((item, index) => (
+              {bloodPressure.map((item, index) => (
                 <View key={`detail-${index}`} style={styles.dataItem}>
-                  <Text style={styles.dataText}>Từ: {formatDate(item.startTime)}</Text>
-                  <Text style={styles.dataText}>Đến: {formatDate(item.endTime)}</Text>
-                  <Text style={styles.dataCount}>Số bước: {item.count}</Text>
+                  <Text style={styles.dataText}>Thời gian: {formatDate(item.time)}</Text>
+                  <Text style={styles.dataCount}>
+                    Huyết áp: {item.systolic.toFixed(1)}/{item.diastolic.toFixed(1)} mmHg
+                  </Text>
                 </View>
               ))}
             </>
@@ -314,4 +332,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default StepsScreen;
+export default BloodPressureTest;

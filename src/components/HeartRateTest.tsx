@@ -5,28 +5,18 @@ import {
   getSdkStatus,
   requestPermission,
   readRecords,
-  aggregateGroupByPeriod,
   SdkAvailabilityStatus,
   openHealthConnectSettings,
 } from 'react-native-health-connect';
 
-interface StepData {
+interface HeartRateData {
   startTime: string;
   endTime: string;
-  count: number;
+  bpm: number;
 }
 
-interface StepAggregateResult {
-  startTime: string;
-  endTime: string;
-  result: {
-    count?: number;
-  };
-}
-
-const StepsScreen: React.FC = () => {
-  const [steps, setSteps] = useState<StepData[]>([]);
-  const [aggregatedSteps, setAggregatedSteps] = useState<{ startTime: string; count: number }[]>([]);
+const HeartRateTest: React.FC = () => {
+  const [heartRate, setHeartRate] = useState<HeartRateData[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isHealthConnectAvailable, setIsHealthConnectAvailable] = useState<boolean | null>(null);
@@ -67,7 +57,7 @@ const StepsScreen: React.FC = () => {
 
   const requestHealthPermissions = async () => {
     try {
-      const permissions = await requestPermission([{ accessType: 'read', recordType: 'Steps' }]);
+      const permissions = await requestPermission([{ accessType: 'read', recordType: 'HeartRate' }]);
       console.log('Granted permissions:', permissions);
       return permissions.length > 0;
     } catch (err) {
@@ -77,52 +67,25 @@ const StepsScreen: React.FC = () => {
     }
   };
 
-  const readStepsData = async () => {
+  const readHeartRateData = async () => {
     try {
-      const response = await readRecords('Steps', {
+      const response = await readRecords('HeartRate', {
         timeRangeFilter: {
           operator: 'between',
           startTime: getBeginningOfLast7Days().toISOString(),
           endTime: now().toISOString(),
         },
       });
-      console.log('Steps records:', response);
-      const stepsData: StepData[] = response.records.map((record) => ({
+      console.log('Heart rate records:', response);
+      const heartRateData: HeartRateData[] = response.records.map((record) => ({
         startTime: record.startTime,
         endTime: record.endTime,
-        count: record.count || 0,
+        bpm: record.samples && record.samples[0] ? record.samples[0].beatsPerMinute || 0 : 0,
       }));
-      return stepsData;
+      return heartRateData;
     } catch (err) {
-      console.error('Error reading steps data:', err);
+      console.error('Error reading heart rate data:', err);
       throw err;
-    }
-  };
-
-  const aggregateStepsData = async () => {
-    try {
-      const result = await aggregateGroupByPeriod({
-        recordType: 'Steps',
-        timeRangeFilter: {
-          operator: 'between',
-          startTime: getBeginningOfLast7Days().toISOString(),
-          endTime: now().toISOString(),
-        },
-        timeRangeSlicer: {
-          period: 'DAYS',
-          length: 1,
-        },
-      }) as StepAggregateResult[];
-      console.log('Aggregated steps data (raw):', JSON.stringify(result, null, 2));
-      const formattedResult = result.map((item) => ({
-        startTime: item.startTime,
-        count: item.result.count ?? 0,
-      }));
-      return formattedResult;
-    } catch (err) {
-      console.error('Error aggregating steps data:', err);
-      setError('Lỗi khi tổng hợp dữ liệu: ' + (err as Error).message);
-      return [];
     }
   };
 
@@ -141,12 +104,10 @@ const StepsScreen: React.FC = () => {
         setIsLoading(false);
         return;
       }
-      const stepsData = await readStepsData();
-      setSteps(stepsData);
-      const aggregatedData = await aggregateStepsData();
-      setAggregatedSteps(aggregatedData);
-      if (stepsData.length === 0 && aggregatedData.length === 0) {
-        setError('Không có dữ liệu số bước trong khoảng thời gian này. Vui lòng kiểm tra Health Connect.');
+      const heartRateData = await readHeartRateData();
+      setHeartRate(heartRateData);
+      if (heartRateData.length === 0) {
+        setError('Không có dữ liệu nhịp tim trong khoảng thời gian này. Vui lòng kiểm tra Health Connect.');
       }
     } catch (err) {
       console.error('Lỗi khi lấy dữ liệu Health Connect:', err);
@@ -173,7 +134,7 @@ const StepsScreen: React.FC = () => {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Dữ liệu bước chân</Text>
+      <Text style={styles.title}>Dữ liệu nhịp tim</Text>
       {isHealthConnectAvailable === false && (
         <View style={styles.warningContainer}>
           <Text style={styles.warningText}>{error}</Text>
@@ -190,32 +151,19 @@ const StepsScreen: React.FC = () => {
         <Text style={styles.error}>{error}</Text>
       ) : (
         <>
-          {aggregatedSteps.length > 0 ? (
+          {heartRate.length > 0 ? (
             <>
-              <Text style={styles.subtitle}>Tổng hợp theo ngày (7 ngày qua):</Text>
-              {aggregatedSteps.map((item, index) => (
-                <View key={`agg-${index}`} style={styles.dataItem}>
-                  <Text style={styles.dataDate}>
-                    Ngày: {new Date(item.startTime).toLocaleDateString('vi-VN')}
-                  </Text>
-                  <Text style={styles.dataText}>Số bước: {item.count}</Text>
+              <Text style={styles.subtitle}>Dữ liệu chi tiết:</Text>
+              {heartRate.map((item, index) => (
+                <View key={`hr-${index}`} style={styles.dataItem}>
+                  <Text style={styles.dataText}>Từ: {formatDate(item.startTime)}</Text>
+                  <Text style={styles.dataText}>Đến: {formatDate(item.endTime)}</Text>
+                  <Text style={styles.dataCount}>Nhịp tim: {item.bpm} bpm</Text>
                 </View>
               ))}
             </>
           ) : (
-            <Text style={styles.status}>Không có dữ liệu tổng hợp để hiển thị</Text>
-          )}
-          {steps.length > 0 && (
-            <>
-              <Text style={styles.subtitle}>Dữ liệu chi tiết:</Text>
-              {steps.map((item, index) => (
-                <View key={`detail-${index}`} style={styles.dataItem}>
-                  <Text style={styles.dataText}>Từ: {formatDate(item.startTime)}</Text>
-                  <Text style={styles.dataText}>Đến: {formatDate(item.endTime)}</Text>
-                  <Text style={styles.dataCount}>Số bước: {item.count}</Text>
-                </View>
-              ))}
-            </>
+            <Text style={styles.status}>Không có dữ liệu nhịp tim để hiển thị</Text>
           )}
         </>
       )}
@@ -268,12 +216,6 @@ const styles = StyleSheet.create({
     color: '#555',
     marginBottom: 3,
   },
-  dataDate: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 5,
-  },
   dataCount: {
     fontSize: 16,
     fontWeight: 'bold',
@@ -314,4 +256,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default StepsScreen;
+export default HeartRateTest;
