@@ -13,6 +13,19 @@ import { useTranslation } from 'react-i18next';
 import { useNotification } from '../../../contexts/NotificationContext';
 import Loading from '../../../components/Loading';
 import { BottomTabParamList } from '../../../navigation/BottomTabs';
+import DateTimePicker from '@react-native-community/datetimepicker';
+
+// Định nghĩa interface cho dữ liệu đo lường
+interface BloodPressurePayload {
+  systolic: number;
+  diastolic: number;
+  createdAt: string; // Bắt buộc
+}
+
+interface HeartRatePayload {
+  heartRate: number;
+  createdAt: string; // Bắt buộc
+}
 
 type Props = {
   navigation: NavigationProp<any>;
@@ -25,12 +38,18 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   const [typeSelectModalVisible, setTypeSelectModalVisible] = useState(false);
   const [sysValue, setSysValue] = useState<string | null>(null);
   const [diaValue, setDiaValue] = useState<string | null>(null);
+  // Tách riêng ngày và giờ
+  const [measurementDate, setMeasurementDate] = useState<Date>(new Date()); // Ngày mặc định
+  const [measurementTime, setMeasurementTime] = useState<Date>(new Date()); // Giờ mặc định
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
 
   const [heartRate, setHeartRate] = useState<string | null>(null);
   const [heartRateDate, setHeartRateDate] = useState<string | null>(null);
   const [bloodPressureDate, setBloodPressureDate] = useState<string | null>(null);
+  const [steps, setSteps] = useState<number | null>(null);
+  const [stepsDate, setStepsDate] = useState<string | null>(null);
   const { t } = useTranslation();
-  const steps = 1114; // Comment biến steps
   const { showNotification } = useNotification();
   const [loading, setLoading] = useState<boolean>(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -47,7 +66,6 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         setAvatarUrl(user.url || null);
       } else {
         console.log('No user data found in AsyncStorage');
-        showNotification(t('noUserInfo'), 'error');
       }
     } catch (error) {
       console.error('Error fetching user:', error);
@@ -65,7 +83,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
       }
       const response = await axios.get(`${API_BASE_URL}/api/heart-rates/measure/latest`, {
         headers: { Authorization: `Bearer ${token}` },
-        timeout: 5000, // Timeout sau 5 giây
+        timeout: 5000,
       });
       console.log('Heart rate response status:', response.status);
       console.log('Heart rate response data:', JSON.stringify(response.data, null, 2));
@@ -125,7 +143,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
       console.log('Fetching blood pressure from:', `${API_BASE_URL}/api/blood-pressures/measure/latest`);
       const response = await axios.get(`${API_BASE_URL}/api/blood-pressures/measure/latest`, {
         headers: { Authorization: `Bearer ${token}` },
-        timeout: 5000, // Timeout sau 5 giây
+        timeout: 5000,
       });
       console.log('Blood pressure response status:', response.status);
       console.log('Blood pressure response data:', JSON.stringify(response.data, null, 2));
@@ -180,29 +198,102 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
+  const fetchLatestSteps = async () => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      console.log('Token for steps:', token ? 'Found' : 'Not found');
+      if (!token) {
+        showNotification(t('unauthorized'), 'error');
+        return;
+      }
+      const response = await axios.get(`${API_BASE_URL}/api/steps/measure/latest`, {
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 5000,
+      });
+      console.log('Steps response status:', response.status);
+      console.log('Steps response data:', JSON.stringify(response.data, null, 2));
+      if (response.status === 204) {
+        console.log('No steps data (204 No Content)');
+        setSteps(null);
+        setStepsDate(null);
+        return;
+      }
+      if (response.data && (response.data.steps !== undefined || response.data.count !== undefined)) {
+        const stepCount = response.data.steps ?? response.data.count;
+        console.log('Setting steps:', stepCount);
+        setSteps(stepCount);
+        setStepsDate(response.data.createdAt);
+      } else {
+        console.log('No valid steps data found in response');
+        setSteps(null);
+        setStepsDate(null);
+      }
+    } catch (error: any) {
+      console.error('Error fetching steps:', error.message);
+      if (error.code === 'ECONNABORTED') {
+        console.log('Server timeout or unavailable');
+        setSteps(null);
+        setStepsDate(null);
+      } else if (error.response) {
+        console.error('Error response:', error.response.status, error.response.data);
+        if (error.response.status === 401) {
+          showNotification(t('unauthorized'), 'error');
+        } else if (error.response.status === 403) {
+          showNotification(t('forbidden'), 'error');
+        } else if (error.response.status === 204) {
+          console.log('No steps data (204 No Content)');
+          setSteps(null);
+          setStepsDate(null);
+        } else {
+          showNotification(t('fetchStepsError'), 'error');
+          setSteps(null);
+          setStepsDate(null);
+        }
+      } else {
+        showNotification(t('fetchStepsError'), 'error');
+        setSteps(null);
+        setStepsDate(null);
+      }
+    }
+  };
+
   useFocusEffect(
     useCallback(() => {
       console.log('useFocusEffect triggered for HealthProfileScreen');
       const fetchAll = async () => {
         setLoading(true);
         try {
-          console.log('Fetching user, heart rate, and blood pressure');
-          await Promise.all([fetchUser(), fetchLatestHeartRate(), fetchLatestBloodPressure()]);
+          console.log('Fetching user, heart rate, blood pressure, and steps');
+          await Promise.all([fetchUser(), fetchLatestHeartRate(), fetchLatestBloodPressure(), fetchLatestSteps()]);
         } catch (error) {
           console.error('Error in fetchAll:', error);
-          // Fallback mặc định nếu lỗi tổng quát
           setHeartRate('--/--');
           setHeartRateDate(null);
           setSysValue('--/--');
           setDiaValue('--/--');
           setBloodPressureDate(null);
+          setSteps(null);
+          setStepsDate(null);
         } finally {
-          setLoading(false); // Đảm bảo tắt loading dù có lỗi
+          setLoading(false);
         }
       };
       fetchAll();
     }, [])
   );
+
+  // Hàm kết hợp ngày và giờ thành ISO string
+  const combineDateTime = (date: Date, time: Date): string => {
+    const combined = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      time.getHours(),
+      time.getMinutes(),
+      time.getSeconds()
+    );
+    return combined.toISOString();
+  };
 
   const handleMeasureBloodPressure = async () => {
     if (!sysValue || !diaValue || isNaN(parseInt(sysValue)) || isNaN(parseInt(diaValue))) {
@@ -218,16 +309,15 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         showNotification(t('unauthorized'), 'error');
         return;
       }
-      console.log('Sending blood pressure data:', {
+      const payload: BloodPressurePayload = {
         systolic: parseInt(sysValue),
         diastolic: parseInt(diaValue),
-      });
+        createdAt: combineDateTime(measurementDate, measurementTime),
+      };
+      console.log('Sending blood pressure data:', payload);
       const response = await axios.post(
         `${API_BASE_URL}/api/blood-pressures/measure`,
-        {
-          systolic: parseInt(sysValue),
-          diastolic: parseInt(diaValue),
-        },
+        payload,
         {
           headers: { Authorization: `Bearer ${token}` },
           timeout: 5000,
@@ -240,6 +330,8 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
       setBloodPressureDate(response.data.createdAt);
       setSysValue('');
       setDiaValue('');
+      setMeasurementDate(new Date()); // Reset về ngày hiện tại
+      setMeasurementTime(new Date()); // Reset về giờ hiện tại
       fetchLatestBloodPressure();
     } catch (error: any) {
       console.error('Error creating blood pressure:', error.message);
@@ -275,11 +367,13 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         showNotification(t('unauthorized'), 'error');
         return;
       }
+      const payload: HeartRatePayload = {
+        heartRate: rateValue,
+        createdAt: combineDateTime(measurementDate, measurementTime),
+      };
       const response = await axios.post(
         `${API_BASE_URL}/api/heart-rates/measure`,
-        {
-          heartRate: rateValue,
-        },
+        payload,
         {
           headers: { Authorization: `Bearer ${token}` },
           timeout: 5000,
@@ -291,6 +385,8 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
       setHeartRate(newRate.toString());
       setHeartRateDate(response.data?.createdAt ?? new Date().toISOString());
       setInputValue('');
+      setMeasurementDate(new Date()); // Reset về ngày hiện tại
+      setMeasurementTime(new Date()); // Reset về giờ hiện tại
       showNotification(t('heartRateCreated'), 'success');
       await fetchLatestHeartRate();
     } catch (error: any) {
@@ -337,6 +433,21 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
+  const formatDate = (date: Date) => {
+    return date.toLocaleString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    });
+  };
+
+  const formatTime = (time: Date) => {
+    return time.toLocaleString('vi-VN', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
   return (
     <ScrollView>
       <View style={styles.header}>
@@ -377,7 +488,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.row}>
               <Image style={styles.icon} source={require('../../../assets/step.png')} />
               <Text style={[styles.number, { color: '#3CB371' }]}>
-                {steps.toLocaleString()} {t('stepsUnit')}
+                {steps?.toLocaleString() ?? '--/--'} {t('stepsUnit')}
               </Text>
             </View>
           </View>
@@ -442,14 +553,15 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.stepContent}>
           <FontAwesome5 name="shoe-prints" size={26} color="#432c81" style={styles.stepIcon} />
           <View>
-            <Text style={styles.stepTitle}>{steps}</Text>
+            <Text style={styles.stepTitle}>{steps?.toLocaleString() ?? '--/--'}</Text>
             <Text style={styles.stepSubtitle}>/6000</Text>
+            <Text style={styles.dateText}>{formatDateTime(stepsDate)}</Text>
           </View>
         </View>
         <View style={styles.progressWrapper}>
-          <Text style={styles.progressText}>{Math.min(Math.round((steps / 6000) * 100), 100)}%</Text>
+          <Text style={styles.progressText}>{steps ? Math.min(Math.round((steps / 6000) * 100), 100) : 0}%</Text>
           <View style={styles.progressBar}>
-            <View style={[styles.progressFill, { width: `${Math.min((steps / 6000) * 100, 100)}%` }]} />
+            <View style={[styles.progressFill, { width: `${steps ? Math.min((steps / 6000) * 100, 100) : 0}%` }]} />
           </View>
         </View>
       </TouchableOpacity>
@@ -569,6 +681,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
                     keyboardType="numeric"
                     placeholder={t('sysPlaceholder')}
                     onChangeText={(text) => setSysValue(text)}
+                    value={sysValue || ''}
                     placeholderTextColor="#999"
                   />
                   <Text style={styles.inputUnit}>mmHg</Text>
@@ -580,6 +693,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
                     keyboardType="numeric"
                     placeholder={t('diaPlaceholder')}
                     onChangeText={(text) => setDiaValue(text)}
+                    value={diaValue || ''}
                     placeholderTextColor="#999"
                   />
                   <Text style={styles.inputUnit}>mmHg</Text>
@@ -599,6 +713,49 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.inputUnit}>{t('bpm')}</Text>
               </View>
             )}
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>{t('measurementDate')} (Required):</Text>
+              <TouchableOpacity style={styles.datePickerButton} onPress={() => setShowDatePicker(true)}>
+                <Text style={styles.datePickerText}>
+                  {formatDate(measurementDate)}
+                </Text>
+              </TouchableOpacity>
+              {showDatePicker && (
+                <DateTimePicker
+                  value={measurementDate}
+                  mode="date"
+                  display="default"
+                  onChange={(event, selected) => {
+                    setShowDatePicker(false);
+                    if (selected) {
+                      setMeasurementDate(selected);
+                    }
+                  }}
+                  maximumDate={new Date()}
+                />
+              )}
+            </View>
+            <View style={styles.inputContainer}>
+              <Text style={styles.inputLabel}>{t('measurementTime')} (Required):</Text>
+              <TouchableOpacity style={styles.datePickerButton} onPress={() => setShowTimePicker(true)}>
+                <Text style={styles.datePickerText}>
+                  {formatTime(measurementTime)}
+                </Text>
+              </TouchableOpacity>
+              {showTimePicker && (
+                <DateTimePicker
+                  value={measurementTime}
+                  mode="time"
+                  display="default"
+                  onChange={(event, selected) => {
+                    setShowTimePicker(false);
+                    if (selected) {
+                      setMeasurementTime(selected);
+                    }
+                  }}
+                />
+              )}
+            </View>
             <View style={styles.buttonContainer}>
               <Pressable
                 style={[styles.actionButton, { backgroundColor: '#ccc' }]}
@@ -607,6 +764,8 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
                   setInputValue('');
                   setSysValue(null);
                   setDiaValue(null);
+                  setMeasurementDate(new Date()); // Reset về ngày hiện tại
+                  setMeasurementTime(new Date()); // Reset về giờ hiện tại
                 }}
               >
                 <Text style={styles.actionButtonText}>{t('cancel')}</Text>
@@ -988,6 +1147,19 @@ const styles = StyleSheet.create({
     height: '100%',
     backgroundColor: '#2577f7',
     borderRadius: 5,
+  },
+  datePickerButton: {
+    borderWidth: 2,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    padding: 15,
+    backgroundColor: '#f9f9f9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  datePickerText: {
+    fontSize: 18,
+    color: '#333',
   },
 });
 
