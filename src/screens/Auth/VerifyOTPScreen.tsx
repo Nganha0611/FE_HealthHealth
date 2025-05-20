@@ -1,4 +1,4 @@
-import { NavigationProp } from "@react-navigation/native";
+import { NavigationProp, CommonActions } from "@react-navigation/native"; // Thêm CommonActions
 import axios from "axios";
 import React, { useState, useEffect, useRef } from "react";
 import {
@@ -12,10 +12,11 @@ import {
 import { API_BASE_URL } from "../../utils/config";
 import Loading from "../../components/Loading";
 import { useNotification } from '../../contexts/NotificationContext';
-import { useTranslation } from "react-i18next"; // Import i18n hook
+import { useTranslation } from "react-i18next";
 import { PhoneAuthProvider, signInWithCredential } from "@react-native-firebase/auth";
-import auth from '@react-native-firebase/auth';
+import { getAuth } from '@react-native-firebase/auth';
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from '../../contexts/AuthContext'; // Thêm useAuth
 
 type Props = {
     navigation: NavigationProp<any>;
@@ -23,21 +24,22 @@ type Props = {
 };
 
 const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
-    const { t } = useTranslation(); 
-    const { email, name, password, birth, gender, numberPhone, address, otpAction, verificationId } = route.params;
+    const { t } = useTranslation();
+    const { numberPhone, otpAction, verificationId } = route.params;
     const [otp, setOtp] = useState("");
     const [loading, setLoading] = useState<boolean>(false);
     const [countdown, setCountdown] = useState(300);
     const [isResendDisabled, setIsResendDisabled] = useState(true);
     const countdownRef = useRef<NodeJS.Timeout | null>(null);
     const { showNotification } = useNotification();
-    // const [phoneNumber, setPhoneNumber] = useState('');
     const [verifying, setVerifying] = useState(false);
     const [message, setMessage] = useState('');
+    const { setIsLoggedIn } = useAuth(); // Thêm setIsLoggedIn
 
     useEffect(() => {
         console.log('Verification ID:', verificationId);
         console.log('Action:', otpAction);
+        console.log('Number Phone:', numberPhone);
         startCountdown();
         return () => {
             if (countdownRef.current) clearInterval(countdownRef.current);
@@ -50,12 +52,18 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
             return;
         }
 
+        if (!numberPhone) {
+            Alert.alert('Lỗi', 'Số điện thoại không hợp lệ');
+            return;
+        }
+
         try {
             setVerifying(true);
             setMessage('Đang xác thực mã OTP...');
 
+            const authInstance = getAuth();
             const credential = PhoneAuthProvider.credential(verificationId, otp);
-            const userCredential = await signInWithCredential(auth(), credential);
+            const userCredential = await signInWithCredential(authInstance, credential);
             console.log('Xác thực OTP thành công, user:', userCredential.user.phoneNumber);
 
             const token = await AsyncStorage.getItem('token');
@@ -84,24 +92,41 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
             if (response.ok) {
                 Alert.alert('Thành công', 'Số điện thoại đã được xác thực!');
                 const stored = await AsyncStorage.getItem('user');
-  if (stored) {
-    const user = JSON.parse(stored);
-    user.isVerifyPhone = true;         // thiết lập đã xác thực
-    await AsyncStorage.setItem('user', JSON.stringify(user));
-  }
-                navigation.navigate('BottomTabs', {
-                    screen: 'SettingStack',
-                    params: {
-                        screen: 'Account',
-                    },
-                });
+                if (stored) {
+                    const user = JSON.parse(stored);
+                    user.isVerifyPhone = true;
+                    await AsyncStorage.setItem('user', JSON.stringify(user));
+                }
+
+                // Đặt isLoggedIn về true để chuyển sang BottomTabs
+                setIsLoggedIn(true);
+
+                // Reset navigator để điều hướng đến AccountScreen
+                setTimeout(() => {
+                    navigation.dispatch(
+                        CommonActions.reset({
+                            index: 0,
+                            routes: [
+                                {
+                                    name: 'BottomTabs',
+                                    params: {
+                                        screen: 'SettingStack',
+                                        params: {
+                                            screen: 'Account',
+                                        },
+                                    },
+                                },
+                            ],
+                        })
+                    );
+                }, 100); // Delay nhỏ để đảm bảo isLoggedIn được cập nhật
             } else {
                 const serverError = await response.text();
                 console.error('Lỗi từ server:', serverError);
                 Alert.alert('Lỗi', 'Cập nhật trạng thái thất bại');
             }
 
-            await auth().signOut();
+            await authInstance.signOut();
         } catch (error: any) {
             console.error('Lỗi khi xác thực OTP:', error);
             const errorMessage = error.message || 'Đã xảy ra lỗi';
@@ -134,7 +159,7 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
         setLoading(true);
         try {
             const response = await axios.post(`${API_BASE_URL}/api/otp/send`, null, {
-                params: { email }
+                params: { phone: numberPhone }
             });
 
             if (response.data.result === "success") {
@@ -158,13 +183,13 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
         }
 
         setLoading(true);
-         if (otpAction === "verify") {
+        if (otpAction === "verify") {
             await handleVerifyCode();
-            return
+            return;
         }
         try {
             const response = await axios.post(`${API_BASE_URL}/api/otp/verify`, null, {
-                params: { email, otp },
+                params: { phone: numberPhone, otp },
             });
 
             if (response.status === 200) {
@@ -173,7 +198,7 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
                     await handleSignUp();
                 } else if (otpAction === "forgotPassword") {
                     await handleForgotPassword();
-                } 
+                }
             } else {
                 showNotification(t('verifyOTP.notification.otpInvalid'), "error");
             }
@@ -187,13 +212,13 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
         setLoading(true);
         try {
             const response = await axios.post(`${API_BASE_URL}/api/auth/register`, {
-                name,
-                email,
-                password,
-                birth,
-                sex: gender,
-                numberPhone,
-                address,
+                name: route.params.name || '',
+                email: route.params.email || '',
+                password: route.params.password || '',
+                birth: route.params.birth || '',
+                sex: route.params.gender || '',
+                numberPhone: numberPhone || '',
+                address: route.params.address || '',
             });
 
             if (response.data.result === "success") {
@@ -210,7 +235,6 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
                         }
                     ]
                 );
-
             } else {
                 showNotification(response.data.message, "error");
             }
@@ -224,12 +248,11 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
         setLoading(true);
         try {
             const response = await axios.post(`${API_BASE_URL}/api/auth/forgot-password`, {
-                email,
-                newPassword: password,
+                email: route.params.email || '',
+                newPassword: route.params.password || '',
             });
 
             if (response.data.result === "success") {
-
                 showNotification(
                     t('verifyOTP.notification.otpSentSuccess'),
                     "success",
@@ -243,7 +266,6 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
                         }
                     ]
                 );
-
             } else {
                 showNotification(response.data.message, "error");
             }
@@ -275,12 +297,10 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
                     {isResendDisabled ? `${t('verifyOTP.resendAfter', { seconds: countdown })}` : t('verifyOTP.resendButton')}
                 </Text>
             </TouchableOpacity>
-
             <TouchableOpacity style={styles.verifyButton} onPress={handleVerifyOTP}>
                 <Text style={styles.verifyButtonText}>{t('verifyOTP.verifyButton')}</Text>
             </TouchableOpacity>
             {loading && <Loading message={t('verifyOTP.loadingMessage')} />}
-
         </View>
     );
 };
@@ -329,6 +349,7 @@ const styles = StyleSheet.create({
         borderWidth: 1,
         borderColor: "#ccc",
         textAlign: "center",
+        
     },
     verifyButton: {
         width: "100%",

@@ -6,6 +6,7 @@ type AuthContextType = {
   login: (token: string, user: any) => Promise<void>;
   logout: () => Promise<void>;
   user: any;
+  setIsLoggedIn: (value: boolean) => void; // Thêm setIsLoggedIn vào type
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -51,7 +52,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [logout]);
 
   return (
-    <AuthContext.Provider value={{ isLoggedIn, login, logout, user }}>
+    <AuthContext.Provider value={{ isLoggedIn, login, logout, user, setIsLoggedIn }}>
       {children}
     </AuthContext.Provider>
   );

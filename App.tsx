@@ -4,6 +4,9 @@ import i18n from "./src/locales/i18n";
 import { AuthProvider } from "./src/contexts/AuthContext"; 
 import AppNavigator from "./src/navigation/AppNavigator"; 
 import { NotificationProvider } from "./src/contexts/NotificationContext"; 
+import TestCounterScreen from "./src/components/StepCounterScreen";
+import HeartRateTest from "./src/components/HeartRateTest";
+import BloodPressureTest from "./src/components/BloodPressureTest";
 
 const App = () => {
   return (
@@ -14,6 +17,9 @@ const App = () => {
         </NotificationProvider>
       </AuthProvider>
     </I18nextProvider>
+    // <TestCounterScreen />
+    // <HeartRateTest />
+    // <BloodPressureTest/>
   );
 };
 

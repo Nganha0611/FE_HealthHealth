@@ -9,11 +9,12 @@ import VerifyOTPScreen from "../screens/Auth/VerifyOTPScreen";
 export type AuthStackParamList = {
   Welcome: undefined;
   Login: undefined;
-  SignUp: undefined; 
+  SignUp: undefined;
   ForgotPassword: undefined;
   VerifyOTP: {
     phoneNumber: string;
     otpAction: "verify" | "register";
+    verificationId?: string; // Thêm verificationId để hỗ trợ điều hướng từ AccountScreen
   };
 };
 
