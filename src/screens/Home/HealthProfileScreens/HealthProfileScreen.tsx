@@ -25,11 +25,12 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   const [typeSelectModalVisible, setTypeSelectModalVisible] = useState(false);
   const [sysValue, setSysValue] = useState<string | null>(null);
   const [diaValue, setDiaValue] = useState<string | null>(null);
+
   const [heartRate, setHeartRate] = useState<string | null>(null);
   const [heartRateDate, setHeartRateDate] = useState<string | null>(null);
   const [bloodPressureDate, setBloodPressureDate] = useState<string | null>(null);
   const { t } = useTranslation();
-  // const steps = 1114; // Comment biến steps
+  const steps = 1114; // Comment biến steps
   const { showNotification } = useNotification();
   const [loading, setLoading] = useState<boolean>(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
@@ -64,12 +65,13 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
       }
       const response = await axios.get(`${API_BASE_URL}/api/heart-rates/measure/latest`, {
         headers: { Authorization: `Bearer ${token}` },
+        timeout: 5000, // Timeout sau 5 giây
       });
       console.log('Heart rate response status:', response.status);
       console.log('Heart rate response data:', JSON.stringify(response.data, null, 2));
       if (response.status === 204) {
         console.log('No heart rate data (204 No Content)');
-        setHeartRate(null);
+        setHeartRate('--/--');
         setHeartRateDate(null);
         return;
       }
@@ -80,12 +82,16 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         setHeartRateDate(response.data.createdAt);
       } else {
         console.log('No valid heart rate data found in response');
-        setHeartRate(null);
+        setHeartRate('--/--');
         setHeartRateDate(null);
       }
     } catch (error: any) {
       console.error('Error fetching heart rate:', error.message);
-      if (error.response) {
+      if (error.code === 'ECONNABORTED') {
+        console.log('Server timeout or unavailable');
+        setHeartRate('--/--');
+        setHeartRateDate(null);
+      } else if (error.response) {
         console.error('Error response:', error.response.status, error.response.data);
         if (error.response.status === 401) {
           showNotification(t('unauthorized'), 'error');
@@ -93,13 +99,17 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
           showNotification(t('forbidden'), 'error');
         } else if (error.response.status === 204) {
           console.log('No heart rate data (204 No Content)');
-          setHeartRate(null);
+          setHeartRate('--/--');
           setHeartRateDate(null);
         } else {
           showNotification(t('fetchHeartRateError'), 'error');
+          setHeartRate('--/--');
+          setHeartRateDate(null);
         }
       } else {
         showNotification(t('fetchHeartRateError'), 'error');
+        setHeartRate('--/--');
+        setHeartRateDate(null);
       }
     }
   };
@@ -115,13 +125,14 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
       console.log('Fetching blood pressure from:', `${API_BASE_URL}/api/blood-pressures/measure/latest`);
       const response = await axios.get(`${API_BASE_URL}/api/blood-pressures/measure/latest`, {
         headers: { Authorization: `Bearer ${token}` },
+        timeout: 5000, // Timeout sau 5 giây
       });
       console.log('Blood pressure response status:', response.status);
       console.log('Blood pressure response data:', JSON.stringify(response.data, null, 2));
       if (response.status === 204) {
         console.log('No blood pressure data (204 No Content)');
-        setSysValue(null);
-        setDiaValue(null);
+        setSysValue('--/--');
+        setDiaValue('--/--');
         setBloodPressureDate(null);
         return;
       }
@@ -132,13 +143,18 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         setBloodPressureDate(response.data.createdAt);
       } else {
         console.log('No valid blood pressure data found in response');
-        setSysValue(null);
-        setDiaValue(null);
+        setSysValue('--/--');
+        setDiaValue('--/--');
         setBloodPressureDate(null);
       }
     } catch (error: any) {
       console.error('Error fetching blood pressure:', error.message);
-      if (error.response) {
+      if (error.code === 'ECONNABORTED') {
+        console.log('Server timeout or unavailable');
+        setSysValue('--/--');
+        setDiaValue('--/--');
+        setBloodPressureDate(null);
+      } else if (error.response) {
         console.error('Error response:', error.response.status, error.response.data);
         if (error.response.status === 401) {
           showNotification(t('unauthorized'), 'error');
@@ -146,14 +162,20 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
           showNotification(t('forbidden'), 'error');
         } else if (error.response.status === 204) {
           console.log('No blood pressure data (204 No Content)');
-          setSysValue(null);
-          setDiaValue(null);
+          setSysValue('--/--');
+          setDiaValue('--/--');
           setBloodPressureDate(null);
         } else {
           showNotification(t('fetchBloodPressureError'), 'error');
+          setSysValue('--/--');
+          setDiaValue('--/--');
+          setBloodPressureDate(null);
         }
       } else {
         showNotification(t('fetchBloodPressureError'), 'error');
+        setSysValue('--/--');
+        setDiaValue('--/--');
+        setBloodPressureDate(null);
       }
     }
   };
@@ -168,8 +190,14 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
           await Promise.all([fetchUser(), fetchLatestHeartRate(), fetchLatestBloodPressure()]);
         } catch (error) {
           console.error('Error in fetchAll:', error);
+          // Fallback mặc định nếu lỗi tổng quát
+          setHeartRate('--/--');
+          setHeartRateDate(null);
+          setSysValue('--/--');
+          setDiaValue('--/--');
+          setBloodPressureDate(null);
         } finally {
-          setLoading(false);
+          setLoading(false); // Đảm bảo tắt loading dù có lỗi
         }
       };
       fetchAll();
@@ -202,6 +230,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         },
         {
           headers: { Authorization: `Bearer ${token}` },
+          timeout: 5000,
         }
       );
       console.log('Blood pressure created:', response.data);
@@ -231,56 +260,57 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
- const handleMeasureHeartRate = async () => {
-  const rateValue = parseInt(inputValue);
-  if (!inputValue.trim() || isNaN(rateValue) || rateValue <= 0 || rateValue > 300) {
-    console.log('Invalid heart rate input:', inputValue, 'parsed value:', rateValue);
-    showNotification(t('errorInvalidHeartRate'), 'error');
-    return;
-  }
-  setLoading(true);
-  try {
-    const token = await AsyncStorage.getItem('token');
-    console.log('Token for heart rate:', token ? 'Found' : 'Not found');
-    if (!token) {
-      showNotification(t('unauthorized'), 'error');
+  const handleMeasureHeartRate = async () => {
+    const rateValue = parseInt(inputValue);
+    if (!inputValue.trim() || isNaN(rateValue) || rateValue <= 0 || rateValue > 300) {
+      console.log('Invalid heart rate input:', inputValue, 'parsed value:', rateValue);
+      showNotification(t('errorInvalidHeartRate'), 'error');
       return;
     }
-    const response = await axios.post(
-      `${API_BASE_URL}/api/heart-rates/measure`,
-      {
-        heartRate: rateValue, 
-      },
-      {
-        headers: { Authorization: `Bearer ${token}` }, 
-      }
-    );
-    console.log('Heart rate created:', response.data);
-
-    const newRate = response.data?.heartRate ?? rateValue;
-    setHeartRate(newRate.toString());
-    setHeartRateDate(response.data?.createdAt ?? new Date().toISOString());
-    setInputValue('');
-    showNotification(t('heartRateCreated'), 'success');
-    await fetchLatestHeartRate(); 
-  } catch (error: any) {
-    console.error('Error creating heart rate:', error.message);
-    if (error.response) {
-      console.error('Error response:', error.response.status, error.response.data);
-      if (error.response.status === 401) {
+    setLoading(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      console.log('Token for heart rate:', token ? 'Found' : 'Not found');
+      if (!token) {
         showNotification(t('unauthorized'), 'error');
-      } else if (error.response.status === 403) {
-        showNotification(t('forbidden'), 'error');
+        return;
+      }
+      const response = await axios.post(
+        `${API_BASE_URL}/api/heart-rates/measure`,
+        {
+          heartRate: rateValue,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 5000,
+        }
+      );
+      console.log('Heart rate created:', response.data);
+
+      const newRate = response.data?.heartRate ?? rateValue;
+      setHeartRate(newRate.toString());
+      setHeartRateDate(response.data?.createdAt ?? new Date().toISOString());
+      setInputValue('');
+      showNotification(t('heartRateCreated'), 'success');
+      await fetchLatestHeartRate();
+    } catch (error: any) {
+      console.error('Error creating heart rate:', error.message);
+      if (error.response) {
+        console.error('Error response:', error.response.status, error.response.data);
+        if (error.response.status === 401) {
+          showNotification(t('unauthorized'), 'error');
+        } else if (error.response.status === 403) {
+          showNotification(t('forbidden'), 'error');
+        } else {
+          showNotification(t('createHeartRateError'), 'error');
+        }
       } else {
         showNotification(t('createHeartRateError'), 'error');
       }
-    } else {
-      showNotification(t('createHeartRateError'), 'error');
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleMeasurePress = () => {
     setTypeSelectModalVisible(true);
@@ -343,15 +373,14 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
 
       <View style={styles.mainIf}>
         <View style={styles.infoContainer}>
-          {/* Comment phần hiển thị bước chân */}
-          {/* <View style={styles.textContainer}>
+          <View style={styles.textContainer}>
             <View style={styles.row}>
               <Image style={styles.icon} source={require('../../../assets/step.png')} />
               <Text style={[styles.number, { color: '#3CB371' }]}>
                 {steps.toLocaleString()} {t('stepsUnit')}
               </Text>
             </View>
-          </View> */}
+          </View>
           <View style={styles.textContainer}>
             <View style={styles.row}>
               <Image
@@ -360,7 +389,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
               />
               <View>
                 <Text style={[styles.number, { color: '#ed1b24' }]}>
-                  {heartRate != null ? `${heartRate} ${t('bpm')}` : `-/- ${t('bpm')}`}
+                  {heartRate ?? '--/--'} {t('bpm')}
                 </Text>
               </View>
             </View>
@@ -373,7 +402,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
               />
               <View>
                 <Text style={[styles.number, { color: '#2577f7' }]}>
-                  {sysValue && diaValue ? `${sysValue}/${diaValue} ${t('mmHg')}` : `-/- ${t('mmHg')}`}
+                  {sysValue && diaValue ? `${sysValue}/${diaValue}` : '--/--'} {t('mmHg')}
                 </Text>
               </View>
             </View>
@@ -382,8 +411,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
 
         <View style={styles.circleContainer}>
           <Svg width={120} height={120} viewBox="0 0 120 120">
-            {/* Comment vòng tròn liên quan đến bước chân */}
-            {/* <Circle cx="60" cy="60" r="55" stroke="#3CB371" strokeWidth="9" fill="none" strokeDasharray="345.6" strokeDashoffset="80" strokeLinecap="round" /> */}
+            <Circle cx="60" cy="60" r="55" stroke="#3CB371" strokeWidth="9" fill="none" strokeDasharray="345.6" strokeDashoffset="80" strokeLinecap="round" />
             <Circle
               cx="60"
               cy="60"
@@ -392,7 +420,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
               strokeWidth="9"
               fill="none"
               strokeDasharray="282.6"
-              strokeDashoffset="90"
+              strokeDashoffset={heartRate ? `${282.6 - (parseInt(heartRate) / 100) * 282.6}` : '90'}
               strokeLinecap="round"
             />
             <Circle
@@ -403,15 +431,14 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
               strokeWidth="9"
               fill="none"
               strokeDasharray="219.2"
-              strokeDashoffset="78"
+              strokeDashoffset={sysValue ? `${219.2 - (parseInt(sysValue) / 140) * 219.2}` : '78'}
               strokeLinecap="round"
             />
           </Svg>
         </View>
       </View>
 
-      {/* Comment toàn bộ stepContainer */}
-      {/* <TouchableOpacity style={styles.stepContainer} onPress={() => navigation.navigate('Step')}>
+      <TouchableOpacity style={styles.stepContainer} onPress={() => navigation.navigate('Step')}>
         <View style={styles.stepContent}>
           <FontAwesome5 name="shoe-prints" size={26} color="#432c81" style={styles.stepIcon} />
           <View>
@@ -425,13 +452,13 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
             <View style={[styles.progressFill, { width: `${Math.min((steps / 6000) * 100, 100)}%` }]} />
           </View>
         </View>
-      </TouchableOpacity> */}
+      </TouchableOpacity>
 
       <TouchableOpacity style={styles.heartRateContainer} onPress={() => navigation.navigate('HeartRate')}>
         <View style={styles.stepContent}>
           <FontAwesome5 name="heartbeat" size={26} color="#ed1b24" style={styles.heartRateIcon} />
           <View>
-            <Text style={styles.heartRateTitle}>{heartRate != null ? heartRate : '-/-'}</Text>
+            <Text style={styles.heartRateTitle}>{heartRate ?? '--/--'}</Text>
             <Text style={styles.heartRateSubtitle}>/{t('bpm')}</Text>
             <Text style={styles.dateText}>{formatDateTime(heartRateDate)}</Text>
           </View>
@@ -453,8 +480,8 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         <View style={styles.stepContent}>
           <FontAwesome5 name="heartbeat" size={26} color="#2577f7" style={styles.bloodPressureIcon} />
           <View>
-            <Text style={styles.bloodPressureTitle}>{sysValue != null ? sysValue : '-/-'}</Text>
-            <Text style={styles.bloodPressureSubtitle}>/{diaValue != null ? diaValue : '-/-'}</Text>
+            <Text style={styles.bloodPressureTitle}>{sysValue ?? '--/--'}</Text>
+            <Text style={styles.bloodPressureSubtitle}>/{diaValue ?? '--/--'}</Text>
             <Text style={styles.dateText}>{formatDateTime(bloodPressureDate)}</Text>
           </View>
         </View>

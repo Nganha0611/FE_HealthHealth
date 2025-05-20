@@ -10,16 +10,16 @@ import BloodPressureTest from "./src/components/BloodPressureTest";
 
 const App = () => {
   return (
-    // <I18nextProvider i18n={i18n}>
-    //   <AuthProvider>
-    //     <NotificationProvider>
-    //       <AppNavigator />
-    //     </NotificationProvider>
-    //   </AuthProvider>
-    // </I18nextProvider>
+    <I18nextProvider i18n={i18n}>
+      <AuthProvider>
+        <NotificationProvider>
+          <AppNavigator />
+        </NotificationProvider>
+      </AuthProvider>
+    </I18nextProvider>
     // <TestCounterScreen />
     // <HeartRateTest />
-    <BloodPressureTest/>
+    // <BloodPressureTest/>
   );
 };
 
