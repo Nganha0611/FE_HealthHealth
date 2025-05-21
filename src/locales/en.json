@@ -409,6 +409,8 @@
   "cholesterol": "Cholesterol",
   "comingSoon": "Coming Soon",
   "syncBloodPressureSuccess": "Blood pressure data synced successfully!",
-  "syncHeartRateSuccess": "Heart rate data synced successfully!"
+  "syncHeartRateSuccess": "Heart rate data synced successfully!",
+  "measureHeartRateSucess": "Heart rate measured successfully!",
+  "syncSuccess": "Sync successful!"
 
 }

@@ -19,7 +19,7 @@ const Home: React.FC = () => {
       body: 'Đây là một thông báo hệ thống mẫu!',
       android: {
         channelId,
-        smallIcon: 'ic_launcher', // Biểu tượng thông báo (tùy chọn, mặc định là ic_launcher)
+        smallIcon: 'ic_launcher', 
         pressAction: {
           id: 'default',
         },

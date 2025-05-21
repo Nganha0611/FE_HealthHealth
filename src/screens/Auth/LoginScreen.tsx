@@ -17,6 +17,7 @@ import { API_BASE_URL } from '../../utils/config';
 import Loading from '../../components/Loading';
 import { useTranslation } from 'react-i18next';
 import { useNotification } from '../../contexts/NotificationContext';
+import messaging from '@react-native-firebase/messaging'; 
 
 type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
 type LoginScreenRouteProp = RouteProp<AuthStackParamList, 'Login'>;
@@ -34,6 +35,36 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   const { login } = useAuth();
   const { t } = useTranslation();
   const { showNotification } = useNotification();
+
+  const saveFcmToken = async (token: string) => {
+    try {
+      // Yêu cầu quyền thông báo
+      const authStatus = await messaging().requestPermission();
+      const enabled =
+        authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
+        authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+      if (!enabled) {
+        showNotification(t('error.notificationPermissionDenied'), 'error');
+        return;
+      }
+
+      // Lấy fcmToken
+      const fcmToken = await messaging().getToken();
+      console.log('FCM Token:', fcmToken);
+
+      await axios.post(
+        `${API_BASE_URL}/api/auth/save-fcm-token`,
+        { fcmToken },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+      console.log('FCM Token saved successfully');
+    } catch (error) {
+      console.error('Failed to save FCM Token:', error);
+      showNotification(t('error.saveFcmTokenFailed'), 'error');
+    }
+  };
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -56,8 +87,11 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         await AsyncStorage.setItem('token', token);
         await AsyncStorage.setItem('user', JSON.stringify(user));
         console.log('Login successful:', user.isVerify);
+
+        // Lưu fcmToken sau khi đăng nhập thành công
+        await saveFcmToken(token);
+
         await login(token, user);
-        // Loại bỏ navigation.reset, để AppNavigator tự động chuyển sang BottomTabs
       } else {
         showNotification(t('error.loginFailed'), 'error');
       }
@@ -79,6 +113,24 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
       setLoading(false);
     }
   };
+
+  // Lắng nghe sự kiện token thay đổi
+  React.useEffect(() => {
+    const unsubscribe = messaging().onTokenRefresh(async (newToken) => {
+      console.log('FCM Token refreshed:', newToken);
+      const token = await AsyncStorage.getItem('token');
+      if (token) {
+        await axios.post(
+          `${API_BASE_URL}/api/auth/save-fcm-token`,
+          { fcmToken: newToken },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+      }
+    });
+    return unsubscribe;
+  }, []);
 
   return (
     <View style={styles.container}>
@@ -146,6 +198,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   );
 };
 
+// Styles giữ nguyên
 const styles = StyleSheet.create({
   container: {
     flex: 1,

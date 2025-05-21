@@ -1,4 +1,3 @@
-// config.js
 const API_BASE_URL = "http://192.168.1.6:8080";
 const CLOUD_NAME = "dl4o6bfw5";
 const CLOUD_PRESET = "healthhealth";

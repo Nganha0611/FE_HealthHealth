@@ -10,6 +10,8 @@
   <uses-permission android:name="android.permission.health.WRITE_STEPS" />
   <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
   <uses-permission android:name="android.permission.health.READ_BLOOD_PRESSURE" />
+  <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
   <queries>
     <package android:name="com.google.android.apps.healthdata" />
   </queries>
@@ -33,12 +35,10 @@
         <action android:name="android.intent.action.MAIN" />
         <category android:name="android.intent.category.LAUNCHER" />
       </intent-filter>
-      <!-- Hỗ trợ hiển thị lý do cấp quyền cho Android 13 trở xuống -->
       <intent-filter>
         <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
       </intent-filter>
     </activity>
-    <!-- Hỗ trợ hiển thị lý do cấp quyền cho Android 14 trở lên -->
     <activity-alias
       android:name="ViewPermissionUsageActivity"
       android:exported="true"

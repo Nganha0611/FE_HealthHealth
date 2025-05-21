@@ -307,7 +307,6 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
                 { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 }
               );
             } catch (deleteError) {
-              showNotification(t('syncStepsError'), 'error');
             }
           }
         } else {
@@ -319,7 +318,7 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
               { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 }
             );
           } catch (error: any) {
-            showNotification(t('syncStepsError'), 'error');
+            // showNotification(t('syncStepsError'), 'error');
           }
         }
       }
@@ -332,7 +331,6 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
         await fetchStepsData(user.id);
       }
     } catch (error) {
-      showNotification(t('syncStepsError'), 'error');
     } finally {
       setLoading(false);
     }

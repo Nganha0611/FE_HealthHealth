@@ -412,7 +412,9 @@
   "cholesterol": "Cholesterol",
   "comingSoon": "Sắp ra mắt",
   "syncBloodPressureSuccess": "Đồng bộ huyết áp thành công!",
-  "syncHeartRateSuccess": "Đồng bộ nhịp tim thành công!"
+  "syncHeartRateSuccess": "Đồng bộ nhịp tim thành công!",
+  "measureHeartRateSucess": "Đo nhịp tim thành công!",
+  "syncSuccess": "Đồng bộ thành công!"
  
 
 }

@@ -41,28 +41,27 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
   const { setIsLoggedIn } = useAuth();
 
   useFocusEffect(
-    React.useCallback(() => {
-      (async () => {
-        const stored = await AsyncStorage.getItem('user');
-        if (stored) {
-          const u = JSON.parse(stored);
-          console.log('>> loaded user in Account:', u);
-          setFormData({
-            name: u.name || '',
-            email: u.email || '',
-            phone: u.numberPhone || '',
-            address: u.address || '',
-            url: u.url || '',
-            birth: u.birth || '',
-            sex: u.sex || '',
-            isVerifyPhone: u.verify,
-          });
-          setAvatarUrl(u.url || null);
-        }
-        console.log('>> loaded user in Account:', stored);
-      })();
-    }, [])
-  );
+  React.useCallback(() => {
+    (async () => {
+      const stored = await AsyncStorage.getItem('user');
+      if (stored) {
+        const u = JSON.parse(stored);
+        console.log('>> Loaded user full data:', u);
+        setFormData({
+          name: u.name || '',
+          email: u.email || '',
+          phone: u.numberPhone || '',
+          address: u.address || '',
+          url: u.url || '',
+          birth: u.birth || '',
+          sex: u.sex || '',
+          isVerifyPhone: u.isVerifyPhone || u.verify || false, // Sử dụng cả isVerifyPhone và verify
+        });
+        setAvatarUrl(u.url || null);
+      }
+    })();
+  }, [])
+);
 
   const handlePickAndUploadImage = async () => {
     setLoading(true);

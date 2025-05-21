@@ -427,7 +427,7 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
       const hourlyData: { [hour: string]: { systolic: number[]; diastolic: number[] } } = {};
       filteredData.forEach((item) => {
         const date = new Date(item.createdAt);
-        const hourKey = `${date.getHours().toString().padStart(2, '0')}:00`;
+        const hourKey = `${date.getHours().toString().padStart(2, '0')}`;
         if (!hourlyData[hourKey]) {
           hourlyData[hourKey] = { systolic: [], diastolic: [] };
         }
@@ -437,11 +437,7 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
 
       console.log('Hourly data:', hourlyData);
 
-      labels = Object.keys(hourlyData).sort((a, b) => {
-        const hourA = parseInt(a.split(':')[0]);
-        const hourB = parseInt(b.split(':')[0]);
-        return hourA - hourB;
-      });
+      labels = Object.keys(hourlyData).sort((a, b) => parseInt(a) - parseInt(b));
 
       systolicValues = labels.map((hourLabel) => {
         const rates = hourlyData[hourLabel].systolic;
@@ -654,6 +650,11 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
+  const calculateChartWidth = () => {
+    const pointCount = chartData.labels.length;
+    return Math.max(pointCount * 40, Dimensions.get('window').width - 20);
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -683,29 +684,37 @@ const BloodPressureScreen: React.FC<Props> = ({ navigation }) => {
       {loading ? (
         <Text style={styles.loadingText}>{t('loading')}</Text>
       ) : chartData.datasets[0].data.length > 0 ? (
-        <View style={styles.chartContainer}>
-          <LineChart
-            data={chartData}
-            width={Dimensions.get('window').width - 20}
-            height={180} // Thu nhỏ chiều cao biểu đồ
-            chartConfig={{
-              backgroundColor: '#ffffff',
-              backgroundGradientFrom: '#ffffff',
-              backgroundGradientTo: '#ffffff',
-              decimalPlaces: 0,
-              color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-              labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-              style: { borderRadius: 16 },
-              propsForDots: { r: '6', strokeWidth: '2' },
-              propsForLabels: { fontSize: 10 },
-            }}
-            bezier
-            style={styles.chart}
-            yAxisSuffix=""
-            withDots={true}
-            fromZero={true}
-            segments={5}
-          />
+        <View style={styles.chartOuterContainer}>
+          <ScrollView
+            horizontal={true}
+            showsHorizontalScrollIndicator={true}
+            contentContainerStyle={styles.horizontalScrollContainer}
+          >
+            <View style={[styles.chartContainer, { width: calculateChartWidth() + 20 }]}>
+              <LineChart
+                data={chartData}
+                width={calculateChartWidth()}
+                height={180}
+                chartConfig={{
+                  backgroundColor: '#ffffff',
+                  backgroundGradientFrom: '#ffffff',
+                  backgroundGradientTo: '#ffffff',
+                  decimalPlaces: 0,
+                  color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                  labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                  style: { borderRadius: 16 },
+                  propsForDots: { r: '6', strokeWidth: '2' },
+                  propsForLabels: { fontSize: 10 },
+                }}
+                bezier
+                style={styles.chart}
+                yAxisSuffix=""
+                withDots={true}
+                fromZero={true}
+                segments={5}
+              />
+            </View>
+          </ScrollView>
         </View>
       ) : (
         <Text style={styles.noDataText}>{t('noData')}</Text>
@@ -808,6 +817,8 @@ const styles = StyleSheet.create({
   headerRight: { marginRight: 15 },
   title: { fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginTop: 20, marginBottom: 5 },
   subtitle: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 20 },
+  chartOuterContainer: { marginHorizontal: 0 },
+  horizontalScrollContainer: {},
   chartContainer: {
     alignItems: 'center',
     justifyContent: 'center',

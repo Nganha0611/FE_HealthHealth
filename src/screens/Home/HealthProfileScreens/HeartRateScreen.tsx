@@ -86,7 +86,6 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         ...config,
         timeout: 5000,
       });
-  
 
       let data = response.data;
 
@@ -95,7 +94,6 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
           ...config,
           timeout: 5000,
         });
-   
         data = response.data;
       }
 
@@ -120,10 +118,9 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
       }
 
       const normalizedData: HeartRateData[] = data.map((item: HeartRateApiResponse) => ({
-        rate: item.rate ?? item.heartRate ?? item.value,
-        createdAt: item.createdAt ?? item.date ?? item.timestamp,
+        rate: item.rate ?? item.heartRate ?? item.value ?? 0,
+        createdAt: item.createdAt ?? item.date ?? item.timestamp ?? '',
       }));
-
 
       const validData = normalizedData.filter(
         (item) =>
@@ -153,6 +150,7 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
       processHeartRateData(sorted);
     } catch (error: any) {
       if (error.code === 'ECONNABORTED') {
+        // Handle timeout
       }
       if (error.response) {
         if (error.response.status === 401) {
@@ -234,10 +232,10 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
       }
 
       const heartRateData: HeartRateData[] = response.records
-        .filter((record) => record.samples && record.samples.length > 0 && record.startTime) // Đảm bảo dữ liệu hợp lệ
+        .filter((record) => record.samples && record.samples.length > 0 && record.startTime)
         .map((record) => ({
-          rate: record.samples[0]?.beatsPerMinute ?? 0, // Lấy beatsPerMinute từ samples
-          createdAt: record.startTime ?? '', // Sử dụng startTime thay vì time
+          rate: record.samples[0]?.beatsPerMinute ?? 0,
+          createdAt: record.startTime ?? '',
         }));
 
       return heartRateData;
@@ -305,7 +303,7 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
             heartRate: item.rate,
             createdAt: item.createdAt,
           });
-          const response = await axios.post(
+          await axios.post(
             `${API_BASE_URL}/api/heart-rates/measure`,
             {
               heartRate: item.rate,
@@ -377,26 +375,18 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
       const hourlyData: { [hour: string]: number[] } = {};
       filteredData.forEach((item) => {
         const date = new Date(item.createdAt);
-        const hourKey = `${date.getHours().toString().padStart(2, '0')}:00`;
+        const hourKey = `${date.getHours().toString().padStart(2, '0')}`;
         if (!hourlyData[hourKey]) {
           hourlyData[hourKey] = [];
         }
         hourlyData[hourKey].push(item.rate);
       });
 
-
-      labels = Object.keys(hourlyData).sort((a, b) => {
-        const hourA = parseInt(a.split(':')[0]);
-        const hourB = parseInt(b.split(':')[0]);
-        return hourA - hourB;
-      });
-
+      labels = Object.keys(hourlyData).sort((a, b) => parseInt(a) - parseInt(b));
       heartRateValues = labels.map((hourLabel) => {
         const rates = hourlyData[hourLabel];
         return rates.length > 0 ? Math.round(rates.reduce((sum, val) => sum + val, 0) / rates.length) : 0;
       });
-
-  
     } else if (viewMode === 'weekly') {
       const sevenDaysAgo = new Date(referenceDate);
       sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -570,6 +560,11 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
+  const calculateChartWidth = () => {
+    const pointCount = chartData.labels.length;
+    return Math.max(pointCount * 40, Dimensions.get('window').width - 20);
+  };
+
   return (
     <ScrollView
       style={styles.container}
@@ -604,31 +599,39 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
       {loading ? (
         <Text style={styles.loadingText}>{t('loading')}</Text>
       ) : chartData.datasets[0].data.length > 0 ? (
-        <View style={styles.chartContainer}>
-          <LineChart
-            data={chartData}
-            width={Dimensions.get('window').width - 20}
-            height={180}
-            chartConfig={{
-              backgroundColor: '#ffffff',
-              backgroundGradientFrom: '#ffffff',
-              backgroundGradientTo: '#ffffff',
-              decimalPlaces: 0,
-              color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-              labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
-              style: { borderRadius: 16 },
-              propsForDots: { r: '4', strokeWidth: '2' },
-              propsForLabels: {
-                fontSize: 10,
-              },
-            }}
-            bezier
-            style={styles.chart}
-            yAxisSuffix=""
-            withDots={true}
-            fromZero={true}
-            segments={5}
-          />
+        <View style={styles.chartOuterContainer}>
+          <ScrollView
+            horizontal={true}
+            showsHorizontalScrollIndicator={true}
+            contentContainerStyle={styles.horizontalScrollContainer}
+          >
+            <View style={[styles.chartContainer, { width: calculateChartWidth() + 20 }]}>
+              <LineChart
+                data={chartData}
+                width={calculateChartWidth()}
+                height={180}
+                chartConfig={{
+                  backgroundColor: '#ffffff',
+                  backgroundGradientFrom: '#ffffff',
+                  backgroundGradientTo: '#ffffff',
+                  decimalPlaces: 0,
+                  color: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                  labelColor: (opacity = 1) => `rgba(0, 0, 0, ${opacity})`,
+                  style: { borderRadius: 16 },
+                  propsForDots: { r: '4', strokeWidth: '2' },
+                  propsForLabels: {
+                    fontSize: 10,
+                  },
+                }}
+                bezier
+                style={styles.chart}
+                yAxisSuffix=""
+                withDots={true}
+                fromZero={true}
+                segments={5}
+              />
+            </View>
+          </ScrollView>
         </View>
       ) : (
         <Text style={styles.noDataText}>{t('noData')}</Text>
@@ -739,19 +742,21 @@ const styles = StyleSheet.create({
   imgProfile: { width: 45, height: 45, borderRadius: 30 },
   title: { fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginTop: 20, marginBottom: 5 },
   subtitle: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 20 },
+  chartOuterContainer: { marginHorizontal: 0 },
+  horizontalScrollContainer: {},
   chartContainer: {
-    alignItems: 'center',
+    // alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'white',
     borderRadius: 16,
-    padding: 16,
+    // padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  chart: { marginVertical: 8, borderRadius: 16 },
+  chart: {borderRadius: 16 },
   buttonContainer: { flexDirection: 'row', justifyContent: 'center', marginVertical: 20 },
   button: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, marginHorizontal: 5, backgroundColor: '#f0f0f0' },
   selectedButton: { backgroundColor: '#007AFF' },

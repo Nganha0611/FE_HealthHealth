@@ -4,6 +4,8 @@ import { createStackNavigator } from "@react-navigation/stack";
 import AuthStack from "./AuthStack";
 import BottomTabs from "./BottomTabs";
 import { useAuth } from "../contexts/AuthContext"; 
+import { NotifeeProvider } from "../contexts/NotifeeContext";
+import NotificationHandler from "../components/NotificationHandler";
 
 export type RootStackParamList = {
   AuthStack: undefined;
@@ -17,6 +19,7 @@ const AppNavigator = () => {
 
   return (
     <NavigationContainer>
+      <NotifeeProvider>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
         {isLoggedIn ? (
           <Stack.Screen name="BottomTabs" component={BottomTabs} />
@@ -24,6 +27,8 @@ const AppNavigator = () => {
           <Stack.Screen name="AuthStack" component={AuthStack} />
         )}
       </Stack.Navigator>
+      <NotificationHandler />
+      </NotifeeProvider>
     </NavigationContainer>
   );
 };
