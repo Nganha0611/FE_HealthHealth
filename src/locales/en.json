@@ -411,6 +411,7 @@
   "syncBloodPressureSuccess": "Blood pressure data synced successfully!",
   "syncHeartRateSuccess": "Heart rate data synced successfully!",
   "measureHeartRateSucess": "Heart rate measured successfully!",
-  "syncSuccess": "Sync successful!"
+  "syncSuccess": "Sync successful!",
+  "event.medicineHistory": "Medicine History"
 
 }

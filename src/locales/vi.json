@@ -414,7 +414,8 @@
   "syncBloodPressureSuccess": "Đồng bộ huyết áp thành công!",
   "syncHeartRateSuccess": "Đồng bộ nhịp tim thành công!",
   "measureHeartRateSucess": "Đo nhịp tim thành công!",
-  "syncSuccess": "Đồng bộ thành công!"
+  "syncSuccess": "Đồng bộ thành công!",
+  "event.medicineHistory": "Lịch sử thuốc"
  
 
 }

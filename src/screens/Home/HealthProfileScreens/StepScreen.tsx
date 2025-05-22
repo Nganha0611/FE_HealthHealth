@@ -192,150 +192,144 @@ const StepScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const readStepsData = async () => {
-    try {
-      const endTime = new Date();
-      const startTime = new Date();
-      startTime.setDate(endTime.getDate() - 30);
+  try {
+    const endTime = new Date();
+    const startTime = new Date();
+    startTime.setDate(endTime.getDate() - 30);
 
-      const response = await readRecords('Steps', {
-        timeRangeFilter: {
-          operator: 'between',
-          startTime: startTime.toISOString(),
-          endTime: endTime.toISOString(),
-        },
-      });
-      if (!response.records || response.records.length === 0) {
-        return [];
-      }
+    const response = await readRecords('Steps', {
+      timeRangeFilter: {
+        operator: 'between',
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+      },
+    });
 
-      const dailySteps: { [date: string]: number } = {};
-      response.records.forEach((record) => {
-        const recordDate = new Date(record.startTime).toDateString();
-        dailySteps[recordDate] = (dailySteps[recordDate] || 0) + (record.count || 0);
-      });
-
-      const stepsData: StepsData[] = Object.entries(dailySteps).map(([date, steps]) => ({
-        steps,
-        createdAt: new Date(date).toISOString(),
-      }));
-
-      return stepsData;
-    } catch (err) {
-      showNotification(t('healthConnectFetchError') + (err as Error).message, 'error');
+    if (!response.records || response.records.length === 0) {
+      console.log('[HealthConnect] No step records found in the last 30 days');
       return [];
     }
-  };
 
-  const getDateKey = (timestamp: string) => {
-    return new Date(timestamp).toDateString(); // Chỉ lấy ngày, bỏ giờ phút giây
-  };
+    // Log dữ liệu thô từ Health Connect để kiểm tra
+    console.log('[HealthConnect] Raw records:', response.records);
 
-  const syncStepsFromHealthConnect = async () => {
-    setLoading(true);
-    try {
-      const isInitialized = await initializeHealthConnect();
-      if (!isInitialized) {
-        showNotification(t('healthConnectNotAvailable'), 'error');
-        return;
+    // Nhóm dữ liệu theo ngày và lấy số bước lớn nhất thay vì cộng dồn
+    const dailySteps: { [date: string]: { steps: number; record: any } } = {};
+    response.records.forEach((record) => {
+      const recordDate = new Date(record.startTime).toDateString();
+      const steps = record.count || 0;
+
+      if (!dailySteps[recordDate] || steps > dailySteps[recordDate].steps) {
+        dailySteps[recordDate] = { steps, record };
       }
+    });
 
-      const granted = await requestHealthPermissions();
-      if (!granted) {
-        showNotification(t('healthConnectPermissionError'), 'error');
-        return;
-      }
+    // Log dữ liệu sau khi nhóm để kiểm tra
+    console.log('[HealthConnect] Grouped daily steps:', dailySteps);
 
-      const healthConnectData = await readStepsData();
-      if (healthConnectData.length === 0) {
-        return;
-      }
+    const stepsData: StepsData[] = Object.entries(dailySteps).map(([date, { steps }]) => ({
+      steps,
+      createdAt: new Date(date).toISOString(),
+    }));
 
-      // Nhóm dữ liệu từ cơ sở dữ liệu theo ngày
-      const dbDataByDate: { [date: string]: StepsData } = {};
-      allStepsData.forEach((item) => {
-        const dateKey = getDateKey(item.createdAt);
-        if (dbDataByDate[dateKey]) {
-          // Nếu đã có dữ liệu cho ngày đó, cộng dồn số bước
-          dbDataByDate[dateKey].steps += item.steps;
-        } else {
-          dbDataByDate[dateKey] = { ...item };
-        }
-      });
+    return stepsData;
+  } catch (err) {
+    console.error('[HealthConnect] Error fetching steps:', err);
+    showNotification(t('healthConnectFetchError') + (err as Error).message, 'error');
+    return [];
+  }
+};
 
-
-      // Nhóm dữ liệu từ Health Connect theo ngày
-      const healthConnectDataByDate: { [date: string]: StepsData } = {};
-      healthConnectData.forEach((item) => {
-        const dateKey = getDateKey(item.createdAt);
-        if (healthConnectDataByDate[dateKey]) {
-          // Nếu đã có dữ liệu cho ngày đó, cộng dồn số bước
-          healthConnectDataByDate[dateKey].steps += item.steps;
-        } else {
-          healthConnectDataByDate[dateKey] = { ...item };
-        }
-      });
-
-
-      const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        showNotification(t('unauthorized'), 'error');
-        return;
-      }
-
-      // So sánh và đồng bộ
-      for (const [dateKey, hcItem] of Object.entries(healthConnectDataByDate)) {
-        const dbItem = dbDataByDate[dateKey];
-        if (dbItem) {
-          // Nếu ngày đã tồn tại, cập nhật số bước
-          const updatedSteps = hcItem.steps; // Sử dụng số bước từ Health Connect thay vì cộng dồn
-          try {
-            await axios.put(
-              `${API_BASE_URL}/api/steps/measure/update-by-date`,
-              { date: hcItem.createdAt, steps: updatedSteps },
-              { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 }
-            );
-          } catch (error: any) {
-            // Nếu không có endpoint PUT, thử xóa và thêm mới
-            try {
-              await axios.delete(`${API_BASE_URL}/api/steps/measure/delete-by-date`, {
-                headers: { Authorization: `Bearer ${token}` },
-                data: { date: hcItem.createdAt },
-              });
-              await axios.post(
-                `${API_BASE_URL}/api/steps/measure`,
-                { steps: updatedSteps, createdAt: hcItem.createdAt },
-                { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 }
-              );
-            } catch (deleteError) {
-            }
-          }
-        } else {
-          // Nếu ngày chưa tồn tại, thêm mới
-          try {
-            await axios.post(
-              `${API_BASE_URL}/api/steps/measure`,
-              { steps: hcItem.steps, createdAt: hcItem.createdAt },
-              { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 }
-            );
-          } catch (error: any) {
-            // showNotification(t('syncStepsError'), 'error');
-          }
-        }
-      }
-
-      showNotification(t('syncStepsSuccess'), 'success');
-
-      const userData = await AsyncStorage.getItem('user');
-      if (userData) {
-        const user: User = JSON.parse(userData);
-        await fetchStepsData(user.id);
-      }
-    } catch (error) {
-    } finally {
-      setLoading(false);
+const syncStepsFromHealthConnect = async () => {
+  setLoading(true);
+  try {
+    // Khởi tạo Health Connect
+    const isInitialized = await initializeHealthConnect();
+    if (!isInitialized) {
+      showNotification(t('healthConnectNotAvailable'), 'error');
+      return;
     }
-  };
 
+    // Yêu cầu quyền truy cập
+    const granted = await requestHealthPermissions();
+    if (!granted) {
+      showNotification(t('healthConnectPermissionError'), 'error');
+      return;
+    }
+
+    // Đọc dữ liệu từ Health Connect
+    const healthConnectData = await readStepsData();
+    if (healthConnectData.length === 0) {
+      return;
+    }
+
+    // Log dữ liệu trước khi nhóm để kiểm tra
+    console.log('[HealthConnect] Data before grouping:', healthConnectData);
+
+    // Nhóm dữ liệu từ Health Connect theo ngày
+    const getDateKey = (dateString: string) => {
+      const date = new Date(dateString);
+      return date.toISOString().split('T')[0]; // Lấy ngày dạng "2025-05-22"
+    };
+
+    const healthConnectDataByDate: { [date: string]: StepsData } = {};
+    healthConnectData.forEach((item) => {
+      const dateKey = getDateKey(item.createdAt);
+      if (healthConnectDataByDate[dateKey]) {
+        // Lấy số bước lớn nhất thay vì cộng dồn
+        healthConnectDataByDate[dateKey].steps = Math.max(
+          healthConnectDataByDate[dateKey].steps,
+          item.steps
+        );
+      } else {
+        healthConnectDataByDate[dateKey] = { ...item };
+      }
+    });
+
+    console.log('[HealthConnect] Data after grouping:', healthConnectDataByDate);
+
+    // Lấy token để gọi API
+    const token = await AsyncStorage.getItem('token');
+    if (!token) {
+      showNotification(t('unauthorized'), 'error');
+      return;
+    }
+
+    // Đồng bộ dữ liệu với cơ sở dữ liệu
+    for (const [dateKey, hcItem] of Object.entries(healthConnectDataByDate)) {
+      try {
+        // Xóa dữ liệu cũ cho ngày đó trước khi thêm mới
+        await axios.delete(`${API_BASE_URL}/api/steps/measure/delete-by-date?date=${encodeURIComponent(hcItem.createdAt)}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        // Thêm dữ liệu mới từ Health Connect
+        await axios.post(
+          `${API_BASE_URL}/api/steps/measure`,
+          { steps: hcItem.steps, createdAt: hcItem.createdAt },
+          { headers: { Authorization: `Bearer ${token}` }, timeout: 5000 }
+        );
+      } catch (error: any) {
+        console.error(`[Sync Error] Failed to sync data for date ${dateKey}:`, error.message);
+        // Tiếp tục với các ngày khác nếu có lỗi
+      }
+    }
+
+    showNotification(t('syncStepsSuccess'), 'success');
+
+    // Tải lại dữ liệu từ cơ sở dữ liệu
+    const userData = await AsyncStorage.getItem('user');
+    if (userData) {
+      const user: User = JSON.parse(userData);
+      await fetchStepsData(user.id);
+    }
+  } catch (error: any) {
+    console.error('[Sync Error] General error:', error.message);
+    showNotification(t('syncStepsError'), 'error');
+  } finally {
+    setLoading(false);
+  }
+};
   const processStepsData = (data: StepsData[]) => {
     if (!data || data.length === 0) {
       setChartData({ labels: [], datasets: [{ data: [] }] });

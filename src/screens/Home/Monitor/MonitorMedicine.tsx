@@ -46,7 +46,7 @@ type Medicine = {
 type MedicineHistory = {
   id: string;
   userId: string;
-  prescriptionsId?: string;
+  medicineName: string; // Changed from prescriptionsId to medicineName
   timestamp: string;
   status: string;
   note: string;
@@ -254,7 +254,6 @@ const MonitorMedicine: React.FC<Props> = ({ navigation }) => {
         </CustomModal>
       );
     } else if (selectedHistory) {
-      const medicine = medicines.find(m => m.id === selectedHistory.prescriptionsId);
       return (
         <CustomModal visible={isDetailModalVisible} onClose={() => setDetailModalVisible(false)}>
           <TouchableOpacity style={styles.closeButton} onPress={() => setDetailModalVisible(false)}>
@@ -264,7 +263,7 @@ const MonitorMedicine: React.FC<Props> = ({ navigation }) => {
           <View style={styles.detailContainer}>
             <Text style={styles.detailLabel}>{t('medicineName')}:</Text>
             <Text style={styles.detailText}>
-              {medicine ? `${medicine.name} ${medicine.strength}${medicine.unit}` : t('unknownMedicine')}
+              {selectedHistory.medicineName || t('unknownMedicine')}
             </Text>
 
             <Text style={styles.detailLabel}>{t('statusLabel')}:</Text>
@@ -364,29 +363,26 @@ const MonitorMedicine: React.FC<Props> = ({ navigation }) => {
         ) : medicineHistory.length === 0 ? (
           <Text style={styles.note}>{t('noHistory')}</Text>
         ) : (
-          medicineHistory.map((history, index) => {
-            const medicine = medicines.find(m => m.id === history.prescriptionsId);
-            return (
-              <TouchableOpacity
-                key={index}
-                style={styles.boxFeature}
-                onPress={() => handleHistoryItemPress(history)}
-              >
-                <Text style={styles.boxTitle}>
-                  {medicine ? medicine.name : t('unknownMedicine')}
-                </Text>
-                <Text style={styles.note}>
-                  {t('statusLabel')}: {statusItems.find(item => item.value === history.status)?.label || history.status}
-                </Text>
-                <Text style={styles.note}>
-                  {t('Time')}: {new Date(cleanDateString(history.timestamp)).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}
-                </Text>
-                <Text style={styles.note}>
-                  {t('note')}: {history.note || t('noNote')}
-                </Text>
-              </TouchableOpacity>
-            );
-          })
+          medicineHistory.map((history, index) => (
+            <TouchableOpacity
+              key={index}
+              style={styles.boxFeature}
+              onPress={() => handleHistoryItemPress(history)}
+            >
+              <Text style={styles.boxTitle}>
+                {history.medicineName || t('unknownMedicine')}
+              </Text>
+              <Text style={styles.note}>
+                {t('statusLabel')}: {statusItems.find(item => item.value === history.status)?.label || history.status}
+              </Text>
+              <Text style={styles.note}>
+                {t('Time')}: {new Date(cleanDateString(history.timestamp)).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}
+              </Text>
+              <Text style={styles.note}>
+                {t('note')}: {history.note || t('noNote')}
+              </Text>
+            </TouchableOpacity>
+          ))
         )}
       </ScrollView>
 

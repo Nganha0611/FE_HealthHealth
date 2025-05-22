@@ -10,12 +10,15 @@ import DropDownPicker from 'react-native-dropdown-picker';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useNotification } from '../../contexts/NotificationContext';
 import Modal from '../../components/CustomModal';
+import { NavigationProp } from '@react-navigation/native';
+import { useAuth } from '../../contexts/AuthContext';
 
 interface Event {
   name: string;
   time: string;
   medicineId?: string;
   medicalHistoryId?: string;
+  medicineHistoryId?: string;
 }
 
 interface Medicine {
@@ -45,25 +48,35 @@ interface MedicalHistory {
   status: string;
 }
 
-const ScheduleScreen: React.FC<any> = ({ navigation }) => {
+interface MedicineHistory {
+  id: string;
+  userId: string;
+  medicineName: string;
+  timestamp: string;
+  status: string;
+  note: string;
+}
+
+type Props = {
+  navigation: NavigationProp<any>;
+};
+
+const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
   const { t, i18n } = useTranslation();
-  const [language, setLanguage] = useState<'vi' | 'en'>(i18n.language as 'vi' | 'en');
+  const [language] = useState<'vi' | 'en'>(i18n.language as 'vi' | 'en');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [events, setEvents] = useState<{ [key: string]: Event[] }>({});
+  const [medicineHistory, setMedicineHistory] = useState<MedicineHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  // Medicine History Modal states
   const [isMedicineModalVisible, setMedicineModalVisible] = useState(false);
-  const [selectedMedicine, setSelectedMedicine] = useState<string | null>(null);
+  const [selectedMedicine, setSelectedMedicine] = useState<Medicine | null>(null);
   const [medicineStatus, setMedicineStatus] = useState<string | null>(null);
   const [medicineNote, setMedicineNote] = useState('');
-  const [medicineDate, setMedicineDate] = useState(new Date());
-  const [medicineTime, setMedicineTime] = useState(new Date());
-  const [openMedicineStatus, setOpenMedicineStatus] = useState(false);
-  const [openMedicine, setOpenMedicine] = useState(false);
+  const [medicineDateTime, setMedicineDateTime] = useState(new Date());
   const [showMedicineDatePicker, setShowMedicineDatePicker] = useState(false);
   const [showMedicineTimePicker, setShowMedicineTimePicker] = useState(false);
-  // Medical History Modal states
+  const [openMedicineStatus, setOpenMedicineStatus] = useState(false);
   const [isMedicalModalVisible, setMedicalModalVisible] = useState(false);
   const [selectedMedicalHistoryId, setSelectedMedicalHistoryId] = useState<string | null>(null);
   const [location, setLocation] = useState('');
@@ -74,10 +87,12 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
   const [openMedicalStatus, setOpenMedicalStatus] = useState(false);
   const [showMedicalDatePicker, setShowMedicalDatePicker] = useState(false);
   const [showMedicalTimePicker, setShowMedicalTimePicker] = useState(false);
-  // Shared data
+  const [isMedicineHistoryDetailModalVisible, setMedicineHistoryDetailModalVisible] = useState(false);
+  const [selectedMedicineHistory, setSelectedMedicineHistory] = useState<MedicineHistory | null>(null);
   const [medicines, setMedicines] = useState<Medicine[]>([]);
   const [medicalHistory, setMedicalHistory] = useState<MedicalHistory[]>([]);
   const { showNotification } = useNotification();
+  const { logout } = useAuth();
 
   const medicineStatusItems = [
     { label: t('status.taken'), value: 'Taken' },
@@ -91,10 +106,47 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
     { label: t('medicalStatus.pending'), value: 'Pending' },
   ];
 
-  const medicineItems = medicines.map(med => ({ label: med.name, value: med.id || '' }));
+  // Hàm làm sạch chuỗi ngày tháng và chuyển sang múi giờ Việt Nam
+  const cleanDateString = (dateStr: string): string => {
+    if (!dateStr || typeof dateStr !== 'string') {
+      console.log('[cleanDateString] Invalid or empty date string, returning current date');
+      return new Date().toISOString();
+    }
+    let cleaned = dateStr
+      .replace(/ø/g, '0')
+      .replace(/ß/g, '0')
+      .replace(/•/g, '')
+      .replace(/[^\dT:+\-.Z]/g, '')
+      .replace(/\+(\d{2}):?$/, '+$1:00')
+      .trim();
 
-  const getDateKey = (date: Date): string => date.toISOString().split('T')[0];
+    // Nếu không có múi giờ, giả định là UTC và chuyển sang múi giờ Việt Nam (+07:00)
+    if (!cleaned.includes('Z') && !cleaned.includes('+')) {
+      const date = new Date(cleaned + 'Z');
+      const vietnamDate = new Date(date.getTime() + 7 * 60 * 60 * 1000);
+      console.log(`[cleanDateString] No timezone, converted ${cleaned} to Vietnam time: ${vietnamDate.toISOString()}`);
+      return vietnamDate.toISOString();
+    }
 
+    console.log(`[cleanDateString] Processed date string: ${cleaned}`);
+    return cleaned;
+  };
+
+  // Hàm kiểm tra ngày hợp lệ
+  const isValidDate = (dateStr: string): boolean => {
+    const cleaned = cleanDateString(dateStr);
+    const date = new Date(cleaned);
+    const isValid = !isNaN(date.getTime());
+    console.log(`[isValidDate] Checking date ${dateStr} -> ${cleaned}: ${isValid ? 'Valid' : 'Invalid'}`);
+    return isValid;
+  };
+
+  // Hàm lấy dateKey theo múi giờ Việt Nam
+  const getDateKey = (date: Date): string => {
+    return date.toLocaleDateString('vi-VN', { year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-');
+  };
+
+  // Hàm xử lý khi chọn ngày
   const onDateChange = (date: any) => {
     if (date?.toDate) {
       setSelectedDate(date.toDate());
@@ -103,6 +155,7 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
     }
   };
 
+  // Định nghĩa ngày trong tuần và tháng
   const weekdays = t('calendar.weekdays', { returnObjects: true });
   const safeWeekdays = Array.isArray(weekdays) ? weekdays : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -112,38 +165,42 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  // Helper function to parse startday (DD/MM/YYYY) to Date with UTC alignment
+  // Hàm phân tích startday (DD/MM/YYYY)
   const parseStartDay = (startday: string): Date => {
+    if (!startday) {
+      console.log('[parseStartDay] No startday provided, returning current date');
+      return new Date();
+    }
     const [day, month, year] = startday.split('/').map(Number);
     const date = new Date(Date.UTC(year, month - 1, day));
+    console.log(`[parseStartDay] Parsed ${startday} to ${date.toISOString()}`);
     return date;
   };
 
-  // Helper function to format time (HH:mm) to 12-hour format
-  const formatTime = (time: string): string => {
-    const [hours, minutes] = time.split(':').map(Number);
-    const period = hours >= 12 ? t('time.pm') : t('time.am');
-    const formattedHours = hours % 12 || 12;
-    return `${formattedHours}:${minutes.toString().padStart(2, '0')} ${period}`;
+  // Hàm định dạng thời gian sang 24 giờ
+  const formatTime = (date: Date): string => {
+    const formatted = date.toLocaleString('vi-VN', { timeStyle: 'short' });
+    console.log(`[formatTime] Formatted ${date.toISOString()} to ${formatted}`);
+    return formatted;
   };
 
-  // Helper function to parse 12-hour time to Date for sorting
+  // Hàm phân tích thời gian để sắp xếp
   const parseTimeToDate = (timeStr: string): Date => {
-    const [time, period] = timeStr.split(' ');
-    let [hours, minutes] = time.split(':').map(Number);
-    if (period === t('time.pm') && hours !== 12) hours += 12;
-    if (period === t('time.am') && hours === 12) hours = 0;
-    const date = new Date(1970, 0, 1);
-    date.setHours(hours, minutes, 0, 0);
+    const [time] = timeStr.split(' ');
+    const date = new Date(`1970-01-01T${time}:00`);
+    console.log(`[parseTimeToDate] Parsed ${timeStr} to ${date.toISOString()}`);
     return date;
   };
 
-  // Process medicine events based on repeatDetails with fixed date handling
+  // Xử lý sự kiện Medicine
   const processMedicineEvents = (medicines: Medicine[]): { [key: string]: Event[] } => {
     const eventsMap: { [key: string]: Event[] } = {};
 
     medicines.forEach((medicine) => {
-      if (!medicine.repeatDetails || !medicine.startday) return;
+      if (!medicine.repeatDetails || !medicine.startday) {
+        console.log(`[processMedicineEvents] Skipping medicine ${medicine.name}: missing repeatDetails or startday`);
+        return;
+      }
 
       const { type, interval, daysOfWeek, daysOfMonth, timePerDay } = medicine.repeatDetails;
       const startDate = parseStartDay(medicine.startday);
@@ -152,13 +209,14 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
 
       const addEvent = (date: Date, time: string) => {
         if (date < startDate) return;
-        const dateKey = getDateKey(date);
+        const eventDate = new Date(`${date.toISOString().split('T')[0]}T${time}`);
+        const dateKey = getDateKey(eventDate);
         if (!eventsMap[dateKey]) {
           eventsMap[dateKey] = [];
         }
         eventsMap[dateKey].push({
           name: `${t('event.medicine')}: ${medicine.name} ${medicine.strength}${medicine.unit}`,
-          time: formatTime(time),
+          time: formatTime(eventDate),
           medicineId: medicine.id,
         });
       };
@@ -200,60 +258,121 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
       }
     });
 
+    console.log('[processMedicineEvents] Generated events:', eventsMap);
     return eventsMap;
   };
 
-  // Process medical history events based on appointmentDate
+  // Xử lý sự kiện MedicalHistory
   const processMedicalHistoryEvents = (history: MedicalHistory[]): { [key: string]: Event[] } => {
     const eventsMap: { [key: string]: Event[] } = {};
 
     history.forEach((entry) => {
-      const appointmentDate = new Date(entry.appointmentDate);
+      if (!isValidDate(entry.appointmentDate)) {
+        console.log(`[processMedicalHistoryEvents] Invalid appointmentDate for entry ${entry.id}: ${entry.appointmentDate}`);
+        return;
+      }
+      const appointmentDate = new Date(cleanDateString(entry.appointmentDate));
       const dateKey = getDateKey(appointmentDate);
-      const time = appointmentDate.toLocaleTimeString(language === 'vi' ? 'vi-VN' : 'en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+      const formattedTime = formatTime(appointmentDate);
 
       if (!eventsMap[dateKey]) {
         eventsMap[dateKey] = [];
       }
       eventsMap[dateKey].push({
         name: `${t('event.appointment')}: ${entry.location} (${t(`medicalStatus.${entry.status.toLowerCase()}`)})`,
-        time,
+        time: formattedTime,
         medicalHistoryId: entry.id,
       });
     });
 
+    console.log('[processMedicalHistoryEvents] Generated events:', eventsMap);
     return eventsMap;
   };
 
-  // Fetch data from APIs
+  // Xử lý sự kiện MedicineHistory
+  const processMedicineHistoryEvents = (history: MedicineHistory[]): { [key: string]: Event[] } => {
+    const eventsMap: { [key: string]: Event[] } = {};
+
+    history.forEach((entry) => {
+      if (!isValidDate(entry.timestamp)) {
+        console.log(`[processMedicineHistoryEvents] Invalid timestamp for entry ${entry.id}: ${entry.timestamp}`);
+        return;
+      }
+      const eventDate = new Date(cleanDateString(entry.timestamp));
+      console.log(`[processMedicineHistoryEvents] Processed timestamp ${entry.timestamp} -> ${eventDate.toISOString()}`);
+      const dateKey = getDateKey(eventDate);
+      const formattedTime = formatTime(eventDate);
+      const displayName = entry.medicineName || t('unknownMedicine');
+
+      if (!eventsMap[dateKey]) {
+        eventsMap[dateKey] = [];
+      }
+      eventsMap[dateKey].push({
+        name: `${t('event.medicineHistory')}: ${displayName} (${t(`status.${entry.status.toLowerCase()}`) || entry.status})`,
+        time: formattedTime,
+        medicineHistoryId: entry.id,
+      });
+    });
+
+    console.log('[processMedicineHistoryEvents] Generated events:', eventsMap);
+    return eventsMap;
+  };
+
+  // Tải dữ liệu từ API
   const fetchData = async () => {
     setLoading(true);
     setError(null);
     try {
       const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        showNotification(t('noToken'), 'error');
-        navigation.navigate('Login');
+      const userId = await AsyncStorage.getItem('userId');
+      console.log('[fetchData] Token:', token);
+      console.log('[fetchData] UserId:', userId);
+      if (!token || !userId) {
+        showNotification(t('noToken'), 'warning', [
+          { text: t('cancel'), onPress: () => {}, color: 'danger' },
+          { text: t('logout'), onPress: logout, color: 'primary' },
+        ]);
         return;
       }
 
-      const [medicineResponse, historyResponse] = await Promise.all([
+      const [medicineResponse, medicalHistoryResponse, medicineHistoryResponse] = await Promise.all([
         axios.get<Medicine[]>(`${API_BASE_URL}/api/prescriptions`, {
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         }),
         axios.get<MedicalHistory[]>(`${API_BASE_URL}/api/medical-history`, {
           headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         }),
+        axios.get<MedicineHistory[]>(`${API_BASE_URL}/api/medicine-history`, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+          params: { userId },
+        }),
       ]);
 
-      const medicines = medicineResponse.data;
-      const medicalHistory = historyResponse.data;
+      const medicines = medicineResponse.data.map(med => ({
+        ...med,
+        name: med.name.trim().toLowerCase(),
+      }));
+      const medicalHistory = medicalHistoryResponse.data;
+      const medicineHistory = medicineHistoryResponse.data.map(history => ({
+        ...history,
+        medicineName: history.medicineName?.trim().toLowerCase(),
+      }));
+
+      console.log('[fetchData] Medicines:', medicines);
+      console.log('[fetchData] Medical History:', medicalHistory);
+      console.log('[fetchData] Medicine History:', medicineHistory);
 
       setMedicines(medicines);
       setMedicalHistory(medicalHistory);
+      setMedicineHistory(
+        medicineHistory
+          .filter(item => isValidDate(item.timestamp))
+          .sort((a, b) => new Date(cleanDateString(b.timestamp)).getTime() - new Date(cleanDateString(a.timestamp)).getTime())
+      );
 
       const medicineEvents = processMedicineEvents(medicines);
       const historyEvents = processMedicalHistoryEvents(medicalHistory);
+      const medicineHistoryEvents = processMedicineHistoryEvents(medicineHistory);
 
       const combinedEvents: { [key: string]: Event[] } = {};
       Object.keys(medicineEvents).forEach((dateKey) => {
@@ -261,6 +380,9 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
       });
       Object.keys(historyEvents).forEach((dateKey) => {
         combinedEvents[dateKey] = [...(combinedEvents[dateKey] || []), ...historyEvents[dateKey]];
+      });
+      Object.keys(medicineHistoryEvents).forEach((dateKey) => {
+        combinedEvents[dateKey] = [...(combinedEvents[dateKey] || []), ...medicineHistoryEvents[dateKey]];
       });
 
       Object.keys(combinedEvents).forEach((dateKey) => {
@@ -272,13 +394,17 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
       });
 
       setEvents(combinedEvents);
+      console.log('[fetchData] Combined Events:', combinedEvents);
     } catch (err: any) {
-      console.error('Error fetching data:', err.response?.data || err.message);
+      console.error('[fetchData] Error fetching data:', err.response?.data || err.message);
       setError(t('fetchDataError'));
       if (err.response?.status === 401) {
         showNotification(t('sessionExpired'), 'error');
         await AsyncStorage.removeItem('token');
-        navigation.navigate('Login');
+        showNotification(t('noToken'), 'warning', [
+          { text: t('cancel'), onPress: () => {}, color: 'danger' },
+          { text: t('logout'), onPress: logout, color: 'primary' },
+        ]);
       }
     } finally {
       setLoading(false);
@@ -289,20 +415,18 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
     fetchData();
   }, []);
 
-  // Reset medicine modal fields
+  // Reset modal Medicine
   const resetMedicineModal = () => {
     setSelectedMedicine(null);
     setMedicineStatus(null);
     setMedicineNote('');
-    setMedicineDate(new Date());
-    setMedicineTime(new Date());
+    setMedicineDateTime(new Date());
     setOpenMedicineStatus(false);
-    setOpenMedicine(false);
     setShowMedicineDatePicker(false);
     setShowMedicineTimePicker(false);
   };
 
-  // Reset medical history modal fields
+  // Reset modal Medical
   const resetMedicalModal = () => {
     setSelectedMedicalHistoryId(null);
     setLocation('');
@@ -315,20 +439,24 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
     setShowMedicalTimePicker(false);
   };
 
-  // Handle event click
+  // Xử lý khi click vào sự kiện
   const handleEventClick = (event: Event) => {
     if (event.name.startsWith(t('event.medicine')) && event.medicineId) {
       const selectedTime = parseTimeToDate(event.time);
-      setSelectedMedicine(event.medicineId);
-      setMedicineStatus(null);
-      setMedicineNote('');
-      setMedicineDate(new Date(selectedDate));
-      setMedicineTime(selectedTime);
-      setMedicineModalVisible(true);
+      const medicine = medicines.find(m => m.id === event.medicineId);
+      if (medicine) {
+        setSelectedMedicine(medicine);
+        setMedicineStatus(null);
+        setMedicineNote('');
+        const dateTime = new Date(selectedDate);
+        dateTime.setHours(selectedTime.getHours(), selectedTime.getMinutes());
+        setMedicineDateTime(dateTime);
+        setMedicineModalVisible(true);
+      }
     } else if (event.name.startsWith(t('event.appointment')) && event.medicalHistoryId) {
       const history = medicalHistory.find(h => h.id === event.medicalHistoryId);
       if (history) {
-        const appointmentDate = new Date(history.appointmentDate);
+        const appointmentDate = new Date(cleanDateString(history.appointmentDate));
         setSelectedMedicalHistoryId(history.id || null);
         setLocation(history.location);
         setMedicalStatus(history.status);
@@ -337,10 +465,16 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
         setMedicalTime(appointmentDate);
         setMedicalModalVisible(true);
       }
+    } else if (event.name.startsWith(t('event.medicineHistory')) && event.medicineHistoryId) {
+      const history = medicineHistory.find(h => h.id === event.medicineHistoryId);
+      if (history) {
+        setSelectedMedicineHistory(history);
+        setMedicineHistoryDetailModalVisible(true);
+      }
     }
   };
 
-  // Save medicine history
+  // Lưu MedicineHistory
   const handleSaveMedicineHistory = async () => {
     if (!selectedMedicine || !medicineStatus) {
       showNotification(t('incompleteMedicineInfo'), 'error');
@@ -349,39 +483,41 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
 
     try {
       const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        showNotification(t('noToken'), 'error');
-        navigation.navigate('Login');
+      const userId = await AsyncStorage.getItem('userId');
+      console.log('[handleSaveMedicineHistory] Token:', token);
+      console.log('[handleSaveMedicineHistory] UserId:', userId);
+      if (!token || !userId) {
+        showNotification(t('noToken'), 'warning', [
+          { text: t('cancel'), onPress: () => {}, color: 'danger' },
+          { text: t('logout'), onPress: logout, color: 'primary' },
+        ]);
         return;
       }
 
-      const timestamp = new Date(
-        medicineDate.getFullYear(),
-        medicineDate.getMonth(),
-        medicineDate.getDate(),
-        medicineTime.getHours(),
-        medicineTime.getMinutes(),
-        medicineTime.getSeconds()
-      );
-      const timestampStr = timestamp.toISOString();
-      const data = { prescriptionsId: selectedMedicine, timestamp: timestampStr, status: medicineStatus, note: medicineNote };
+      const timestampStr = medicineDateTime.toISOString();
+      const data = {
+        userId,
+        medicineName: selectedMedicine.name.trim().toLowerCase(),
+        timestamp: timestampStr,
+        status: medicineStatus,
+        note: medicineNote,
+      };
 
-      await axios.post(
-        `${API_BASE_URL}/api/medicine-history`,
-        data,
-        { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
-      );
+      await axios.post(`${API_BASE_URL}/api/medicine-history`, data, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
 
       showNotification(t('medicineHistoryAdded'), 'success');
       setMedicineModalVisible(false);
       resetMedicineModal();
+      fetchData();
     } catch (error: any) {
-      console.error('Error saving medicine history:', error.response?.data || error.message);
+      console.error('[handleSaveMedicineHistory] Error saving medicine history:', error.response?.data || error.message);
       showNotification(t('saveMedicineHistoryError'), 'error');
     }
   };
 
-  // Save medical history
+  // Lưu MedicalHistory
   const handleSaveMedicalHistory = async () => {
     if (!location || !medicalStatus) {
       showNotification(t('incompleteMedicalInfo'), 'error');
@@ -390,9 +526,12 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
 
     try {
       const token = await AsyncStorage.getItem('token');
+      console.log('[handleSaveMedicalHistory] Token:', token);
       if (!token) {
-        showNotification(t('noToken'), 'error');
-        navigation.navigate('Login');
+        showNotification(t('noToken'), 'warning', [
+            { text: t('cancel'), onPress: () => {}, color: 'danger' },
+          { text: t('logout'), onPress: logout, color: 'primary' },
+        ]);
         return;
       }
 
@@ -415,42 +554,27 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
 
       let response;
       if (selectedMedicalHistoryId) {
-        response = await axios.put(
-          `${API_BASE_URL}/api/medical-history/${selectedMedicalHistoryId}`,
-          data,
-          { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
-        );
-        showNotification(t('medicalHistoryUpdated'), 'error');
+        response = await axios.put(`${API_BASE_URL}/api/medical-history/${selectedMedicalHistoryId}`, data, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        });
+        showNotification(t('medicalHistoryUpdated'), 'success');
       } else {
-        response = await axios.post(
-          `${API_BASE_URL}/api/medical-history`,
-          data,
-          { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } }
-        );
-        showNotification(t('medicalHistoryAdded'), 'error');
+        response = await axios.post(`${API_BASE_URL}/api/medical-history`, data, {
+          headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        });
+        showNotification(t('medicalHistoryAdded'), 'success');
       }
 
       fetchData();
       setMedicalModalVisible(false);
       resetMedicalModal();
     } catch (error: any) {
-      console.error('Error saving medical history:', error.response?.data || error.message);
-      let errorMessage = t('saveMedicalHistoryError');
-      if (error.response) {
-        errorMessage += `: ${error.response.data.message || error.response.statusText}`;
-        if (error.response.status === 401) {
-          errorMessage = t('sessionExpired');
-          navigation.navigate('Login');
-        }
-      } else if (error.request) {
-        errorMessage += `: ${t('noServerResponse')}`;
-      } else {
-        errorMessage += `: ${error.message}`;
-      }
-      showNotification(t(errorMessage), 'error');
+      console.error('[handleSaveMedicalHistory] Error saving medical history:', error.response?.data || error.message);
+      showNotification(t('saveMedicalHistoryError'), 'error');
     }
   };
 
+  // Render danh sách sự kiện
   const renderEvents = () => {
     if (loading) {
       return (
@@ -483,34 +607,29 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
     return dayEvents.map((event, index) => (
       <TouchableOpacity key={index} style={styles.eventItem} onPress={() => handleEventClick(event)}>
         <Text style={styles.eventTime}>{event.time}</Text>
-        <Text style={styles.eventName}>{event.name}</Text>
+        <Text style={styles.eventName} numberOfLines={1} ellipsizeMode="tail">
+          {event.name}
+        </Text>
       </TouchableOpacity>
     ));
   };
 
-  const toggleLanguage = () => {
-    const newLang = language === 'vi' ? 'en' : 'vi';
-    i18n.changeLanguage(newLang);
-    setLanguage(newLang);
-  };
-
   return (
     <View style={styles.container}>
-      <ScrollView>
-        <View style={styles.header}>
-          <View style={styles.headerLeft}>
-            <FontAwesome
-              name="chevron-left"
-              size={20}
-              color="#432c81"
-              style={{ marginRight: 15, marginTop: 17 }}
-              onPress={() => navigation.goBack()}
-            />
-            <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>{t('schedule')}</Text>
-          </View>
-          {/* <Button title={`${t('language')}: ${language.toUpperCase()}`} onPress={toggleLanguage} /> */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <FontAwesome
+            name="chevron-left"
+            size={20}
+            color="#432c81"
+            style={{ marginRight: 15, marginTop: 17 }}
+            onPress={() => navigation.goBack()}
+          />
+          <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>{t('schedule')}</Text>
         </View>
+      </View>
 
+      <ScrollView>
         <CalendarPicker
           onDateChange={onDateChange}
           selectedStartDate={selectedDate}
@@ -527,38 +646,25 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
             {t('calendar.title')} {selectedDate.toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}
           </Text>
         </View>
-
-        <ScrollView style={styles.eventsContainer}>
-          {renderEvents()}
-        </ScrollView>
+        <ScrollView style={styles.eventsContainer}>{renderEvents()}</ScrollView>
       </ScrollView>
 
       <Modal visible={isMedicineModalVisible} onClose={() => setMedicineModalVisible(false)}>
         <TouchableOpacity style={styles.closeButton} onPress={() => setMedicineModalVisible(false)}>
           <FontAwesome name="close" size={24} color="#444" />
         </TouchableOpacity>
-        <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
-          <Text style={styles.modalTitle}>{t('addMedicineHistory')}</Text>
-          <Text style={styles.inputLabel}>{t('medicine')}</Text>
-          <DropDownPicker
-            open={openMedicine}
-            setOpen={setOpenMedicine}
-            value={selectedMedicine}
-            setValue={setSelectedMedicine}
-            items={medicineItems}
-            containerStyle={styles.dropdownContainer}
-            style={styles.dropdown}
-            dropDownContainerStyle={styles.dropdownList}
-            placeholder={t('selectMedicine')}
-            zIndex={2000}
-            listMode="SCROLLVIEW"
-            disabled={true}
-          />
-          <Text style={styles.inputLabel}>{t('statusLabel')}</Text>
+        <Text style={styles.modalTitle}>{t('addMedicineHistory')}</Text>
+        <View style={styles.detailContainer}>
+          <Text style={styles.detailLabel}>{t('medicineName')}:</Text>
+          <Text style={styles.detailText}>
+            {selectedMedicine ? `${selectedMedicine.name} ${selectedMedicine.strength}${selectedMedicine.unit}` : t('unknown')}
+          </Text>
+
+          <Text style={styles.detailLabel}>{t('statusLabel')}:</Text>
           <DropDownPicker
             open={openMedicineStatus}
-            setOpen={setOpenMedicineStatus}
             value={medicineStatus}
+            setOpen={setOpenMedicineStatus}
             setValue={setMedicineStatus}
             items={medicineStatusItems}
             containerStyle={styles.dropdownContainer}
@@ -566,95 +672,84 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
             dropDownContainerStyle={styles.dropdownList}
             placeholder={t('selectStatus')}
             zIndex={1000}
-            listMode="SCROLLVIEW"
           />
-          <Text style={styles.inputLabel}>{t('date')}</Text>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => setShowMedicineDatePicker(true)}
-          >
+
+          <Text style={styles.detailLabel}>{t('date')}:</Text>
+          <TouchableOpacity style={styles.dateButton} onPress={() => setShowMedicineDatePicker(true)}>
             <Text style={styles.dateButtonText}>
-              {medicineDate.toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}
+              {medicineDateTime.toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}
             </Text>
           </TouchableOpacity>
           {showMedicineDatePicker && (
             <DateTimePicker
-              value={medicineDate}
+              value={medicineDateTime}
               mode="date"
               display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
-              onChange={(event, selectedDate) => {
-                if (selectedDate) {
-                  setMedicineDate(selectedDate);
-                  if (Platform.OS === 'android') {
-                    setShowMedicineDatePicker(false);
-                  }
-                } else if (Platform.OS === 'ios') {
-                  setShowMedicineDatePicker(false);
+              onChange={(event, date) => {
+                setShowMedicineDatePicker(Platform.OS === 'ios');
+                if (date) {
+                  const newDateTime = new Date(medicineDateTime);
+                  newDateTime.setFullYear(date.getFullYear(), date.getMonth(), date.getDate());
+                  setMedicineDateTime(newDateTime);
                 }
               }}
             />
           )}
-          <Text style={styles.inputLabel}>{t('Time')}</Text>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => setShowMedicineTimePicker(true)}
-          >
-            <Text style={styles.dateButtonText}>
-              {medicineTime.toLocaleTimeString(language === 'vi' ? 'vi-VN' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
-            </Text>
+
+          <Text style={styles.detailLabel}>{t('time')}:</Text>
+          <TouchableOpacity style={styles.dateButton} onPress={() => setShowMedicineTimePicker(true)}>
+            <Text style={styles.dateButtonText}>{formatTime(medicineDateTime)}</Text>
           </TouchableOpacity>
           {showMedicineTimePicker && (
             <DateTimePicker
-              value={medicineTime}
+              value={medicineDateTime}
               mode="time"
               display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
-              onChange={(event, selectedTime) => {
-                if (selectedTime) {
-                  setMedicineTime(selectedTime);
-                  if (Platform.OS === 'android') {
-                    setShowMedicineTimePicker(false);
-                  }
-                } else if (Platform.OS === 'ios') {
-                  setShowMedicineTimePicker(false);
+              onChange={(event, time) => {
+                setShowMedicineTimePicker(Platform.OS === 'ios');
+                if (time) {
+                  const newDateTime = new Date(medicineDateTime);
+                  newDateTime.setHours(time.getHours(), time.getMinutes());
+                  setMedicineDateTime(newDateTime);
                 }
               }}
             />
           )}
-          <Text style={styles.inputLabel}>{t('note')}</Text>
+
+          <Text style={styles.detailLabel}>{t('note')}:</Text>
           <TextInput
-            placeholder={t('enterNote')}
             style={styles.input}
             value={medicineNote}
             onChangeText={setMedicineNote}
+            placeholder={t('enterNote')}
             multiline
           />
-          <TouchableOpacity
-            style={styles.saveButton}
-            onPress={handleSaveMedicineHistory}
-          >
+
+          <TouchableOpacity style={styles.saveButton} onPress={handleSaveMedicineHistory}>
             <Text style={styles.saveButtonText}>{t('save')}</Text>
           </TouchableOpacity>
-        </ScrollView>
+        </View>
       </Modal>
 
       <Modal visible={isMedicalModalVisible} onClose={() => setMedicalModalVisible(false)}>
         <TouchableOpacity style={styles.closeButton} onPress={() => setMedicalModalVisible(false)}>
           <FontAwesome name="close" size={24} color="#444" />
         </TouchableOpacity>
-        <ScrollView contentContainerStyle={{ paddingBottom: 20 }}>
-          <Text style={styles.modalTitle}>{selectedMedicalHistoryId ? t('editMedicalHistory') : t('addMedicalHistory')}</Text>
-          <Text style={styles.inputLabel}>{t('location')}</Text>
+        <Text style={styles.modalTitle}>{selectedMedicalHistoryId ? t('editAppointment') : t('addAppointment')}</Text>
+        <View style={styles.detailContainer}>
+          <Text style={styles.detailLabel}>{t('location')}:</Text>
           <TextInput
-            placeholder={t('enterLocation')}
             style={styles.input}
             value={location}
             onChangeText={setLocation}
+            placeholder={t('enterLocation')}
           />
-          <Text style={styles.inputLabel}>{t('statusLabel')}</Text>
+
+          <Text style={styles.detailLabel}>{t('statusLabel')}:</Text>
           <DropDownPicker
             open={openMedicalStatus}
-            setOpen={setOpenMedicalStatus}
             value={medicalStatus}
+            setOpen={setOpenMedicalStatus}
             setValue={setMedicalStatus}
             items={medicalStatusItems}
             containerStyle={styles.dropdownContainer}
@@ -662,13 +757,10 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
             dropDownContainerStyle={styles.dropdownList}
             placeholder={t('selectStatus')}
             zIndex={1000}
-            listMode="SCROLLVIEW"
           />
-          <Text style={styles.inputLabel}>{t('date')}</Text>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => setShowMedicalDatePicker(true)}
-          >
+
+          <Text style={styles.detailLabel}>{t('date')}:</Text>
+          <TouchableOpacity style={styles.dateButton} onPress={() => setShowMedicalDatePicker(true)}>
             <Text style={styles.dateButtonText}>
               {medicalDate.toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}
             </Text>
@@ -678,85 +770,102 @@ const ScheduleScreen: React.FC<any> = ({ navigation }) => {
               value={medicalDate}
               mode="date"
               display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
-              onChange={(event, selectedDate) => {
-                if (selectedDate) {
-                  setMedicalDate(selectedDate);
-                  if (Platform.OS === 'android') {
-                    setShowMedicalDatePicker(false);
-                  }
-                } else if (Platform.OS === 'ios') {
-                  setShowMedicalDatePicker(false);
-                }
+              onChange={(event, date) => {
+                setShowMedicalDatePicker(Platform.OS === 'ios');
+                if (date) setMedicalDate(date);
               }}
             />
           )}
-          <Text style={styles.inputLabel}>{t('Time')}</Text>
-          <TouchableOpacity
-            style={styles.dateButton}
-            onPress={() => setShowMedicalTimePicker(true)}
-          >
-            <Text style={styles.dateButtonText}>
-              {medicalTime.toLocaleTimeString(language === 'vi' ? 'vi-VN' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
-            </Text>
+
+          <Text style={styles.detailLabel}>{t('time')}:</Text>
+          <TouchableOpacity style={styles.dateButton} onPress={() => setShowMedicalTimePicker(true)}>
+            <Text style={styles.dateButtonText}>{formatTime(medicalTime)}</Text>
           </TouchableOpacity>
           {showMedicalTimePicker && (
             <DateTimePicker
               value={medicalTime}
               mode="time"
               display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
-              onChange={(event, selectedTime) => {
-                if (selectedTime) {
-                  setMedicalTime(selectedTime);
-                  if (Platform.OS === 'android') {
-                    setShowMedicalTimePicker(false);
-                  }
-                } else if (Platform.OS === 'ios') {
-                  setShowMedicalTimePicker(false);
-                }
+              onChange={(event, time) => {
+                setShowMedicalTimePicker(Platform.OS === 'ios');
+                if (time) setMedicalTime(time);
               }}
             />
           )}
-          <Text style={styles.inputLabel}>{t('note')}</Text>
+
+          <Text style={styles.detailLabel}>{t('note')}:</Text>
           <TextInput
-            placeholder={t('enterNote')}
             style={styles.input}
             value={medicalNote}
             onChangeText={setMedicalNote}
+            placeholder={t('enterNote')}
             multiline
           />
-          <TouchableOpacity
-            style={styles.saveButton}
-            onPress={handleSaveMedicalHistory}
-          >
+
+          <TouchableOpacity style={styles.saveButton} onPress={handleSaveMedicalHistory}>
             <Text style={styles.saveButtonText}>{t('save')}</Text>
           </TouchableOpacity>
-        </ScrollView>
+        </View>
+      </Modal>
+
+      <Modal visible={isMedicineHistoryDetailModalVisible} onClose={() => setMedicineHistoryDetailModalVisible(false)}>
+        <TouchableOpacity style={styles.closeButton} onPress={() => setMedicineHistoryDetailModalVisible(false)}>
+          <FontAwesome name="close" size={24} color="#444" />
+        </TouchableOpacity>
+        <Text style={styles.modalTitle}>{t('medicineHistoryDetails')}</Text>
+        <View style={styles.detailContainer}>
+          <Text style={styles.detailLabel}>{t('medicineName')}:</Text>
+          <Text style={styles.detailText}>
+            {selectedMedicineHistory?.medicineName || t('unknownMedicine')}
+          </Text>
+
+          <Text style={styles.detailLabel}>{t('statusLabel')}:</Text>
+          <Text style={styles.detailText}>
+            {medicineStatusItems.find(item => item.value === selectedMedicineHistory?.status)?.label || selectedMedicineHistory?.status || t('unknown')}
+          </Text>
+
+          <Text style={styles.detailLabel}>{t('time')}:</Text>
+          <Text style={styles.detailText}>
+            {selectedMedicineHistory && isValidDate(selectedMedicineHistory.timestamp)
+              ? new Date(cleanDateString(selectedMedicineHistory.timestamp)).toLocaleString('vi-VN', {
+                  dateStyle: 'short',
+                  timeStyle: 'short',
+                })
+              : t('invalidDate')}
+          </Text>
+
+          <Text style={styles.detailLabel}>{t('note')}:</Text>
+          <Text style={styles.detailText}>
+            {selectedMedicineHistory?.note || t('noNote')}
+          </Text>
+        </View>
       </Modal>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
   header: {
     flexDirection: 'row',
-    marginBottom: 20,
+    marginTop: 10,
+    marginBottom: 10,
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 10,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   text: {
     fontSize: 25,
     fontFamily: 'Roboto',
     color: '#432c81',
     fontWeight: 'bold',
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  container: {
-    flex: 1,
-    backgroundColor: '#FFFFFF',
   },
   title: {
     backgroundColor: '#432c81',
@@ -790,6 +899,7 @@ const styles = StyleSheet.create({
   },
   eventName: {
     fontSize: 16,
+    flex: 1,
   },
   noEventContainer: {
     padding: 20,
@@ -803,18 +913,6 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
   },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingHorizontal: 20,
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 20,
-    maxHeight: '90%', // Giới hạn chiều cao để tránh tràn màn hình
-  },
   closeButton: {
     alignSelf: 'flex-end',
     marginBottom: 10,
@@ -823,24 +921,33 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: 'bold',
     color: '#432c81',
-    marginBottom: 10,
+    marginBottom: 15,
+    textAlign: 'center',
   },
-  inputLabel: {
+  detailContainer: {
+    width: '100%',
+    marginBottom: 20,
+  },
+  detailLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#432c81',
+    marginBottom: 5,
+  },
+  detailText: {
     fontSize: 16,
     color: '#333',
-    marginTop: 10,
+    marginBottom: 10,
   },
   input: {
     borderWidth: 1,
     borderColor: '#ccc',
     borderRadius: 5,
     padding: 10,
-    fontSize: 16,
-    marginTop: 5,
-    minHeight: 60,
+    marginBottom: 10,
   },
   dropdownContainer: {
-    marginTop: 5,
+    marginBottom: 10,
   },
   dropdown: {
     backgroundColor: '#fafafa',
@@ -853,9 +960,7 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
     borderRadius: 5,
     padding: 10,
-    marginTop: 5,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    marginBottom: 10,
   },
   dateButtonText: {
     fontSize: 16,
@@ -863,11 +968,10 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: '#432c81',
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 5,
-    alignItems: 'center',
-    marginTop: 20,
+    marginTop: 10,
   },
   saveButtonText: {
     color: '#fff',

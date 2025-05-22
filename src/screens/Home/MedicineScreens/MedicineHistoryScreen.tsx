@@ -33,7 +33,7 @@ type Medicine = {
 type MedicineHistory = {
   id: string;
   userId: string;
-  prescriptionsId?: string;
+  medicineName?: string;
   timestamp: string;
   status: string;
   note: string;
@@ -63,7 +63,7 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
     { label: t('status.paused'), value: 'Paused' },
   ];
 
-  const medicineItems = medicines.map(med => ({ label: med.name, value: med.id || '' }));
+  const medicineItems = medicines.map(med => ({ label: med.name, value: med.name }));
 
   const fetchData = async () => {
     try {
@@ -80,20 +80,23 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
       ]);
 
       const fetchedMedicines = medicineResponse.data;
-      const fetchedHistory = historyResponse.data;
+      const fetchedHistory = historyResponse.data.map(history => ({
+        ...history,
+        medicineName: history.medicineName?.trim(), // Chuẩn hóa medicineName
+      }));
 
       setMedicines(fetchedMedicines);
       setMedicineHistory(fetchedHistory);
+      console.log('Fetched Medicines:', fetchedMedicines);
+      console.log('Fetched History:', fetchedHistory);
     } catch (error: any) {
       showNotification(t('fetchDataError'), 'error');
       if (error.response && error.response.status === 401) {
         showNotification(t('sessionExpired'), 'error');
-
         await AsyncStorage.removeItem('token');
         navigation.navigate('Login');
       } else {
         showNotification(t('fetchDataError'), 'error');
-
       }
     }
   };
@@ -103,76 +106,84 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
   }, []);
 
   const handleSaveHistory = async () => {
-    if (!selectedMedicine || !status) {
-      showNotification(t('errorEmptyFields'), 'error');
+  if (!selectedMedicine || !status) {
+    showNotification(t('errorEmptyFields'), 'error');
+    return;
+  }
 
+  try {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) {
+      showNotification(t('noToken'), 'error');
+      navigation.navigate('Login');
       return;
     }
 
-    try {
-      const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        showNotification(t('noToken'), 'error');
-        navigation.navigate('Login');
-        return;
-      }
+    // Tạo timestamp với múi giờ +07:00
+    const timestamp = new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      date.getDate(),
+      time.getHours(),
+      time.getMinutes(),
+      time.getSeconds()
+    );
 
-      const timestamp = new Date(
-        date.getFullYear(),
-        date.getMonth(),
-        date.getDate(),
-        time.getHours(),
-        time.getMinutes(),
-        time.getSeconds()
+    // Điều chỉnh múi giờ về +07:00 trước khi gửi
+    const vietnamOffset = 7 * 60; // +07:00 in minutes
+    const localOffset = timestamp.getTimezoneOffset(); // Offset của thiết bị (phút)
+    const offsetDifference = vietnamOffset + localOffset; // Thêm offset để bù lại
+    const adjustedTimestamp = new Date(timestamp.getTime() + offsetDifference * 60 * 1000);
+    const timestampStr = adjustedTimestamp.toISOString(); // Ví dụ: "2025-05-20T23:00:00.000Z" cho 06:00 AM +07:00
+    console.log("Timestamp gửi đi:", timestampStr);
+
+    const data = {
+      medicineName: selectedMedicine.trim().toLowerCase(),
+      timestamp: timestampStr,
+      status,
+      note,
+    };
+    console.log('Saving history with medicineName:', selectedMedicine);
+
+    if (selectedHistoryId) {
+      await axios.put(
+        `${API_BASE_URL}/api/medicine-history/${selectedHistoryId}`,
+        data,
+        { headers: { Authorization: `Bearer ${token}` } }
       );
-      const timestampStr = timestamp.toISOString();
-      const data = { prescriptionsId: selectedMedicine, timestamp: timestampStr, status, note };
-
-      if (selectedHistoryId) {
-        await axios.put(
-          `${API_BASE_URL}/api/medicine-history/${selectedHistoryId}`,
-          data,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        showNotification(t('historyUpdated'), 'success');
-
-      } else {
-        await axios.post(
-          `${API_BASE_URL}/api/medicine-history`,
-          data,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        showNotification(t('historyAdded'), 'success');
-
-      }
-
-      fetchData();
-      setModalVisible(false);
-      setSelectedHistoryId(null);
-      setSelectedMedicine(null);
-      setStatus(null);
-      setNote('');
-      setDate(new Date());
-      setTime(new Date());
-    } catch (error: any) {
-      console.error('Error saving history:', error.response?.data || error.message);
-      showNotification(t('saveHistoryError'), 'error');
-
+      showNotification(t('historyUpdated'), 'success');
+    } else {
+      await axios.post(
+        `${API_BASE_URL}/api/medicine-history`,
+        data,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      showNotification(t('historyAdded'), 'success');
     }
-  };
+
+    fetchData();
+    setModalVisible(false);
+    setSelectedHistoryId(null);
+    setSelectedMedicine(null);
+    setStatus(null);
+    setNote('');
+    setDate(new Date());
+    setTime(new Date());
+  } catch (error: any) {
+    console.error('Error saving history:', error.response?.data || error.message);
+    showNotification(t('saveHistoryError'), 'error');
+  }
+};
 
   const handleEditHistory = (history: MedicineHistory) => {
-    const medicine = medicines.find(m => m.id === history.prescriptionsId);
-    if (medicine) {
-      setSelectedHistoryId(history.id);
-      setSelectedMedicine(history.prescriptionsId || null);
-      setStatus(history.status);
-      setNote(history.note || '');
-      const timestampDate = new Date(history.timestamp);
-      setDate(timestampDate);
-      setTime(timestampDate);
-      setModalVisible(true);
-    }
+    setSelectedHistoryId(history.id);
+    setSelectedMedicine(history.medicineName || null);
+    setStatus(history.status);
+    setNote(history.note || '');
+    const timestampDate = new Date(history.timestamp);
+    setDate(timestampDate);
+    setTime(timestampDate);
+    setModalVisible(true);
   };
 
   return (
@@ -193,115 +204,112 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
         {medicineHistory.length === 0 ? (
           <Text style={styles.note}>{t('noHistory')}</Text>
         ) : (
-          medicineHistory.map((history, index) => {
-            const medicine = medicines.find(m => m.id === history.prescriptionsId);
-            return (
-              <TouchableOpacity key={index} style={styles.boxFeature} onPress={() => handleEditHistory(history)}>
-                <Text style={[styles.text, styles.boxTitle]}>{medicine ? medicine.name : t('unknownMedicine')}</Text>
-                <Text style={styles.note}>{t('statusLabel')}: {statusItems.find(item => item.value === history.status)?.label || history.status}</Text>
-                <Text style={styles.note}>{t('time')}: {new Date(history.timestamp).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</Text>
-                <Text style={styles.note}>{t('note')}: {history.note || t('noNote')}</Text>
-              </TouchableOpacity>
-            );
-          })
+          medicineHistory.map((history, index) => (
+            <TouchableOpacity key={index} style={styles.boxFeature} onPress={() => handleEditHistory(history)}>
+              <Text style={[styles.text, styles.boxTitle]}>{history.medicineName || t('unknownMedicine')}</Text>
+              <Text style={styles.note}>{t('statusLabel')}: {statusItems.find(item => item.value === history.status)?.label || history.status}</Text>
+              <Text style={styles.note}>{t('time')}: {new Date(history.timestamp).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</Text>
+              <Text style={styles.note}>{t('note')}: {history.note || t('noNote')}</Text>
+            </TouchableOpacity>
+          ))
         )}
       </ScrollView>
 
       <Modal visible={isModalVisible} onClose={() => setModalVisible(false)}>
-  <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
-    <FontAwesome name="close" size={24} color="#444" />
-  </TouchableOpacity>
-  <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
-    <Text style={styles.modalTitle}>{selectedHistoryId ? t('editHistory') : t('addHistory')}</Text>
-    <Text style={styles.inputLabel}>{t('medicine')}</Text>
-    <DropDownPicker
-      open={openMedicine}
-      setOpen={setOpenMedicine}
-      value={selectedMedicine}
-      setValue={setSelectedMedicine}
-      items={medicineItems}
-      containerStyle={styles.dropdownContainer}
-      style={styles.dropdown}
-      dropDownContainerStyle={styles.dropdownList}
-      placeholder={t('selectMedicine')}
-      zIndex={2000}
-      listMode="SCROLLVIEW"
-      disabled={!!selectedHistoryId}
-    />
-    <Text style={styles.inputLabel}>{t('statusLabel')}</Text>
-    <DropDownPicker
-      open={openStatus}
-      setOpen={setOpenStatus}
-      value={status}
-      setValue={setStatus}
-      items={statusItems}
-      containerStyle={styles.dropdownContainer}
-      style={styles.dropdown}
-      dropDownContainerStyle={styles.dropdownList}
-      placeholder={t('selectStatus')}
-      zIndex={1000}
-      listMode="SCROLLVIEW"
-    />
-    <Text style={styles.inputLabel}>{t('date')}</Text>
-    <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
-      <Text style={styles.dateButtonText}>{date.toLocaleDateString('vi-VN')}</Text>
-    </TouchableOpacity>
-    {showDatePicker && (
-      <DateTimePicker
-        value={date}
-        mode="date"
-        display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
-        onChange={(event, selectedDate) => {
-          if (selectedDate) {
-            setDate(selectedDate);
-            if (Platform.OS === 'android') {
-              setShowDatePicker(false);
-            }
-          } else if (Platform.OS === 'ios') {
-            setShowDatePicker(false);
-          }
-        }}
-      />
-    )}
-    <Text style={styles.inputLabel}>{t('Time')}</Text>
-    <TouchableOpacity style={styles.dateButton} onPress={() => setShowTimePicker(true)}>
-      <Text style={styles.dateButtonText}>
-        {time.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
-      </Text>
-    </TouchableOpacity>
-    {showTimePicker && (
-      <DateTimePicker
-        value={time}
-        mode="time"
-        display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
-        onChange={(event, selectedTime) => {
-          if (selectedTime) {
-            setTime(selectedTime);
-            if (Platform.OS === 'android') {
-              setShowTimePicker(false);
-            }
-          } else if (Platform.OS === 'ios') {
-            setShowTimePicker(false);
-          }
-        }}
-      />
-    )}
-    <Text style={styles.inputLabel}>{t('note')}</Text>
-    <TextInput
-      placeholder={t('enterNote')}
-      style={styles.input}
-      value={note}
-      onChangeText={setNote}
-      multiline
-    />
-    <TouchableOpacity
-      style={[styles.fab, { alignSelf: 'center', marginTop: 30 }]}
-      onPress={handleSaveHistory}
-    >
-      <Text style={styles.saveButtonText}>{t('save')}</Text>
-    </TouchableOpacity>
-  </ScrollView>
-</Modal>
+        <TouchableOpacity style={styles.closeButton} onPress={() => setModalVisible(false)}>
+          <FontAwesome name="close" size={24} color="#444" />
+        </TouchableOpacity>
+        <ScrollView contentContainerStyle={{ paddingBottom: 100 }}>
+          <Text style={styles.modalTitle}>{selectedHistoryId ? t('editHistory') : t('addHistory')}</Text>
+          <Text style={styles.inputLabel}>{t('medicine')}</Text>
+          <DropDownPicker
+            open={openMedicine}
+            setOpen={setOpenMedicine}
+            value={selectedMedicine}
+            setValue={setSelectedMedicine}
+            items={medicineItems}
+            containerStyle={styles.dropdownContainer}
+            style={styles.dropdown}
+            dropDownContainerStyle={styles.dropdownList}
+            placeholder={t('selectMedicine')}
+            zIndex={2000}
+            listMode="SCROLLVIEW"
+            disabled={!!selectedHistoryId}
+          />
+          <Text style={styles.inputLabel}>{t('statusLabel')}</Text>
+          <DropDownPicker
+            open={openStatus}
+            setOpen={setOpenStatus}
+            value={status}
+            setValue={setStatus}
+            items={statusItems}
+            containerStyle={styles.dropdownContainer}
+            style={styles.dropdown}
+            dropDownContainerStyle={styles.dropdownList}
+            placeholder={t('selectStatus')}
+            zIndex={1000}
+            listMode="SCROLLVIEW"
+          />
+          <Text style={styles.inputLabel}>{t('date')}</Text>
+          <TouchableOpacity style={styles.dateButton} onPress={() => setShowDatePicker(true)}>
+            <Text style={styles.dateButtonText}>{date.toLocaleDateString('vi-VN')}</Text>
+          </TouchableOpacity>
+          {showDatePicker && (
+            <DateTimePicker
+              value={date}
+              mode="date"
+              display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+              onChange={(event, selectedDate) => {
+                if (selectedDate) {
+                  setDate(selectedDate);
+                  if (Platform.OS === 'android') {
+                    setShowDatePicker(false);
+                  }
+                } else if (Platform.OS === 'ios') {
+                  setShowDatePicker(false);
+                }
+              }}
+            />
+          )}
+          <Text style={styles.inputLabel}>{t('Time')}</Text>
+          <TouchableOpacity style={styles.dateButton} onPress={() => setShowTimePicker(true)}>
+            <Text style={styles.dateButtonText}>
+              {time.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
+            </Text>
+          </TouchableOpacity>
+          {showTimePicker && (
+            <DateTimePicker
+              value={time}
+              mode="time"
+              display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
+              onChange={(event, selectedTime) => {
+                if (selectedTime) {
+                  setTime(selectedTime);
+                  if (Platform.OS === 'android') {
+                    setShowTimePicker(false);
+                  }
+                } else if (Platform.OS === 'ios') {
+                  setShowTimePicker(false);
+                }
+              }}
+            />
+          )}
+          <Text style={styles.inputLabel}>{t('note')}</Text>
+          <TextInput
+            placeholder={t('enterNote')}
+            style={styles.input}
+            value={note}
+            onChangeText={setNote}
+            multiline
+          />
+          <TouchableOpacity
+            style={[styles.fab, { alignSelf: 'center', marginTop: 30 }]}
+            onPress={handleSaveHistory}
+          >
+            <Text style={styles.saveButtonText}>{t('save')}</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </Modal>
 
       <TouchableOpacity style={styles.fab} onPress={() => {
         setSelectedHistoryId(null);
@@ -323,7 +331,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
- },
+  },
   header: {
     flexDirection: 'row',
     marginTop: 10,
@@ -366,7 +374,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#432c81',
     width: 50,
     height: 50,
-    // borderRadius: 30,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 25,
