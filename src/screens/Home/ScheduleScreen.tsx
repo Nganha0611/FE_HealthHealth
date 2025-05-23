@@ -696,7 +696,7 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
             />
           )}
 
-          <Text style={styles.detailLabel}>{t('time')}:</Text>
+          <Text style={styles.detailLabel}>{t('Time')}:</Text>
           <TouchableOpacity style={styles.dateButton} onPress={() => setShowMedicineTimePicker(true)}>
             <Text style={styles.dateButtonText}>{formatTime(medicineDateTime)}</Text>
           </TouchableOpacity>
@@ -777,7 +777,7 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
             />
           )}
 
-          <Text style={styles.detailLabel}>{t('time')}:</Text>
+          <Text style={styles.detailLabel}>{t('Time')}:</Text>
           <TouchableOpacity style={styles.dateButton} onPress={() => setShowMedicalTimePicker(true)}>
             <Text style={styles.dateButtonText}>{formatTime(medicalTime)}</Text>
           </TouchableOpacity>
@@ -824,7 +824,7 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
             {medicineStatusItems.find(item => item.value === selectedMedicineHistory?.status)?.label || selectedMedicineHistory?.status || t('unknown')}
           </Text>
 
-          <Text style={styles.detailLabel}>{t('time')}:</Text>
+          <Text style={styles.detailLabel}>{t('Time')}:</Text>
           <Text style={styles.detailText}>
             {selectedMedicineHistory && isValidDate(selectedMedicineHistory.timestamp)
               ? new Date(cleanDateString(selectedMedicineHistory.timestamp)).toLocaleString('vi-VN', {
@@ -977,6 +977,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 

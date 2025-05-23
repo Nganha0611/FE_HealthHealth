@@ -12,6 +12,7 @@ import { API_BASE_URL } from '../../../utils/config';
 import { useTranslation } from 'react-i18next';
 import { useNotification } from '../../../contexts/NotificationContext';
 import Modal from '../../../components/CustomModal';
+
 type Props = {
   navigation: NavigationProp<any>;
 };
@@ -63,6 +64,10 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
   const [openDate, setOpenDate] = useState(false);
   const [date, setDate] = useState(new Date());
 
+  // State cho DatePicker chọn thời gian
+  const [openTimePicker, setOpenTimePicker] = useState(false);
+  const [tempTime, setTempTime] = useState(new Date());
+
   const medicineFormItems = [
     { label: t('medicineForms.tablet'), value: 'tablet' },
     { label: t('medicineForms.capsule'), value: 'capsule' },
@@ -111,25 +116,11 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
     label: `${i + 1}`,
   }));
 
-  const timePerDayItems = [
-    { id: '06:00', label: '06:00' },
-    { id: '08:00', label: '08:00' },
-    { id: '10:00', label: '10:00' },
-    { id: '12:00', label: '12:00' },
-    { id: '14:00', label: '14:00' },
-    { id: '17:00', label: '17:00' },
-    { id: '19:00', label: '19:00' },
-    { id: '20:00', label: '20:00' },
-    { id: '22:00', label: '22:00' },
-    { id: '23:00', label: '23:00' },
-  ];
-
   const fetchPrescriptions = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
         showNotification(t('noToken'), 'error');
-
         navigation.navigate('Login');
         return;
       }
@@ -150,12 +141,10 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
       console.error('Error fetching prescriptions:', error);
       if (error.response && error.response.status === 401) {
         showNotification(t('sessionExpired'), 'error');
-
         await AsyncStorage.removeItem('token');
         navigation.navigate('Login');
       } else {
         showNotification(t('fetchPrescriptionError'), 'error');
-
       }
     }
   };
@@ -179,6 +168,7 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
     setSelectedDaysOfMonth([]);
     setSelectedTimesPerDay([]);
     setDate(new Date());
+    setTempTime(new Date());
   };
 
   const openAddModal = () => {
@@ -230,12 +220,6 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
     );
   };
 
-  const toggleTimePerDay = (time: string) => {
-    setSelectedTimesPerDay(prev =>
-      prev.includes(time) ? prev.filter(item => item !== time) : [...prev, time]
-    );
-  };
-
   const formatDate = (date: Date): string => {
     const day = date.getDate().toString().padStart(2, '0');
     const month = (date.getMonth() + 1).toString().padStart(2, '0');
@@ -249,16 +233,30 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
     setOpenDate(false);
   };
 
+  const handleTimeConfirm = (selectedTime: Date) => {
+    const hours = selectedTime.getHours().toString().padStart(2, '0');
+    const minutes = selectedTime.getMinutes().toString().padStart(2, '0');
+    const timeStr = `${hours}:${minutes}`;
+    
+    // Chỉ thêm nếu khung giờ chưa tồn tại trong danh sách
+    if (!selectedTimesPerDay.includes(timeStr)) {
+      setSelectedTimesPerDay(prev => [...prev, timeStr].sort());
+    }
+    setOpenTimePicker(false);
+  };
+
+  const removeTimePerDay = (time: string) => {
+    setSelectedTimesPerDay(prev => prev.filter(item => item !== time));
+  };
+
   const handleSavePrescription = async () => {
     if (!name || !form || !strength || !unit || !amount || !repeatType || !repeatInterval || !startday) {
       showNotification(t('incompleteMedicineInfo'), 'error');
-
       return;
     }
 
     if (selectedTimesPerDay.length === 0) {
       showNotification(t('noTimeSelected'), 'error');
-
       return;
     }
 
@@ -297,7 +295,6 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
           prev.map(med => (med.id === currentMedicineId ? response.data : med))
         );
         showNotification(t('medicineUpdated'), 'success');
-
       } else {
         const response = await axios.post(
           `${API_BASE_URL}/api/prescriptions`,
@@ -306,7 +303,6 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
         );
         setMedicines(prev => [...prev, response.data]);
         showNotification(t('medicineAdded'), 'success');
-
       }
 
       setModalVisible(false);
@@ -315,12 +311,10 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
       console.error('Error saving prescription:', error);
       if (error.response && error.response.status === 401) {
         showNotification(t('sessionExpired'), 'error');
-
         await AsyncStorage.removeItem('token');
         navigation.navigate('Login');
       } else {
         showNotification(t('saveMedicineError'), 'error');
-
       }
     }
   };
@@ -369,7 +363,6 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
       ]
     );
   };
-  
 
   const getMedicineFormLabel = (value: string): string => {
     const item = medicineFormItems.find(item => item.value === value);
@@ -419,275 +412,289 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
       </ScrollView>
 
       <Modal visible={isModalVisible} onClose={() => setModalVisible(false)}>
-  <TouchableOpacity
-    style={styles.closeButton}
-    onPress={() => setModalVisible(false)}
-  >
-    <FontAwesome name="close" size={24} color="#444" />
-  </TouchableOpacity>
-
-  <ScrollView
-    contentContainerStyle={{ paddingBottom: 20 }}
-    nestedScrollEnabled={true}
-    showsVerticalScrollIndicator={false}
-  >
-    <Text style={styles.modalTitle}>
-      {currentMedicineId ? t('editMedicine') : t('addMedicine')}
-    </Text>
-
-    <Text style={styles.inputLabel}>{t('medicineName')}</Text>
-    <TextInput
-      placeholder={t('enterMedicineName')}
-      placeholderTextColor="#888"
-      style={styles.input}
-      value={name}
-      onChangeText={setName}
-    />
-
-    <Text style={styles.inputLabel}>{t('form')}</Text>
-    <View style={{ zIndex: 6000 }}>
-      <DropDownPicker
-        open={openForm}
-        setOpen={setOpenForm}
-        value={form}
-        setValue={setForm}
-        items={medicineFormItems}
-        containerStyle={styles.dropdownContainer}
-        style={styles.dropdown}
-        dropDownContainerStyle={styles.dropdownList}
-        placeholder={t('selectForm')}
-        placeholderStyle={styles.placeholder}
-        zIndex={6000}
-        listMode="SCROLLVIEW"
-        scrollViewProps={{ nestedScrollEnabled: true }}
-      />
-    </View>
-
-    <Text style={styles.inputLabel}>{t('strength')}</Text>
-    <TextInput
-      placeholder={t('enterStrength')}
-      placeholderTextColor="#888"
-      style={styles.input}
-      keyboardType="numeric"
-      value={strength}
-      onChangeText={setStrength}
-    />
-
-    <Text style={styles.inputLabel}>{t('unit')}</Text>
-    <View style={{ zIndex: 5900 }}>
-      <DropDownPicker
-        open={openUnit}
-        setOpen={setOpenUnit}
-        value={unit}
-        setValue={setUnit}
-        items={unitItems}
-        containerStyle={styles.dropdownContainer}
-        style={styles.dropdown}
-        dropDownContainerStyle={styles.dropdownList}
-        placeholder={t('selectUnit')}
-        placeholderStyle={styles.placeholder}
-        zIndex={5900}
-        listMode="SCROLLVIEW"
-        scrollViewProps={{ nestedScrollEnabled: true }}
-      />
-    </View>
-
-    <Text style={styles.inputLabel}>{t('quantity')}</Text>
-    <TextInput
-      placeholder={t('enterQuantity')}
-      placeholderTextColor="#888"
-      style={styles.input}
-      keyboardType="numeric"
-      value={amount}
-      onChangeText={setAmount}
-    />
-
-    <Text style={styles.inputLabel}>{t('startDate')}</Text>
-    <TouchableOpacity
-      style={styles.dateButton}
-      onPress={() => setOpenDate(true)}
-    >
-      <Text style={styles.dateButtonText}>
-        {startday ? startday : t('selectStartDate')}
-      </Text>
-      <FontAwesome name="calendar" size={18} color="#432c81" />
-    </TouchableOpacity>
-
-    <DatePicker
-      modal
-      open={openDate}
-      date={date}
-      onConfirm={handleDateConfirm}
-      onCancel={() => setOpenDate(false)}
-      mode="date"
-      title={t('selectStartDate')}
-      confirmText={t('confirm')}
-      cancelText={t('cancel')}
-    />
-
-    <Text style={styles.modalSubtitle}>{t('medicationSchedule')}</Text>
-
-    <Text style={styles.inputLabel}>{t('repeatType')}</Text>
-    <View style={{ zIndex: 5800 }}>
-      <DropDownPicker
-        open={openRepeatType}
-        setOpen={setOpenRepeatType}
-        value={repeatType}
-        setValue={setRepeatType}
-        items={repeatTypeItems}
-        containerStyle={styles.dropdownContainer}
-        style={styles.dropdown}
-        dropDownContainerStyle={styles.dropdownList}
-        placeholder={t('selectRepeatType')}
-        placeholderStyle={styles.placeholder}
-        zIndex={5800}
-        listMode="SCROLLVIEW"
-        scrollViewProps={{ nestedScrollEnabled: true }}
-      />
-    </View>
-
-    <Text style={styles.inputLabel}>{t('repeatInterval')}</Text>
-    <View style={{ zIndex: 5700 }}>
-      <DropDownPicker
-        open={openRepeatInterval}
-        setOpen={setOpenRepeatInterval}
-        value={repeatInterval}
-        setValue={setRepeatInterval}
-        items={repeatIntervalItems}
-        containerStyle={styles.dropdownContainer}
-        style={styles.dropdown}
-        dropDownContainerStyle={styles.dropdownList}
-        placeholder={t('selectRepeatInterval')}
-        placeholderStyle={styles.placeholder}
-        zIndex={5700}
-        listMode="SCROLLVIEW"
-        scrollViewProps={{ nestedScrollEnabled: true }}
-      />
-    </View>
-
-    {repeatType === 'weekly' && (
-      <>
-        <Text style={styles.inputLabel}>{t('selectDaysOfWeek')}</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.horizontalScrollContainer}
-        >
-          {daysOfWeekItems.map(day => (
-            <TouchableOpacity
-              key={day.id}
-              style={[
-                styles.dayItem,
-                selectedDaysOfWeek.includes(day.id) && styles.selectedItem,
-              ]}
-              onPress={() => toggleDayOfWeek(day.id)}
-            >
-              <Text
-                style={[
-                  styles.dayText,
-                  selectedDaysOfWeek.includes(day.id) && styles.selectedItemText,
-                ]}
-              >
-                {day.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </>
-    )}
-
-    {repeatType === 'monthly' && (
-      <>
-        <Text style={styles.inputLabel}>{t('selectDaysOfMonth')}</Text>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.horizontalScrollContainer}
-        >
-          {daysOfMonthItems.map(day => (
-            <TouchableOpacity
-              key={day.id}
-              style={[
-                styles.dayItem,
-                selectedDaysOfMonth.includes(day.id) && styles.selectedItem,
-              ]}
-              onPress={() => toggleDayOfMonth(day.id)}
-            >
-              <Text
-                style={[
-                  styles.dayText,
-                  selectedDaysOfMonth.includes(day.id) && styles.selectedItemText,
-                ]}
-              >
-                {day.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </>
-    )}
-
-    <Text style={styles.inputLabel}>{t('selectTimesPerDay')}</Text>
-    <ScrollView
-      horizontal
-      showsHorizontalScrollIndicator={false}
-      contentContainerStyle={styles.horizontalScrollContainer}
-    >
-      {timePerDayItems.map(time => (
         <TouchableOpacity
-          key={time.id}
-          style={[
-            styles.dayItem,
-            selectedTimesPerDay.includes(time.id) && styles.selectedItem,
-          ]}
-          onPress={() => toggleTimePerDay(time.id)}
+          style={styles.closeButton}
+          onPress={() => setModalVisible(false)}
         >
-          <Text
-            style={[
-              styles.dayText,
-              selectedTimesPerDay.includes(time.id) && styles.selectedItemText,
-            ]}
-          >
-            {time.label}
-          </Text>
+          <FontAwesome name="close" size={24} color="#444" />
         </TouchableOpacity>
-      ))}
-    </ScrollView>
 
-    <Text style={styles.inputLabel}>{t('instructions')}</Text>
-    <TextInput
-      placeholder={t('enterInstructions')}
-      placeholderTextColor="#888"
-      style={[styles.input, { height: 80 }]}
-      multiline={true}
-      value={instruction}
-      onChangeText={setInstruction}
-    />
-  </ScrollView>
+        <ScrollView
+          contentContainerStyle={{ paddingBottom: 20 }}
+          nestedScrollEnabled={true}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.modalTitle}>
+            {currentMedicineId ? t('editMedicine') : t('addMedicine')}
+          </Text>
 
-  <View style={styles.buttonRow}>
-    {currentMedicineId && (
-      <TouchableOpacity
-        style={[styles.button, styles.deleteButton]}
-        onPress={() => handleDeleteMedicine(currentMedicineId)}
-      >
-        <Text style={styles.buttonText}>{t('delete')}</Text>
-      </TouchableOpacity>
-    )}
-    <TouchableOpacity
-      style={[styles.button, styles.cancelButton]}
-      onPress={() => setModalVisible(false)}
-    >
-      <Text style={styles.buttonText}>{t('cancel')}</Text>
-    </TouchableOpacity>
-    <TouchableOpacity
-      style={[styles.button, styles.saveButton]}
-      onPress={handleSavePrescription}
-    >
-      <Text style={styles.buttonText}>{t('save')}</Text>
-    </TouchableOpacity>
-  </View>
-</Modal>
+          <Text style={styles.inputLabel}>{t('medicineName')}</Text>
+          <TextInput
+            placeholder={t('enterMedicineName')}
+            placeholderTextColor="#888"
+            style={styles.input}
+            value={name}
+            onChangeText={setName}
+          />
+
+          <Text style={styles.inputLabel}>{t('form')}</Text>
+          <View style={{ zIndex: 6000 }}>
+            <DropDownPicker
+              open={openForm}
+              setOpen={setOpenForm}
+              value={form}
+              setValue={setForm}
+              items={medicineFormItems}
+              containerStyle={styles.dropdownContainer}
+              style={styles.dropdown}
+              dropDownContainerStyle={styles.dropdownList}
+              placeholder={t('selectForm')}
+              placeholderStyle={styles.placeholder}
+              zIndex={6000}
+              listMode="SCROLLVIEW"
+              scrollViewProps={{ nestedScrollEnabled: true }}
+            />
+          </View>
+
+          <Text style={styles.inputLabel}>{t('strength')}</Text>
+          <TextInput
+            placeholder={t('enterStrength')}
+            placeholderTextColor="#888"
+            style={styles.input}
+            keyboardType="numeric"
+            value={strength}
+            onChangeText={setStrength}
+          />
+
+          <Text style={styles.inputLabel}>{t('unit')}</Text>
+          <View style={{ zIndex: 5900 }}>
+            <DropDownPicker
+              open={openUnit}
+              setOpen={setOpenUnit}
+              value={unit}
+              setValue={setUnit}
+              items={unitItems}
+              containerStyle={styles.dropdownContainer}
+              style={styles.dropdown}
+              dropDownContainerStyle={styles.dropdownList}
+              placeholder={t('selectUnit')}
+              placeholderStyle={styles.placeholder}
+              zIndex={5900}
+              listMode="SCROLLVIEW"
+              scrollViewProps={{ nestedScrollEnabled: true }}
+            />
+          </View>
+
+          <Text style={styles.inputLabel}>{t('quantity')}</Text>
+          <TextInput
+            placeholder={t('enterQuantity')}
+            placeholderTextColor="#888"
+            style={styles.input}
+            keyboardType="numeric"
+            value={amount}
+            onChangeText={setAmount}
+          />
+
+          <Text style={styles.inputLabel}>{t('startDate')}</Text>
+          <TouchableOpacity
+            style={styles.dateButton}
+            onPress={() => setOpenDate(true)}
+          >
+            <Text style={styles.dateButtonText}>
+              {startday ? startday : t('selectStartDate')}
+            </Text>
+            <FontAwesome name="calendar" size={18} color="#432c81" />
+          </TouchableOpacity>
+
+          <DatePicker
+            modal
+            open={openDate}
+            date={date}
+            onConfirm={handleDateConfirm}
+            onCancel={() => setOpenDate(false)}
+            mode="date"
+            title={t('selectStartDate')}
+            confirmText={t('confirm')}
+            cancelText={t('cancel')}
+          />
+
+          <Text style={styles.modalSubtitle}>{t('medicationSchedule')}</Text>
+
+          <Text style={styles.inputLabel}>{t('repeatType')}</Text>
+          <View style={{ zIndex: 5800 }}>
+            <DropDownPicker
+              open={openRepeatType}
+              setOpen={setOpenRepeatType}
+              value={repeatType}
+              setValue={setRepeatType}
+              items={repeatTypeItems}
+              containerStyle={styles.dropdownContainer}
+              style={styles.dropdown}
+              dropDownContainerStyle={styles.dropdownList}
+              placeholder={t('selectRepeatType')}
+              placeholderStyle={styles.placeholder}
+              zIndex={5800}
+              listMode="SCROLLVIEW"
+              scrollViewProps={{ nestedScrollEnabled: true }}
+            />
+          </View>
+
+          <Text style={styles.inputLabel}>{t('repeatInterval')}</Text>
+          <View style={{ zIndex: 5700 }}>
+            <DropDownPicker
+              open={openRepeatInterval}
+              setOpen={setOpenRepeatInterval}
+              value={repeatInterval}
+              setValue={setRepeatInterval}
+              items={repeatIntervalItems}
+              containerStyle={styles.dropdownContainer}
+              style={styles.dropdown}
+              dropDownContainerStyle={styles.dropdownList}
+              placeholder={t('selectRepeatInterval')}
+              placeholderStyle={styles.placeholder}
+              zIndex={5700}
+              listMode="SCROLLVIEW"
+              scrollViewProps={{ nestedScrollEnabled: true }}
+            />
+          </View>
+
+          {repeatType === 'weekly' && (
+            <>
+              <Text style={styles.inputLabel}>{t('selectDaysOfWeek')}</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.horizontalScrollContainer}
+              >
+                {daysOfWeekItems.map(day => (
+                  <TouchableOpacity
+                    key={day.id}
+                    style={[
+                      styles.dayItem,
+                      selectedDaysOfWeek.includes(day.id) && styles.selectedItem,
+                    ]}
+                    onPress={() => toggleDayOfWeek(day.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.dayText,
+                        selectedDaysOfWeek.includes(day.id) && styles.selectedItemText,
+                      ]}
+                    >
+                      {day.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </>
+          )}
+
+          {repeatType === 'monthly' && (
+            <>
+              <Text style={styles.inputLabel}>{t('selectDaysOfMonth')}</Text>
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.horizontalScrollContainer}
+              >
+                {daysOfMonthItems.map(day => (
+                  <TouchableOpacity
+                    key={day.id}
+                    style={[
+                      styles.dayItem,
+                      selectedDaysOfMonth.includes(day.id) && styles.selectedItem,
+                    ]}
+                    onPress={() => toggleDayOfMonth(day.id)}
+                  >
+                    <Text
+                      style={[
+                        styles.dayText,
+                        selectedDaysOfMonth.includes(day.id) && styles.selectedItemText,
+                      ]}
+                    >
+                      {day.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </>
+          )}
+
+          <Text style={styles.inputLabel}>{t('selectTimesPerDay')}</Text>
+          <TouchableOpacity
+            style={styles.addTimeButton}
+            onPress={() => setOpenTimePicker(true)}
+          >
+            <Text style={styles.addTimeButtonText}>{t('Time')}</Text>
+            <FontAwesome name="clock-o" size={18} color="#432c81" />
+          </TouchableOpacity>
+
+          <DatePicker
+            modal
+            open={openTimePicker}
+            date={tempTime}
+            onConfirm={handleTimeConfirm}
+            onCancel={() => setOpenTimePicker(false)}
+            mode="time"
+            title={t('selectTime')}
+            confirmText={t('confirm')}
+            cancelText={t('cancel')}
+          />
+
+          {selectedTimesPerDay.length > 0 && (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.horizontalScrollContainer}
+            >
+              {selectedTimesPerDay.map((time, index) => (
+                <View key={index} style={styles.selectedTimeContainer}>
+                  <Text style={styles.dayText}>{time}</Text>
+                  <TouchableOpacity
+                    style={styles.removeTimeButton}
+                    onPress={() => removeTimePerDay(time)}
+                  >
+                    <FontAwesome name="times" size={14} color="#d9534f" />
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </ScrollView>
+          )}
+
+          <Text style={styles.inputLabel}>{t('instructions')}</Text>
+          <TextInput
+            placeholder={t('enterInstructions')}
+            placeholderTextColor="#888"
+            style={[styles.input, { height: 80 }]}
+            multiline={true}
+            value={instruction}
+            onChangeText={setInstruction}
+          />
+        </ScrollView>
+
+        <View style={styles.buttonRow}>
+          {currentMedicineId && (
+            <TouchableOpacity
+              style={[styles.button, styles.deleteButton]}
+              onPress={() => handleDeleteMedicine(currentMedicineId)}
+            >
+              <Text style={styles.buttonText}>{t('delete')}</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[styles.button, styles.cancelButton]}
+            onPress={() => setModalVisible(false)}
+          >
+            <Text style={styles.buttonText}>{t('cancel')}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.button, styles.saveButton]}
+            onPress={handleSavePrescription}
+          >
+            <Text style={styles.buttonText}>{t('save')}</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
 
       <TouchableOpacity style={styles.fab} onPress={openAddModal}>
         <FontAwesome name="plus" size={24} color="#fff" />
@@ -883,6 +890,34 @@ const styles = StyleSheet.create({
   dateButtonText: {
     fontSize: 16,
     color: '#333',
+  },
+  addTimeButton: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 10,
+  },
+  addTimeButtonText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  selectedTimeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
+    paddingHorizontal: 15,
+    marginRight: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    backgroundColor: '#e0dee7',
+  },
+  removeTimeButton: {
+    marginLeft: 10,
   },
 });
 

@@ -208,7 +208,7 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
             <TouchableOpacity key={index} style={styles.boxFeature} onPress={() => handleEditHistory(history)}>
               <Text style={[styles.text, styles.boxTitle]}>{history.medicineName || t('unknownMedicine')}</Text>
               <Text style={styles.note}>{t('statusLabel')}: {statusItems.find(item => item.value === history.status)?.label || history.status}</Text>
-              <Text style={styles.note}>{t('time')}: {new Date(history.timestamp).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</Text>
+              <Text style={styles.note}>{t('Time')}: {new Date(history.timestamp).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</Text>
               <Text style={styles.note}>{t('note')}: {history.note || t('noNote')}</Text>
             </TouchableOpacity>
           ))

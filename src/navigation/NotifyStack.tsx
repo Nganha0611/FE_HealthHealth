@@ -6,9 +6,15 @@ import DetailNotifyScreen from '../screens/Notify/DetailNotifyScreen';
 // Định nghĩa kiểu cho Stack
 export type NotifyStackParamList = {
   Notify: undefined; 
-  DetailNotify: undefined;
+DetailNotify: { notification: Notification };};
+export type Notification = {
+  id: string;
+  userId: string;
+  type: string;
+  message: string;
+  timestamp: string;
+  status: string;
 };
-
 // Sử dụng kiểu HomeStackParamList
 const Stack = createStackNavigator<NotifyStackParamList>();
 

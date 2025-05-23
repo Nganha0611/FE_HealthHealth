@@ -1,23 +1,65 @@
 import { NavigationProp } from '@react-navigation/native';
 import React from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
-import { ScrollView } from 'react-native-gesture-handler';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
+import { NotifyStackParamList } from '../../navigation/NotifyStack';
 
 type Props = {
-  navigation: NavigationProp<any>;
+  navigation: NavigationProp<NotifyStackParamList, 'DetailNotify'>;
+  route: { params: { notification: Notification } };
 };
 
-const DetailNotifyScreen: React.FC<Props> = ({ navigation }) => {
-  // Dữ liệu mẫu với nội dung dài hơn và xuống dòng
-  const notification = {
-    title: "Cập nhật ứng dụng mới và các tính năng quan trọng",
-    content:
-      "Chúng tôi vừa phát hành phiên bản mới của ứng dụng với nhiều cải tiến đáng kể và các tính năng hấp dẫn dành cho người dùng. \n\n" +
-      "Phiên bản này bao gồm giao diện được tối ưu hóa, tốc độ tải nhanh hơn, và hỗ trợ đa ngôn ngữ để bạn có trải nghiệm tốt nhất. Ngoài ra, chúng tôi đã sửa một số lỗi nhỏ từ phiên bản trước dựa trên phản hồi của các bạn. \n\n" +
-      "Vui lòng cập nhật lên phiên bản mới nhất qua cửa hàng ứng dụng để không bỏ lỡ những cải tiến này. Nếu bạn gặp bất kỳ vấn đề nào trong quá trình sử dụng, đừng ngần ngại liên hệ với đội ngũ hỗ trợ của chúng tôi qua email: support@example.com hoặc số hotline: 0123-456-789. \n\n" +
-      "Cảm ơn bạn đã luôn đồng hành và ủng hộ ứng dụng của chúng tôi trong suốt thời gian qua. Chúc bạn có những trải nghiệm tuyệt vời với phiên bản mới!",
-    date: "03/04/2025 10:30",
+type Notification = {
+  id: string;
+  userId: string;
+  type: string;
+  message: string;
+  timestamp: string;
+  status: string;
+};
+
+const DetailNotifyScreen: React.FC<Props> = ({ navigation, route }) => {
+  const notification = route.params?.notification || {
+    message: 'Không có thông báo',
+    timestamp: new Date().toISOString(),
+    type: 'unknown',
+  };
+
+  // Lời khuyên dựa trên type
+  const getAdvice = () => {
+    switch (notification.type) {
+      case 'heart_rate_alert':
+        return (
+          'Lời khuyên:\n- Hãy nghỉ ngơi và thư giãn ngay lập tức.\n- Đo lại nhịp tim sau 10-15 phút.\n- Nếu nhịp tim vẫn cao, hãy liên hệ bác sĩ để được hỗ trợ.'
+        );
+      case 'blood_pressure_alert':
+        return 'Lời khuyên:\n- Kiểm tra lại huyết áp trong trạng thái thư giãn.\n- Tránh căng thẳng và uống đủ nước.\n- Liên hệ bác sĩ nếu cần thiết.';
+      case 'medication_reminder':
+        return 'Lời khuyên:\n- Uống thuốc đúng giờ và theo liều lượng được chỉ định.\n- Ghi chú lại thời gian uống để theo dõi.';
+      case 'appointment':
+        return 'Lời khuyên:\n- Đến đúng giờ và mang theo hồ sơ y tế.\n- Chuẩn bị câu hỏi để hỏi bác sĩ.';
+      case 'follow':
+        return 'Lời khuyên:\n- Kiểm tra thông tin người theo dõi nếu cần.';
+      default:
+        return 'Không có lời khuyên cụ thể.';
+    }
+  };
+  // Dịch type sang tiêu đề tiếng Việt
+  const getTitle = () => {
+    switch (notification.type) {
+      case 'heart_rate_alert':
+        return 'Cảnh báo nhịp tim';
+      case 'blood_pressure_alert':
+        return 'Cảnh báo huyết áp';
+      case 'medication_reminder':
+        return 'Nhắc nhở uống thuốc';
+      case 'appointment':
+        return 'Lịch hẹn';
+      case 'follow':
+        return 'Theo dõi';
+      default:
+        return 'Thông báo';
+    }
   };
 
   return (
@@ -34,19 +76,23 @@ const DetailNotifyScreen: React.FC<Props> = ({ navigation }) => {
           />
           <Text style={[styles.text, { fontSize: 30, marginTop: 5 }]}>Chi tiết</Text>
         </View>
-        <View style={styles.headerRight}>
-          <Image
-            style={styles.imgProfile}
-            source={require('../../assets/avatar.jpg')}
-          />
-        </View>
       </View>
 
       {/* Nội dung thông báo */}
       <View style={styles.contentContainer}>
-        <Text style={styles.title}>{notification.title}</Text>
-        <Text style={styles.date}>{notification.date}</Text>
-        <Text style={styles.content}>{notification.content}</Text>
+        {/* Tiêu đề là type */}
+        <Text style={styles.title}>{getTitle()}</Text>
+
+        {/* Nội dung message */}
+        <Text style={styles.content}>{notification.message}</Text>
+
+        {/* Thời gian in nghiêng */}
+        <Text style={styles.dateItalic}>
+          {new Date(notification.timestamp).toLocaleString('vi-VN')}
+        </Text>
+
+        {/* Lời khuyên */}
+        <Text style={styles.advice}>{getAdvice()}</Text>
       </View>
     </ScrollView>
   );
@@ -73,38 +119,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'flex-start',
   },
-  headerRight: {
-    marginRight: 15,
-    backgroundColor: '#e0dee7',
-    borderRadius: 30,
-    padding: 7,
-  },
-  imgProfile: {
-    width: 45,
-    height: 45,
-    borderRadius: 30,
-  },
   contentContainer: {
     marginTop: 30,
     paddingHorizontal: 15,
     paddingBottom: 20,
   },
   title: {
-    fontSize: 22,
-    fontFamily: 'Roboto',
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#432c81',
     marginBottom: 10,
-  },
-  date: {
-    fontSize: 14,
-    color: '#888',
-    marginBottom: 15,
+    textTransform: 'capitalize',
   },
   content: {
     fontSize: 16,
     color: '#555',
-    lineHeight: 24, // Tăng khoảng cách dòng cho dễ đọc
+    lineHeight: 24,
+    marginBottom: 5,
+  },
+  dateItalic: {
+    fontSize: 14,
+    color: '#888',
+    fontStyle: 'italic',
+    marginBottom: 15,
+  },
+  advice: {
+    fontSize: 16, // to hơn
+    color: '#444',
+    lineHeight: 22,
+    marginTop: 15,
+    padding: 12,
+    backgroundColor: '#f0f0f5',
+    borderRadius: 5,
+    fontWeight: '600',
   },
 });
 
