@@ -10,7 +10,7 @@ import { API_BASE_URL } from '../../utils/config';
 import Modal from '../../components/CustomModal';
 import { useTranslation } from 'react-i18next';
 import { useNotification } from '../../contexts/NotificationContext';
-// import { call } from 'react-native-phone-call';
+import Communications from 'react-native-communications'; // Import thư viện thay thế
 
 type Props = {
   navigation: NavigationProp<any>;
@@ -22,6 +22,7 @@ type EmergencyContact = {
   phoneNumber: string;
 };
 
+
 const EmergencyContactScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
   const navigationMain = useNavigation<StackNavigationProp<BottomTabParamList>>();
@@ -32,7 +33,6 @@ const EmergencyContactScreen: React.FC<Props> = ({ navigation }) => {
   const [name, setName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
 
-  // Lấy danh sách người liên hệ khẩn cấp
   const fetchContacts = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
@@ -60,14 +60,12 @@ const EmergencyContactScreen: React.FC<Props> = ({ navigation }) => {
     fetchContacts();
   }, []);
 
-  // Thêm người liên hệ khẩn cấp
   const handleAddContact = async () => {
     if (!name || !phoneNumber) {
       showNotification(t('incompleteContactInfo'), 'error');
       return;
     }
 
-    // Kiểm tra định dạng số điện thoại (ví dụ: 10 chữ số, bắt đầu bằng 0)
     const phoneRegex = /^0\d{9}$/;
     if (!phoneRegex.test(phoneNumber)) {
       showNotification(t('invalidPhoneNumber'), 'error');
@@ -99,7 +97,6 @@ const EmergencyContactScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  // Gọi điện thoại
   const handleCall = (phoneNumber: string) => {
     const args = {
       number: phoneNumber,
@@ -107,25 +104,21 @@ const EmergencyContactScreen: React.FC<Props> = ({ navigation }) => {
     };
 
     if (Platform.OS === 'ios') {
-      interface AlertButton {
-        text: string;
-        style?: 'cancel';
-        onPress?: () => void;
-      }
-
       Alert.alert(
         t('confirmCall'),
         `${t('callTo')} ${phoneNumber}?`,
         [
-          { text: t('cancel'), style: 'cancel' } as AlertButton,
+          { text: t('cancel'), style: 'cancel' },
           {
-        text: t('call'),
-        // onPress: () => call(args).catch((err: Error) => console.error('Call failed:', err)),
-          } as AlertButton,
+            text: t('call'),
+            onPress: () => {
+              Communications.phonecall(phoneNumber, true); // Sử dụng Communications thay vì call
+            },
+          },
         ]
       );
     } else {
-      // call(args).catch((err: Error) => console.error('Call failed:', err));
+      Communications.phonecall(phoneNumber, true); // Gọi trực tiếp trên Android
     }
   };
 

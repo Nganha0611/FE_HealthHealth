@@ -66,6 +66,7 @@
   "loginButton": "Đăng nhập",
   "signUp": "Đăng ký",
   "welcomeBackMessage": "Chào mừng trở lại",
+  "welcome_message": "Chào mừng",
   "error": {
     "emailPasswordRequired": "Vui lòng nhập email và mật khẩu!",
     "loginFailed": "Đăng nhập thất bại!",
@@ -286,7 +287,7 @@
   "retry": "Thử lại",
   "addMedicineHistory": "Thêm lịch sử dùng thuốc",
   "addMedicalHistory": "Thêm lịch sử y tế",
-  "editMedicalHistory": "Sửa lịch sử y tế",
+  "editAppointment": "Sửa lịch sử y tế",
   "statusLabel": "Trạng thái",
   "selectStatus": "Chọn trạng thái",
   "date": "Ngày",
@@ -300,7 +301,8 @@
   "status": {
     "taken": "Đã dùng",
     "missing": "Đã bỏ lỡ",
-    "paused": "Tạm dừng"
+    "paused": "Tạm dừng",
+    "pending": "Đang chờ"
   },
   "medicalStatus": {
     "completed": "Hoàn thành",
@@ -415,7 +417,17 @@
   "syncHeartRateSuccess": "Đồng bộ nhịp tim thành công!",
   "measureHeartRateSucess": "Đo nhịp tim thành công!",
   "syncSuccess": "Đồng bộ thành công!",
-  "event.medicineHistory": "Lịch sử thuốc"
+  "event.medicineHistory": "Lịch sử thuốc",
+  "fetchNotificationsError": "Lỗi khi tải danh sách thông báo.",
+  "updateStatusError": "Lỗi khi cập nhật trạng thái thông báo.",
+  "heartRateAlert": "Cảnh báo nhịp tim",
+  "bloodPressureAlert": "Cảnh báo huyết áp",
+  "medicationReminder": "Nhắc nhở uống thuốc",
+  "appointment": "Lịch hẹn",
+  "follow": "Người theo dõi",
+  "notification": "Thông báo",
+  "noNotifications": "Không có thông báo nào.",
+  "detail": "Chi tiết"
  
 
 }

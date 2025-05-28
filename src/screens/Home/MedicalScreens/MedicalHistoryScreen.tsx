@@ -459,6 +459,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 5,
     minHeight: 60,
+    color: 'black'
   },
   dropdownContainer: {
     marginTop: 5,

@@ -17,7 +17,7 @@ import { API_BASE_URL } from '../../utils/config';
 import Loading from '../../components/Loading';
 import { useTranslation } from 'react-i18next';
 import { useNotification } from '../../contexts/NotificationContext';
-import messaging from '@react-native-firebase/messaging'; 
+import messaging from '@react-native-firebase/messaging';
 
 type LoginScreenNavigationProp = StackNavigationProp<AuthStackParamList, 'Login'>;
 type LoginScreenRouteProp = RouteProp<AuthStackParamList, 'Login'>;
@@ -38,7 +38,6 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
   const saveFcmToken = async (token: string) => {
     try {
-      // Yêu cầu quyền thông báo
       const authStatus = await messaging().requestPermission();
       const enabled =
         authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
@@ -48,7 +47,6 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         return;
       }
 
-      // Lấy fcmToken
       const fcmToken = await messaging().getToken();
       console.log('FCM Token:', fcmToken);
 
@@ -67,65 +65,58 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleLogin = async () => {
-  if (!email || !password) {
-    showNotification(t('error.emailPasswordRequired'), 'error');
-    return;
-  }
-
-  setLoading(true);
-
-  try {
-    const response = await axios.post(
-      `${API_BASE_URL}/api/auth/login`,
-      { email, password }
-    );
-
-    const { result, message, token, user } = response.data;
-
-    if (result === 'success' && token && user) {
-      showNotification(t('loginSuccess'), 'success');
-      // Lưu token
-      await AsyncStorage.setItem('token', token);
-      // Lưu user
-      await AsyncStorage.setItem('user', JSON.stringify(user));
-      // Lưu userId (giả sử user.id là userId)
-      const userId = user.id || user.userId; // Kiểm tra API trả về user.id hay user.userId
-      if (userId) {
-        await AsyncStorage.setItem('userId', userId.toString());
-        console.log('Login - UserId saved:', userId);
-      } else {
-        console.error('Login - No userId found in user object:', user);
-      }
-
-      console.log('Login successful:', user.isVerify);
-
-      // Lưu fcmToken sau khi đăng nhập thành công
-      await saveFcmToken(token);
-
-      await login(token, user);
-    } else {
-      showNotification(t('error.loginFailed'), 'error');
+    if (!email || !password) {
+      showNotification(t('error.emailPasswordRequired'), 'error');
+      return;
     }
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      const { status, data } = error.response;
-      if (status === 401 && data.result === 'wrongPassword') {
-        showNotification(t('error.incorrectPassword'), 'error');
-      } else if (status === 404 && data.result === 'emailNotExist') {
-        showNotification(t('error.emailNotFound'), 'error');
-      } else {
-        showNotification(t('error.authError'), 'error');
-      }
-    } else {
-      console.error('Unknown error:', error);
-      showNotification(t('error.generalError'), 'error');
-    }
-  } finally {
-    setLoading(false);
-  }
-};
 
-  // Lắng nghe sự kiện token thay đổi
+    setLoading(true);
+
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/api/auth/login`,
+        { email, password }
+      );
+
+      const { result, message, token, user } = response.data;
+
+      if (result === 'success' && token && user) {
+        showNotification(t('loginSuccess'), 'success');
+        await AsyncStorage.setItem('token', token);
+        await AsyncStorage.setItem('user', JSON.stringify(user));
+        const userId = user.id || user.userId;
+        if (userId) {
+          await AsyncStorage.setItem('userId', userId.toString());
+          console.log('Login - UserId saved:', userId);
+        } else {
+          console.error('Login - No userId found in user object:', user);
+        }
+
+        console.log('Login successful:', user.isVerify);
+        await saveFcmToken(token);
+        await login(token, user);
+      } else {
+        showNotification(t('error.loginFailed'), 'error');
+      }
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        const { status, data } = error.response;
+        if (status === 401 && data.result === 'wrongPassword') {
+          showNotification(t('error.incorrectPassword'), 'error');
+        } else if (status === 404 && data.result === 'emailNotExist') {
+          showNotification(t('error.emailNotFound'), 'error');
+        } else {
+          showNotification(t('error.authError'), 'error');
+        }
+      } else {
+        console.error('Unknown error:', error);
+        showNotification(t('error.generalError'), 'error');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   React.useEffect(() => {
     const unsubscribe = messaging().onTokenRefresh(async (newToken) => {
       console.log('FCM Token refreshed:', newToken);
@@ -209,7 +200,6 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   );
 };
 
-// Styles giữ nguyên
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -241,10 +231,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 10,
     paddingHorizontal: 15,
-    fontSize: 16,
+    fontSize: 18, // Tăng kích thước chữ để dễ đọc hơn
     marginBottom: 15,
     borderWidth: 1,
     borderColor: '#ccc',
+    color: '#333', // Đặt màu chữ rõ ràng
   },
   passwordContainer: {
     flexDirection: 'row',
@@ -261,8 +252,8 @@ const styles = StyleSheet.create({
   },
   input1: {
     flex: 1,
-    fontSize: 16,
-    color: '#333',
+    fontSize: 18, // Tăng kích thước chữ
+    color: '#333', // Đảm bảo màu chữ rõ ràng
     paddingRight: 40,
   },
   eyeIcon: {

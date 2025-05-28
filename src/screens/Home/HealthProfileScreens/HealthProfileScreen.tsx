@@ -783,19 +783,6 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         const userId = await fetchDataErrorUser();
         if (!userId) return;
 
-        const lastSyncTime = await AsyncStorage.getItem('lastSyncTime');
-        const currentTime = new Date().getTime();
-        const syncInterval = 5 * 60 * 1000; // 5 minutes in milliseconds
-
-        if (!lastSyncTime || currentTime - parseInt(lastSyncTime) > syncInterval) {
-          await Promise.all([
-            syncHeartRateFromHealthConnect(),
-            syncBloodPressureFromHealthConnect(),
-            syncStepsFromHealthConnect(),
-          ]);
-          await AsyncStorage.setItem('lastSyncTime', currentTime.toString());
-        }
-
         await Promise.all([
           fetchDataErrorHeartRateData(userId),
           fetchDataErrorBloodPressureData(userId),

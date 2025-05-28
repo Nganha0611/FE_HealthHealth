@@ -106,7 +106,6 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
     { label: t('medicalStatus.pending'), value: 'Pending' },
   ];
 
-  // Hàm làm sạch chuỗi ngày tháng và chuyển sang múi giờ Việt Nam
   const cleanDateString = (dateStr: string): string => {
     if (!dateStr || typeof dateStr !== 'string') {
       console.log('[cleanDateString] Invalid or empty date string, returning current date');
@@ -120,7 +119,6 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
       .replace(/\+(\d{2}):?$/, '+$1:00')
       .trim();
 
-    // Nếu không có múi giờ, giả định là UTC và chuyển sang múi giờ Việt Nam (+07:00)
     if (!cleaned.includes('Z') && !cleaned.includes('+')) {
       const date = new Date(cleaned + 'Z');
       const vietnamDate = new Date(date.getTime() + 7 * 60 * 60 * 1000);
@@ -132,7 +130,6 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
     return cleaned;
   };
 
-  // Hàm kiểm tra ngày hợp lệ
   const isValidDate = (dateStr: string): boolean => {
     const cleaned = cleanDateString(dateStr);
     const date = new Date(cleaned);
@@ -141,12 +138,10 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
     return isValid;
   };
 
-  // Hàm lấy dateKey theo múi giờ Việt Nam
   const getDateKey = (date: Date): string => {
     return date.toLocaleDateString('vi-VN', { year: 'numeric', month: '2-digit', day: '2-digit' }).split('/').reverse().join('-');
   };
 
-  // Hàm xử lý khi chọn ngày
   const onDateChange = (date: any) => {
     if (date?.toDate) {
       setSelectedDate(date.toDate());
@@ -155,7 +150,6 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  // Định nghĩa ngày trong tuần và tháng
   const weekdays = t('calendar.weekdays', { returnObjects: true });
   const safeWeekdays = Array.isArray(weekdays) ? weekdays : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
@@ -165,7 +159,6 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
     'July', 'August', 'September', 'October', 'November', 'December'
   ];
 
-  // Hàm phân tích startday (DD/MM/YYYY)
   const parseStartDay = (startday: string): Date => {
     if (!startday) {
       console.log('[parseStartDay] No startday provided, returning current date');
@@ -177,14 +170,12 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
     return date;
   };
 
-  // Hàm định dạng thời gian sang 24 giờ
   const formatTime = (date: Date): string => {
     const formatted = date.toLocaleString('vi-VN', { timeStyle: 'short' });
     console.log(`[formatTime] Formatted ${date.toISOString()} to ${formatted}`);
     return formatted;
   };
 
-  // Hàm phân tích thời gian để sắp xếp
   const parseTimeToDate = (timeStr: string): Date => {
     const [time] = timeStr.split(' ');
     const date = new Date(`1970-01-01T${time}:00`);
@@ -192,7 +183,6 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
     return date;
   };
 
-  // Xử lý sự kiện Medicine
   const processMedicineEvents = (medicines: Medicine[]): { [key: string]: Event[] } => {
     const eventsMap: { [key: string]: Event[] } = {};
 
@@ -262,7 +252,6 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
     return eventsMap;
   };
 
-  // Xử lý sự kiện MedicalHistory
   const processMedicalHistoryEvents = (history: MedicalHistory[]): { [key: string]: Event[] } => {
     const eventsMap: { [key: string]: Event[] } = {};
 
@@ -289,7 +278,6 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
     return eventsMap;
   };
 
-  // Xử lý sự kiện MedicineHistory
   const processMedicineHistoryEvents = (history: MedicineHistory[]): { [key: string]: Event[] } => {
     const eventsMap: { [key: string]: Event[] } = {};
 
@@ -318,7 +306,6 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
     return eventsMap;
   };
 
-  // Tải dữ liệu từ API
   const fetchData = async () => {
     setLoading(true);
     setError(null);
@@ -415,7 +402,6 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
     fetchData();
   }, []);
 
-  // Reset modal Medicine
   const resetMedicineModal = () => {
     setSelectedMedicine(null);
     setMedicineStatus(null);
@@ -426,7 +412,6 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
     setShowMedicineTimePicker(false);
   };
 
-  // Reset modal Medical
   const resetMedicalModal = () => {
     setSelectedMedicalHistoryId(null);
     setLocation('');
@@ -439,7 +424,6 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
     setShowMedicalTimePicker(false);
   };
 
-  // Xử lý khi click vào sự kiện
   const handleEventClick = (event: Event) => {
     if (event.name.startsWith(t('event.medicine')) && event.medicineId) {
       const selectedTime = parseTimeToDate(event.time);
@@ -474,7 +458,6 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  // Lưu MedicineHistory
   const handleSaveMedicineHistory = async () => {
     if (!selectedMedicine || !medicineStatus) {
       showNotification(t('incompleteMedicineInfo'), 'error');
@@ -517,7 +500,6 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  // Lưu MedicalHistory
   const handleSaveMedicalHistory = async () => {
     if (!location || !medicalStatus) {
       showNotification(t('incompleteMedicalInfo'), 'error');
@@ -574,7 +556,6 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
     }
   };
 
-  // Render danh sách sự kiện
   const renderEvents = () => {
     if (loading) {
       return (
@@ -732,81 +713,83 @@ const ScheduleScreen: React.FC<Props> = ({ navigation }) => {
       </Modal>
 
       <Modal visible={isMedicalModalVisible} onClose={() => setMedicalModalVisible(false)}>
-        <TouchableOpacity style={styles.closeButton} onPress={() => setMedicalModalVisible(false)}>
-          <FontAwesome name="close" size={24} color="#444" />
-        </TouchableOpacity>
-        <Text style={styles.modalTitle}>{selectedMedicalHistoryId ? t('editAppointment') : t('addAppointment')}</Text>
-        <View style={styles.detailContainer}>
-          <Text style={styles.detailLabel}>{t('location')}:</Text>
-          <TextInput
-            style={styles.input}
-            value={location}
-            onChangeText={setLocation}
-            placeholder={t('enterLocation')}
-          />
+  <TouchableOpacity style={styles.closeButton} onPress={() => setMedicalModalVisible(false)}>
+    <FontAwesome name="close" size={24} color="#444" />
+  </TouchableOpacity>
+  <Text style={styles.modalTitle}>{selectedMedicalHistoryId ? t('editAppointment') : t('addAppointment')}</Text>
+  <ScrollView style={styles.modalScrollContainer}>
+    <View style={styles.detailContainer}>
+      <Text style={styles.detailLabel}>{t('location')}:</Text>
+      <TextInput
+        style={styles.input}
+        value={location}
+        onChangeText={setLocation}
+        placeholder={t('enterLocation')}
+      />
 
-          <Text style={styles.detailLabel}>{t('statusLabel')}:</Text>
-          <DropDownPicker
-            open={openMedicalStatus}
-            value={medicalStatus}
-            setOpen={setOpenMedicalStatus}
-            setValue={setMedicalStatus}
-            items={medicalStatusItems}
-            containerStyle={styles.dropdownContainer}
-            style={styles.dropdown}
-            dropDownContainerStyle={styles.dropdownList}
-            placeholder={t('selectStatus')}
-            zIndex={1000}
-          />
+      <Text style={styles.detailLabel}>{t('statusLabel')}:</Text>
+      <DropDownPicker
+        open={openMedicalStatus}
+        value={medicalStatus}
+        setOpen={setOpenMedicalStatus}
+        setValue={setMedicalStatus}
+        items={medicalStatusItems}
+        containerStyle={styles.dropdownContainer}
+        style={styles.dropdown}
+        dropDownContainerStyle={styles.dropdownList}
+        placeholder={t('selectStatus')}
+        zIndex={1000}
+      />
 
-          <Text style={styles.detailLabel}>{t('date')}:</Text>
-          <TouchableOpacity style={styles.dateButton} onPress={() => setShowMedicalDatePicker(true)}>
-            <Text style={styles.dateButtonText}>
-              {medicalDate.toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}
-            </Text>
-          </TouchableOpacity>
-          {showMedicalDatePicker && (
-            <DateTimePicker
-              value={medicalDate}
-              mode="date"
-              display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
-              onChange={(event, date) => {
-                setShowMedicalDatePicker(Platform.OS === 'ios');
-                if (date) setMedicalDate(date);
-              }}
-            />
-          )}
+      <Text style={styles.detailLabel}>{t('date')}:</Text>
+      <TouchableOpacity style={styles.dateButton} onPress={() => setShowMedicalDatePicker(true)}>
+        <Text style={styles.dateButtonText}>
+          {medicalDate.toLocaleDateString(language === 'vi' ? 'vi-VN' : 'en-US')}
+        </Text>
+      </TouchableOpacity>
+      {showMedicalDatePicker && (
+        <DateTimePicker
+          value={medicalDate}
+          mode="date"
+          display={Platform.OS === 'ios' ? 'spinner' : 'calendar'}
+          onChange={(event, date) => {
+            setShowMedicalDatePicker(Platform.OS === 'ios');
+            if (date) setMedicalDate(date);
+          }}
+        />
+      )}
 
-          <Text style={styles.detailLabel}>{t('Time')}:</Text>
-          <TouchableOpacity style={styles.dateButton} onPress={() => setShowMedicalTimePicker(true)}>
-            <Text style={styles.dateButtonText}>{formatTime(medicalTime)}</Text>
-          </TouchableOpacity>
-          {showMedicalTimePicker && (
-            <DateTimePicker
-              value={medicalTime}
-              mode="time"
-              display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
-              onChange={(event, time) => {
-                setShowMedicalTimePicker(Platform.OS === 'ios');
-                if (time) setMedicalTime(time);
-              }}
-            />
-          )}
+      <Text style={styles.detailLabel}>{t('Time')}:</Text>
+      <TouchableOpacity style={styles.dateButton} onPress={() => setShowMedicalTimePicker(true)}>
+        <Text style={styles.dateButtonText}>{formatTime(medicalTime)}</Text>
+      </TouchableOpacity>
+      {showMedicalTimePicker && (
+        <DateTimePicker
+          value={medicalTime}
+          mode="time"
+          display={Platform.OS === 'ios' ? 'spinner' : 'clock'}
+          onChange={(event, time) => {
+            setShowMedicalTimePicker(Platform.OS === 'ios');
+            if (time) setMedicalTime(time);
+          }}
+        />
+      )}
 
-          <Text style={styles.detailLabel}>{t('note')}:</Text>
-          <TextInput
-            style={styles.input}
-            value={medicalNote}
-            onChangeText={setMedicalNote}
-            placeholder={t('enterNote')}
-            multiline
-          />
+      <Text style={styles.detailLabel}>{t('note')}:</Text>
+      <TextInput
+        style={styles.input}
+        value={medicalNote}
+        onChangeText={setMedicalNote}
+        placeholder={t('enterNote')}
+        multiline
+      />
 
-          <TouchableOpacity style={styles.saveButton} onPress={handleSaveMedicalHistory}>
-            <Text style={styles.saveButtonText}>{t('save')}</Text>
-          </TouchableOpacity>
-        </View>
-      </Modal>
+      <TouchableOpacity style={styles.saveButton} onPress={handleSaveMedicalHistory}>
+        <Text style={styles.saveButtonText}>{t('save')}</Text>
+      </TouchableOpacity>
+    </View>
+  </ScrollView>
+</Modal>
 
       <Modal visible={isMedicineHistoryDetailModalVisible} onClose={() => setMedicineHistoryDetailModalVisible(false)}>
         <TouchableOpacity style={styles.closeButton} onPress={() => setMedicineHistoryDetailModalVisible(false)}>
@@ -893,13 +876,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   eventTime: {
-    color: '#666',
+    color: 'black', 
     marginRight: 10,
-    fontSize: 14,
+    fontSize: 16, 
   },
   eventName: {
-    fontSize: 16,
+    fontSize: 18, 
     flex: 1,
+    color: 'black',
   },
   noEventContainer: {
     padding: 20,
@@ -924,10 +908,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     textAlign: 'center',
   },
-  detailContainer: {
-    width: '100%',
-    marginBottom: 20,
-  },
+ 
   detailLabel: {
     fontSize: 16,
     fontWeight: 'bold',
@@ -945,6 +926,9 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     padding: 10,
     marginBottom: 10,
+    fontSize: 18, // Tăng kích thước chữ
+    color: '#333', // Đặt màu chữ rõ ràng
+    backgroundColor: '#FFFFFF', // Đặt màu nền rõ ràng
   },
   dropdownContainer: {
     marginBottom: 10,
@@ -961,17 +945,32 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     padding: 10,
     marginBottom: 10,
+    backgroundColor: '#FFFFFF', // Đặt màu nền rõ ràng
   },
   dateButtonText: {
     fontSize: 16,
     color: '#333',
   },
+
+  
+  modalScrollContainer: {
+    maxHeight: '90%', // Giới hạn chiều cao tối đa của modal (có thể điều chỉnh)
+    paddingBottom: 10, // Đảm bảo khoảng cách dưới cùng
+  },
+ 
+  detailContainer: {
+    width: '100%',
+    marginBottom: 20,
+    paddingHorizontal: 10, // Thêm padding ngang để tránh nội dung chạm biên
+  },
   saveButton: {
     backgroundColor: '#432c81',
-    paddingVertical: 10,
+    paddingVertical: 12, // Tăng padding để nút nổi bật hơn
     paddingHorizontal: 20,
     borderRadius: 5,
-    marginTop: 10,
+    marginTop: 15, // Tăng khoảng cách trên nút
+    alignSelf: 'center', // Căn giữa nút để tránh lệch
+    width: '90%', // Đặt chiều rộng cố định
   },
   saveButtonText: {
     color: '#fff',
@@ -979,6 +978,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textAlign: 'center',
   },
+
 });
 
 export default ScheduleScreen;

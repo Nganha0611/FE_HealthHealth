@@ -7,7 +7,6 @@ import {
     TextInput,
     TouchableOpacity,
     StyleSheet,
-    Alert
 } from "react-native";
 import DatePicker from "react-native-date-picker";
 import DropDownPicker from "react-native-dropdown-picker";
@@ -24,7 +23,6 @@ type Props = {
 const SignUpScreen: React.FC<Props> = ({ navigation }) => {
     const [name, setName] = useState("");
     const { t } = useTranslation();
-
     const [email, setEmail] = useState("");
     const [numberPhone, setNumberPhone] = useState("");
     const [password, setPassword] = useState("");
@@ -35,10 +33,9 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
     const [open, setOpen] = useState(false);
     const [openGender, setOpenGender] = useState(false);
     const [gender, setGender] = useState("");
-    const [address, setAddress] = useState(""); // Địa chỉ
+    const [address, setAddress] = useState("");
     const { login } = useAuth();
     const [loading, setLoading] = useState<boolean>(false);
-    const [showPicker, setShowPicker] = useState(false);
     const { showNotification } = useNotification();
 
     const handleSendOTP = async () => {
@@ -93,7 +90,7 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
 
             <TextInput
                 style={styles.input}
-                placeholder={t("full_name_placeholder")}
+                placeholder={t("placeholder.fullName")}
                 value={name}
                 onChangeText={setName}
                 placeholderTextColor="#888"
@@ -101,7 +98,7 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
 
             <TextInput
                 style={styles.input}
-                placeholder={t("email_placeholder")}
+                placeholder={t("placeholder.email")}
                 value={email}
                 onChangeText={setEmail}
                 placeholderTextColor="#888"
@@ -110,7 +107,7 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
 
             <TextInput
                 style={styles.input}
-                placeholder={t("phone_number_placeholder")}
+                placeholder={t("placeholder.phoneNumber")}
                 value={numberPhone}
                 onChangeText={setNumberPhone}
                 placeholderTextColor="#888"
@@ -137,9 +134,8 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
                 disabled={loading}
             />
 
-
             <TouchableOpacity style={styles.input} onPress={() => setOpen(true)}>
-                <Text style={{ color: birth ? "#333" : "#888", fontSize: 16 }}>
+                <Text style={styles.dateText}>
                     {birth || t("select_birth_date")}
                 </Text>
             </TouchableOpacity>
@@ -168,7 +164,7 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.passwordContainer}>
                 <TextInput
                     style={styles.input1}
-                    placeholder={t("password_placeholder")}
+                    placeholder={t("placeholder.password")}
                     placeholderTextColor="#888"
                     value={password}
                     onChangeText={setPassword}
@@ -186,7 +182,7 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
             <View style={styles.passwordContainer}>
                 <TextInput
                     style={styles.input1}
-                    placeholder={t("repassword_placeholder")}
+                    placeholder={t("placeholder.repassword")}
                     placeholderTextColor="#888"
                     value={rePassword}
                     onChangeText={setRePassword}
@@ -210,7 +206,6 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
             </Text>
 
             {loading && <Loading message={t("loading_message")} />}
-
         </View>
     );
 };
@@ -223,7 +218,6 @@ const styles = StyleSheet.create({
         justifyContent: "center",
         padding: 20,
         zIndex: 9999,
-
     },
     welcomeText: {
         fontSize: 20,
@@ -242,11 +236,16 @@ const styles = StyleSheet.create({
         backgroundColor: "#FFFFFF",
         borderRadius: 10,
         paddingHorizontal: 15,
-        fontSize: 16,
+        fontSize: 18, // Tăng kích thước chữ
         marginBottom: 15,
         borderWidth: 1,
         borderColor: "#ccc",
         justifyContent: "center",
+        color: "#333", // Đặt màu chữ rõ ràng
+    },
+    dateText: {
+        fontSize: 18, // Tăng kích thước chữ
+        color: "#333", // Đặt màu chữ cố định để đảm bảo dễ đọc
     },
     passwordContainer: {
         flexDirection: "row",
@@ -262,8 +261,8 @@ const styles = StyleSheet.create({
     },
     input1: {
         flex: 1,
-        fontSize: 16,
-        color: "#333",
+        fontSize: 18, // Tăng kích thước chữ
+        color: "#333", // Đảm bảo màu chữ rõ ràng
         paddingRight: 40,
     },
     eyeIcon: {

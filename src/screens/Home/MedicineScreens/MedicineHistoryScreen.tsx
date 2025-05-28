@@ -61,6 +61,7 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
     { label: t('status.taken'), value: 'Taken' },
     { label: t('status.missing'), value: 'Missing' },
     { label: t('status.paused'), value: 'Paused' },
+    { label: t('status.pending'), value: 'Pending' }, // Giá trị trong statusItems là "Pending"
   ];
 
   const medicineItems = medicines.map(med => ({ label: med.name, value: med.name }));
@@ -106,79 +107,77 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
   }, []);
 
   const handleSaveHistory = async () => {
-  if (!selectedMedicine || !status) {
-    showNotification(t('errorEmptyFields'), 'error');
-    return;
-  }
-
-  try {
-    const token = await AsyncStorage.getItem('token');
-    if (!token) {
-      showNotification(t('noToken'), 'error');
-      navigation.navigate('Login');
+    if (!selectedMedicine || !status) {
+      showNotification(t('errorEmptyFields'), 'error');
       return;
     }
 
-    // Tạo timestamp với múi giờ +07:00
-    const timestamp = new Date(
-      date.getFullYear(),
-      date.getMonth(),
-      date.getDate(),
-      time.getHours(),
-      time.getMinutes(),
-      time.getSeconds()
-    );
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        showNotification(t('noToken'), 'error');
+        navigation.navigate('Login');
+        return;
+      }
 
-    // Điều chỉnh múi giờ về +07:00 trước khi gửi
-    const vietnamOffset = 7 * 60; // +07:00 in minutes
-    const localOffset = timestamp.getTimezoneOffset(); // Offset của thiết bị (phút)
-    const offsetDifference = vietnamOffset + localOffset; // Thêm offset để bù lại
-    const adjustedTimestamp = new Date(timestamp.getTime() + offsetDifference * 60 * 1000);
-    const timestampStr = adjustedTimestamp.toISOString(); // Ví dụ: "2025-05-20T23:00:00.000Z" cho 06:00 AM +07:00
-    console.log("Timestamp gửi đi:", timestampStr);
-
-    const data = {
-      medicineName: selectedMedicine.trim().toLowerCase(),
-      timestamp: timestampStr,
-      status,
-      note,
-    };
-    console.log('Saving history with medicineName:', selectedMedicine);
-
-    if (selectedHistoryId) {
-      await axios.put(
-        `${API_BASE_URL}/api/medicine-history/${selectedHistoryId}`,
-        data,
-        { headers: { Authorization: `Bearer ${token}` } }
+      const timestamp = new Date(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate(),
+        time.getHours(),
+        time.getMinutes(),
+        time.getSeconds()
       );
-      showNotification(t('historyUpdated'), 'success');
-    } else {
-      await axios.post(
-        `${API_BASE_URL}/api/medicine-history`,
-        data,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      showNotification(t('historyAdded'), 'success');
+
+      const vietnamOffset = 7 * 60;
+      const localOffset = timestamp.getTimezoneOffset();
+      const offsetDifference = vietnamOffset + localOffset;
+      const adjustedTimestamp = new Date(timestamp.getTime() + offsetDifference * 60 * 1000);
+      const timestampStr = adjustedTimestamp.toISOString();
+      console.log("Timestamp gửi đi:", timestampStr);
+
+      const data = {
+        medicineName: selectedMedicine.trim().toLowerCase(),
+        timestamp: timestampStr,
+        status: status.toUpperCase(), // Đảm bảo gửi "PENDING" lên DB
+        note,
+      };
+      console.log('Saving history with medicineName:', selectedMedicine);
+
+      if (selectedHistoryId) {
+        await axios.put(
+          `${API_BASE_URL}/api/medicine-history/${selectedHistoryId}`,
+          data,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        showNotification(t('historyUpdated'), 'success');
+      } else {
+        await axios.post(
+          `${API_BASE_URL}/api/medicine-history`,
+          data,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        showNotification(t('historyAdded'), 'success');
+      }
+
+      fetchData();
+      setModalVisible(false);
+      setSelectedHistoryId(null);
+      setSelectedMedicine(null);
+      setStatus(null);
+      setNote('');
+      setDate(new Date());
+      setTime(new Date());
+    } catch (error: any) {
+      console.error('Error saving history:', error.response?.data || error.message);
+      showNotification(t('saveHistoryError'), 'error');
     }
-
-    fetchData();
-    setModalVisible(false);
-    setSelectedHistoryId(null);
-    setSelectedMedicine(null);
-    setStatus(null);
-    setNote('');
-    setDate(new Date());
-    setTime(new Date());
-  } catch (error: any) {
-    console.error('Error saving history:', error.response?.data || error.message);
-    showNotification(t('saveHistoryError'), 'error');
-  }
-};
+  };
 
   const handleEditHistory = (history: MedicineHistory) => {
     setSelectedHistoryId(history.id);
     setSelectedMedicine(history.medicineName || null);
-    setStatus(history.status);
+    setStatus(history.status.toLowerCase().replace(/^\w/, c => c.toUpperCase())); // Chuẩn hóa "PENDING" thành "Pending"
     setNote(history.note || '');
     const timestampDate = new Date(history.timestamp);
     setDate(timestampDate);
@@ -204,14 +203,20 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
         {medicineHistory.length === 0 ? (
           <Text style={styles.note}>{t('noHistory')}</Text>
         ) : (
-          medicineHistory.map((history, index) => (
-            <TouchableOpacity key={index} style={styles.boxFeature} onPress={() => handleEditHistory(history)}>
-              <Text style={[styles.text, styles.boxTitle]}>{history.medicineName || t('unknownMedicine')}</Text>
-              <Text style={styles.note}>{t('statusLabel')}: {statusItems.find(item => item.value === history.status)?.label || history.status}</Text>
-              <Text style={styles.note}>{t('Time')}: {new Date(history.timestamp).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</Text>
-              <Text style={styles.note}>{t('note')}: {history.note || t('noNote')}</Text>
-            </TouchableOpacity>
-          ))
+          medicineHistory.map((history, index) => {
+            // Chuẩn hóa status từ "PENDING" thành "Pending" để khớp với statusItems
+            const normalizedStatus = history.status.toLowerCase().replace(/^\w/, c => c.toUpperCase());
+            return (
+              <TouchableOpacity key={index} style={styles.boxFeature} onPress={() => handleEditHistory(history)}>
+                <Text style={[styles.text, styles.boxTitle]}>{history.medicineName || t('unknownMedicine')}</Text>
+                <Text style={styles.note}>
+                  {t('statusLabel')}: {statusItems.find(item => item.value === normalizedStatus)?.label || history.status}
+                </Text>
+                <Text style={styles.note}>{t('Time')}: {new Date(history.timestamp).toLocaleString('vi-VN', { dateStyle: 'short', timeStyle: 'short' })}</Text>
+                <Text style={styles.note}>{t('note')}: {history.note || t('noNote')}</Text>
+              </TouchableOpacity>
+            );
+          })
         )}
       </ScrollView>
 
@@ -277,7 +282,7 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
               {time.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}
             </Text>
           </TouchableOpacity>
-          {showTimePicker && (
+                   {showTimePicker && (
             <DateTimePicker
               value={time}
               mode="time"
@@ -413,6 +418,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 5,
     minHeight: 60,
+    color: 'black'
   },
   dropdownContainer: {
     marginTop: 5,

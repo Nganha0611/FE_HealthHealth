@@ -1,7 +1,7 @@
 import { useNavigation } from '@react-navigation/native';
 import { StackNavigationProp } from '@react-navigation/stack';
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
@@ -30,33 +30,10 @@ const NotifyScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
   const { showNotification } = useNotification();
   const [notifications, setNotifications] = useState<Notification[]>([]);
-
-  // Hàm lấy màu ngẫu nhiên từ dotColors
-  const getRandomColor = () => {
-    const randomIndex = Math.floor(Math.random() * dotColors.length);
-    return dotColors[randomIndex];
-  };
-
-  // Hàm lấy tiêu đề dựa trên type
-  const getTitleFromType = (type: string) => {
-    switch (type) {
-      case 'heart_rate_alert':
-        return 'Cảnh báo nhịp tim';
-      case 'blood_pressure_alert':
-        return 'Cảnh báo huyết áp';
-      case 'medication_reminder':
-        return 'Nhắc nhở uống thuốc';
-      case 'appointment':
-        return 'Nhắc nhở khám bệnh';
-      case 'follow':
-        return 'Hoạt động theo dõi';
-      default:
-        return 'Thông báo';
-    }
-  };
+  const [loading, setLoading] = useState<boolean>(true);
 
   // Lấy danh sách thông báo từ API
-  const fetchNotifications = async () => {
+  const fetchNotifications = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
@@ -77,12 +54,67 @@ const NotifyScreen: React.FC<Props> = ({ navigation }) => {
         await AsyncStorage.removeItem('token');
         navigation.navigate('Login' as any);
       }
+    } finally {
+      setLoading(false);
+    }
+  }, [navigation, showNotification, t]);
+
+  // Cập nhật trạng thái thông báo thành "read" khi nhấn
+  const handleNotificationPress = async (notification: Notification) => {
+    if (notification.status === 'unread') {
+      try {
+        const token = await AsyncStorage.getItem('token');
+        if (!token) throw new Error('No token');
+
+        await axios.put(
+          `${API_BASE_URL}/api/notifications/${notification.id}`,
+          { status: 'read' },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setNotifications((prev) =>
+          prev.map((item) =>
+            item.id === notification.id ? { ...item, status: 'read' } : item
+          )
+        );
+      } catch (error) {
+        showNotification(t('updateStatusError'), 'error');
+      }
+    }
+    navigation.navigate('DetailNotify', { notification });
+  };
+
+  // Tự động cập nhật thông báo mỗi 30 giây
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000); // Cập nhật mỗi 30 giây
+    return () => clearInterval(interval);
+  }, [fetchNotifications]);
+
+  // Lấy tiêu đề dựa trên type
+  const getTitleFromType = (type: string) => {
+    switch (type) {
+      case 'heart_rate_alert':
+        return t('heartRateAlert');
+      case 'blood_pressure_alert':
+        return t('bloodPressureAlert');
+      case 'medication_reminder':
+        return t('medicationReminder');
+      case 'appointment':
+        return t('appointment');
+      case 'follow':
+        return t('follow');
+      default:
+        return t('notification');
     }
   };
 
-  useEffect(() => {
-    fetchNotifications();
-  }, []);
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#432c81" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -98,13 +130,18 @@ const NotifyScreen: React.FC<Props> = ({ navigation }) => {
             <TouchableOpacity
               key={notification.id}
               style={styles.notificationCard}
-              onPress={() =>
-                navigation.navigate('DetailNotify', { notification })
-              }
+              onPress={() => handleNotificationPress(notification)}
             >
               <View style={styles.titleRow}>
                 <View style={[styles.dot, { backgroundColor: getRandomColor() }]} />
-                <Text style={styles.notifTitle}>{getTitleFromType(notification.type)}</Text>
+                <Text
+                  style={[
+                    styles.notifTitle,
+                    notification.status === 'unread' && styles.unreadTitle,
+                  ]}
+                >
+                  {getTitleFromType(notification.type)}
+                </Text>
               </View>
               <Text style={styles.notifMessage} numberOfLines={2} ellipsizeMode="tail">
                 {notification.message}
@@ -118,6 +155,12 @@ const NotifyScreen: React.FC<Props> = ({ navigation }) => {
       </ScrollView>
     </View>
   );
+
+  // Hàm lấy màu ngẫu nhiên từ dotColors
+  function getRandomColor() {
+    const randomIndex = Math.floor(Math.random() * dotColors.length);
+    return dotColors[randomIndex];
+  }
 };
 
 const styles = StyleSheet.create({
@@ -125,61 +168,71 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   header: {
-    paddingVertical: 16,
+    paddingVertical: 20,
     backgroundColor: '#fff',
     alignItems: 'flex-start',
-    marginLeft: 16,
+    marginLeft: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e2e2',
   },
   headerText: {
-    fontSize: 30,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#432c81',
   },
   listContainer: {
-    padding: 16,
+    padding: 20,
   },
   notificationCard: {
     flexDirection: 'column',
     backgroundColor: '#f6f5fa',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 10,
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 15,
     borderWidth: 1,
     borderColor: '#e2e2e2',
   },
   titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
   },
   dot: {
-    width: 8,
-    height: 8,
+    width: 10,
+    height: 10,
     borderRadius: 20,
-    marginRight: 8,
+    marginRight: 12,
   },
   notifTitle: {
-    fontSize: 16,
-    fontWeight: '600',
+    fontSize: 20,
+    fontWeight: '500',
     color: '#432c81',
+  },
+  unreadTitle: {
+    fontWeight: '700', // Đậm hơn cho thông báo chưa đọc
   },
   notifMessage: {
-    fontSize: 14,
+    fontSize: 18,
     color: '#555',
-    marginLeft: 18,
-    marginBottom: 4,
+    marginLeft: 22,
+    marginBottom: 6,
   },
   notifDesc: {
-    fontSize: 12,
+    fontSize: 16,
     color: '#888',
-    marginLeft: 18,
+    marginLeft: 22,
   },
   noNotificationsText: {
-    fontSize: 16,
+    fontSize: 20,
     color: '#432c81',
     textAlign: 'center',
-    marginTop: 20,
+    marginTop: 30,
   },
 });
 
