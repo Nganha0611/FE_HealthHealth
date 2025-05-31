@@ -41,6 +41,7 @@
   "schedule": "Lịch trình",
   "medicalHistory": "Lịch sử y tế",
   "emergencyContact": "Liên hệ khẩn cấp",
+  "noContacts": "Không có liên hệ khẩn cấp nào.",
   "measureTitle": "ĐO LƯỜNG CHỈ SỐ",
   "measureSubtitle": "Chạm để đo các chỉ số sức khỏe",
   "stepsUnit": "bước",
@@ -73,7 +74,9 @@
     "incorrectPassword": "Mật khẩu không đúng!",
     "emailNotFound": "Email không tồn tại!",
     "authError": "Lỗi xác thực!",
-    "generalError": "Đã xảy ra lỗi. Vui lòng thử lại!"
+    "generalError": "Đã xảy ra lỗi. Vui lòng thử lại!",
+    "invalidResponse": "Phản hồi không hợp lệ từ máy chủ!",
+    "noUserId": "Không tìm thấy ID người dùng!"
   },
   "placeholder": {
     "emailOrPhone": "Email hoặc Số điện thoại",
@@ -427,7 +430,22 @@
   "follow": "Người theo dõi",
   "notification": "Thông báo",
   "noNotifications": "Không có thông báo nào.",
-  "detail": "Chi tiết"
+  "detail": "Chi tiết",
+
+  "verification_success": "Xác thực thành công, đang chuyển hướng...",
+  "verifyOTP": {
+    "notification": {
+      "otpInvalid": "Mã OTP không hợp lệ",
+      "otpNotExist": "Mã OTP không tồn tại, vui lòng gửi lại mã mới",
+      "otpExpired": "Mã OTP đã hết hạn, vui lòng gửi lại mã mới",
+      "otpSentSuccess": "Xác thực OTP thành công",
+      "otpSentError": "Không thể xác thực OTP, vui lòng thử lại",
+      "serverError": "Lỗi server, vui lòng thử lại sau",
+      "networkError": "Lỗi mạng, vui lòng kiểm tra kết nối internet",
+      "unexpectedError": "Đã xảy ra lỗi không xác định, vui lòng thử lại"
+    }
+  },
+  "signupSuccess": "Đăng ký thành công, vui lòng đăng nhập để tiếp tục"
  
 
 }

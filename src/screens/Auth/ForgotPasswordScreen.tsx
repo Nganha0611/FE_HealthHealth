@@ -62,7 +62,7 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
         setLoading(true);
 
         try {
-            const response = await axios.post(`${API_BASE_URL}/api/otp/send?email=${encodeURIComponent(email)}`, {}, {
+            const response = await axios.post(`${API_BASE_URL}/api/otp/sendFP?email=${encodeURIComponent(email)}`, {}, {
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json'

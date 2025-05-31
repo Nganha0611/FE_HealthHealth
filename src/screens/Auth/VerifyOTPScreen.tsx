@@ -50,57 +50,57 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
 
     const handleVerifyCode = async () => {
     if (!verificationId) {
-        Alert.alert('Lỗi', 'Bạn cần gửi mã OTP trước khi xác thực');
+        showNotification(t("otp_not_sent"), "error");
         return;
     }
 
     if (!numberPhone) {
-        Alert.alert('Lỗi', 'Số điện thoại không hợp lệ');
+        showNotification(t("invalid_phone_number"), "error");
         return;
     }
 
     try {
         setVerifying(true);
-        setMessage('Đang xác thực mã OTP...');
+        setMessage(t("verifying_otp"));
 
         // Sử dụng auth() thay vì getAuth()
         const credential = PhoneAuthProvider.credential(verificationId, otp);
         const userCredential = await auth().signInWithCredential(credential);
-        console.log('Xác thực OTP thành công, user:', userCredential.user.phoneNumber);
+        console.log("Xác thực OTP thành công, user:", userCredential.user.phoneNumber);
 
-        const token = await AsyncStorage.getItem('token');
+        const token = await AsyncStorage.getItem("token");
         if (!token) {
-            Alert.alert('Lỗi', 'Không tìm thấy token xác thực');
-            setMessage('Lỗi: token xác thực không tồn tại');
+            showNotification(t("no_auth_token"), "error");
+            setMessage(t("no_auth_token_message"));
             return;
         }
 
         let formattedPhoneNumber = numberPhone.trim();
-        if (formattedPhoneNumber.startsWith('0')) {
-            formattedPhoneNumber = '+84' + formattedPhoneNumber.slice(1);
-        } else if (!formattedPhoneNumber.startsWith('+')) {
-            formattedPhoneNumber = '+' + formattedPhoneNumber;
+        if (formattedPhoneNumber.startsWith("0")) {
+            formattedPhoneNumber = "+84" + formattedPhoneNumber.slice(1);
+        } else if (!formattedPhoneNumber.startsWith("+")) {
+            formattedPhoneNumber = "+" + formattedPhoneNumber;
         }
 
         const response = await fetch(`${API_BASE_URL}/api/auth/verify-phone`, {
-            method: 'PUT',
+            method: "PUT",
             headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`,
             },
             body: JSON.stringify({ phoneNumber: formattedPhoneNumber }),
         });
 
         if (response.ok) {
-            Alert.alert('Thành công', 'Số điện thoại đã được xác thực!');
-            const stored = await AsyncStorage.getItem('user');
+            const stored = await AsyncStorage.getItem("user");
             if (stored) {
                 const user = JSON.parse(stored);
                 user.isVerifyPhone = true;
-                await AsyncStorage.setItem('user', JSON.stringify(user));
+                await AsyncStorage.setItem("user", JSON.stringify(user));
             }
 
             setIsLoggedIn(true);
+            showNotification(t("verification_success"), "success");
 
             setTimeout(() => {
                 navigation.dispatch(
@@ -108,11 +108,11 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
                         index: 0,
                         routes: [
                             {
-                                name: 'BottomTabs',
+                                name: "BottomTabs",
                                 params: {
-                                    screen: 'SettingStack',
+                                    screen: "SettingStack",
                                     params: {
-                                        screen: 'Account',
+                                        screen: "Account",
                                     },
                                 },
                             },
@@ -122,16 +122,16 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
             }, 100);
         } else {
             const serverError = await response.text();
-            console.error('Lỗi từ server:', serverError);
-            Alert.alert('Lỗi', 'Cập nhật trạng thái thất bại');
+            console.error("Lỗi từ server:", serverError);
+            showNotification(t("update_status_failed"), "error");
         }
 
         await auth().signOut();
     } catch (error: any) {
-        console.error('Lỗi khi xác thực OTP:', error);
-        const errorMessage = error.message || 'Đã xảy ra lỗi';
-        setMessage(`Lỗi: ${errorMessage}`);
-        Alert.alert('Lỗi', `Mã OTP không hợp lệ: ${errorMessage}`);
+        console.error("Lỗi khi xác thực OTP:", error);
+        const errorMessage = error.message || t("unexpected_error");
+        setMessage(t("otp_verify_error_message") + (errorMessage ? `: ${errorMessage}` : ""));
+        showNotification(t("otp_verify_error") + (errorMessage ? `: ${errorMessage}` : ""), "error");
     } finally {
         setVerifying(false);
     }
@@ -175,55 +175,81 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
         } catch (error) {
             const errorMessage = (error as any)?.response?.data?.message || t("verifyOTP.notification.otpSentError");
             Alert.alert("Error", errorMessage);
+         setLoading(false);
+
         } finally {
             setLoading(false);
         }
     };
 
-    const handleVerifyOTP = async () => {
-        if (!otp.trim()) {
-            showNotification(t("verifyOTP.notification.otpInvalid"), "error");
-            return;
-        }
+   const handleVerifyOTP = async () => {
+    if (!otp.trim()) {
+        showNotification(t("verifyOTP.notification.otpInvalid"), "error");
+        return;
+    }
 
-        setLoading(true);
-        if (otpAction === "verify") {
-            await handleVerifyCode();
-            return;
-        }
-        try {
-            const response = await axios.post(
-                `${API_BASE_URL}/api/otp/verify`,
-                null,
-                {
-                    params: { email, otp }, // Sử dụng email thay vì phone
-                }
-            );
+    setLoading(true);
+    if (otpAction === "verify") {
+        await handleVerifyCode();
+        return;
+    }
 
-            if (response.status === 200) {
-                const { result, message } = response.data;
-                if (result === "success") {
-                    showNotification(message || t("verifyOTP.notification.otpSentSuccess"), "success");
-                    if (otpAction === "register") {
-                        await handleSignUp();
-                    } else if (otpAction === "forgotPassword") {
-                        await handleForgotPassword();
-                    }
-                } else {
-                    showNotification(message || t("verifyOTP.notification.otpInvalid"), "error");
-                }
-            } else {
-                showNotification(t("verifyOTP.notification.otpInvalid"), "error");
+    try {
+        const response = await axios.post(
+            `${API_BASE_URL}/api/otp/verify`,
+            null,
+            {
+                params: { email, otp },
+                headers: {
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                },
             }
-        } catch (error) {
-            const errorResponse = (error as any)?.response?.data;
-            const errorMessage = errorResponse?.message || t("verifyOTP.notification.otpExpired");
-            console.error("Lỗi xác minh OTP:", error);
-            showNotification(errorMessage, "error");
-        } finally {
-            setLoading(false);
+        );
+
+        const { result, message } = response.data;
+
+        if (response.status === 200 && result === "success") {
+            showNotification(message || t("verifyOTP.notification.otpSentSuccess"), "success");
+            if (otpAction === "register") {
+                await handleSignUp();
+            } else if (otpAction === "forgotPassword") {
+                await handleForgotPassword();
+            }
+        } else {
+            // Xử lý lỗi từ server
+            if (result === "OTPnotExist") {
+                showNotification(t("verifyOTP.notification.otpNotExist"), "error");
+            } else if (result === "OTPExpired") {
+                showNotification(t("verifyOTP.notification.otpExpired"), "error");
+            } else if (result === "error") {
+                showNotification(message || t("verifyOTP.notification.otpInvalid"), "error");
+            } else {
+                showNotification(t("verifyOTP.notification.serverError"), "error");
+            }
         }
-    };
+    } catch (error: any) {
+        console.error("Lỗi xác minh OTP:", error);
+        if (error.response) {
+            const { result, message } = error.response.data;
+            if (result === "OTPnotExist") {
+                showNotification(t("verifyOTP.notification.otpNotExist"), "error");
+            } else if (result === "OTPExpired") {
+                showNotification(t("verifyOTP.notification.otpExpired"), "error");
+            } else if (result === "error") {
+                showNotification(message || t("verifyOTP.notification.otpInvalid"), "error");
+            } else {
+                showNotification(t("verifyOTP.notification.serverError"), "error");
+            }
+        } else if (error.request) {
+            showNotification(t("verifyOTP.notification.networkError"), "error");
+        } else {
+            showNotification(t("verifyOTP.notification.unexpectedError"), "error");
+        }
+    } finally {
+        setLoading(false);
+    }
+};
 
     const handleSignUp = async () => {
         setLoading(true);
@@ -239,11 +265,11 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
             });
 
             if (response.data.result === "success") {
-                showNotification(t("verifyOTP.notification.otpSentSuccess"), "success");
+                showNotification(t("signupSuccess"), "success");
                 navigation.navigate("Login");
 
             } else {
-                showNotification(response.data.message, "error");
+                showNotification("verifyOTP.notification.otpInvalid", "error");
             }
         } catch (error) {
             showNotification(t("verifyOTP.notification.otpSentError"), "error");
@@ -261,20 +287,12 @@ const VerifyOTPScreen: React.FC<Props> = ({ navigation, route }) => {
             });
 
             if (response.data.result === "success") {
-                showNotification(
-                    t("verifyOTP.notification.otpSentSuccess"),
-                    "success",
-                    [
-                        {
-                            text: "OK",
-                            onPress: () => {
-                                navigation.navigate("Login");
-                            },
-                            color: "primary",
-                        },
-                    ]
-                );
-            } else {
+                showNotification(t("successPasswordChanged"), "success");
+                navigation.navigate("Login");
+            } else if(response.data.result === "emailNotExist") {
+                showNotification(t("error.emailNotFound"), "error");
+            }
+                else {
                 showNotification(response.data.message, "error");
             }
         } catch (error) {

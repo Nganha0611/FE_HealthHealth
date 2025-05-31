@@ -267,11 +267,7 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
       setLoading(true);
 
       const phoneNumber = formData.phone.trim();
-      if (!phoneNumber) {
-        Alert.alert('Lỗi', 'Vui lòng nhập số điện thoại');
-        setLoading(false);
-        return;
-      }
+      
 
       let formattedPhoneNumber = phoneNumber;
       if (formattedPhoneNumber.startsWith('0')) {

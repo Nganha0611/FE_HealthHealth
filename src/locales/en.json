@@ -71,7 +71,9 @@
     "incorrectPassword": "Incorrect password!",
     "emailNotFound": "Email not found!",
     "authError": "Authentication error!",
-    "generalError": "An error occurred. Please try again!"
+    "generalError": "An error occurred. Please try again!",
+    "invalidResponse": "Invalid response from server!",
+    "noUserId": "No user ID found!"
   },
   "placeholder": {
     "emailOrPhone": "Email or Phone Number",
@@ -294,6 +296,7 @@
   "note": "Note",
   "enterNote": "Enter note",
   "location": "Location",
+  "noContacts": "No emergency contacts found.",
   "enterLocation": "Enter location",
   "noMedicalHistory": "No medical history to display.",
   "noNote": "Not updated",
@@ -424,5 +427,37 @@
   "follow": "Follower",
   "notification": "Notification",
   "noNotifications": "No notifications available.",
-  "detail": "Details"
+  "detail": "Details",
+  "request_in_progress": "Request is in progress, please wait",
+  "email_already_exists": "Email already exists, please use a different email",
+  "network_error": "Network error, please check your connection",
+  "server_error": "Server error, please try again later",
+  "unexpected_error": "An unexpected error occurred, please try again",
+  "otp_not_sent": "You need to send OTP before verifying",
+  "invalid_phone_number": "Invalid phone number",
+  "no_auth_token": "No authentication token found",
+  "no_auth_token_message": "Error: authentication token does not exist",
+  "verifying_otp": "Verifying OTP...",
+  "otp_not_exist": "OTP does not exist",
+  "otp_not_exist_message": "Error: OTP does not exist, please request a new one",
+  "otp_expired": "OTP has expired",
+  "otp_expired_message": "Error: OTP has expired, please request a new one",
+  "otp_verify_error": "OTP verification failed",
+  "otp_verify_error_message": "Error: OTP verification failed",
+  "network_error_message": "Network error, please check your internet connection",
+  "server_error_message": "Server error, please try again later",
+  "unexpected_error_message": "An unexpected error occurred, please try again",
+  "verifyOTP": {
+    "notification": {
+      "otpInvalid": "Invalid OTP",
+      "otpNotExist": "OTP does not exist, please request a new one",
+      "otpExpired": "OTP has expired, please request a new one",
+      "otpSentSuccess": "OTP verified successfully",
+      "otpSentError": "Failed to verify OTP, please try again",
+      "serverError": "Server error, please try again later",
+      "networkError": "Network error, please check your internet connection",
+      "unexpectedError": "An unexpected error occurred, please try again"
+    }
+  },
+   "signupSuccess": "Sign up successful! Please log in to continue."
 }

@@ -65,57 +65,65 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      showNotification(t('error.emailPasswordRequired'), 'error');
-      return;
-    }
+  if (!email || !password) {
+    showNotification(t('error.emailPasswordRequired'), 'error');
+    return;
+  }
 
-    setLoading(true);
+  setLoading(true);
+  // [lg-3] 
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/api/auth/login`,
+      { email, password }
+    );
 
-    try {
-      const response = await axios.post(
-        `${API_BASE_URL}/api/auth/login`,
-        { email, password }
-      );
+    const { result, token, user, message } = response.data;
 
-      const { result, message, token, user } = response.data;
-
-      if (result === 'success' && token && user) {
-        showNotification(t('loginSuccess'), 'success');
-        await AsyncStorage.setItem('token', token);
-        await AsyncStorage.setItem('user', JSON.stringify(user));
-        const userId = user.id || user.userId;
-        if (userId) {
-          await AsyncStorage.setItem('userId', userId.toString());
-          console.log('Login - UserId saved:', userId);
-        } else {
-          console.error('Login - No userId found in user object:', user);
-        }
-
-        console.log('Login successful:', user.isVerify);
-        await saveFcmToken(token);
-        await login(token, user);
-      } else {
-        showNotification(t('error.loginFailed'), 'error');
+    if (result === 'success') {
+      if (!token || !user) {
+        showNotification(t('error.invalidResponse'), 'error');
+        return;
       }
-    } catch (error) {
-      if (axios.isAxiosError(error) && error.response) {
-        const { status, data } = error.response;
-        if (status === 401 && data.result === 'wrongPassword') {
-          showNotification(t('error.incorrectPassword'), 'error');
-        } else if (status === 404 && data.result === 'emailNotExist') {
-          showNotification(t('error.emailNotFound'), 'error');
-        } else {
-          showNotification(t('error.authError'), 'error');
-        }
+      //  [lg-16] 
+      showNotification(t('loginSuccess'), 'success');
+      await AsyncStorage.setItem('token', token);
+      await AsyncStorage.setItem('user', JSON.stringify(user));
+
+      const userId = user.id || user.userId;
+      if (userId) {
+        await AsyncStorage.setItem('userId', userId.toString());
       } else {
-        console.error('Unknown error:', error);
-        showNotification(t('error.generalError'), 'error');
+        showNotification(t('error.noUserId'), 'warning');
       }
-    } finally {
-      setLoading(false);
+
+      await saveFcmToken(token);
+      await login(token, user);
+    } else {
+      showNotification(t('error.loginFailed'), 'error');
     }
-  };
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response) {
+      const { status, data } = error.response;
+      const errorMessage = data.message || t('error.generalError'); 
+
+      if (status === 401 && data.result === 'wrongPassword') {
+        // [lg-18]
+        showNotification(errorMessage || t('error.incorrectPassword'), 'error');
+      } else if (status === 404 && data.result === 'emailNotExist') {
+        // [lg-11]
+        showNotification(t('error.emailNotFound'), 'error');
+      } else {
+        showNotification(errorMessage || t('error.authError'), 'error');
+      }
+    } else {
+      showNotification(t('error.networkError'), 'error');
+      console.error('Login - Network or unexpected error:', error);
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   React.useEffect(() => {
     const unsubscribe = messaging().onTokenRefresh(async (newToken) => {
@@ -145,10 +153,10 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         source={require('../../assets/login.png')}
         style={styles.illustration}
       />
-
+    {/* [lg] 1: Nhập email và mật khẩu */}
       <TextInput
         style={styles.input}
-        placeholder={t('placeholder.emailOrPhone')}
+        placeholder={t('placeholder.email')}
         placeholderTextColor="#888"
         value={email}
         onChangeText={setEmail}
@@ -185,7 +193,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
           </Text>
         </TouchableOpacity>
       </View>
-
+      {/* [lg] 2. Nhấn "Đăng nhập" */}
       <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
         <Text style={styles.loginButtonText}>{t('loginButton')}</Text>
       </TouchableOpacity>
