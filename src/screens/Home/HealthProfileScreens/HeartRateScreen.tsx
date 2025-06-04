@@ -106,6 +106,9 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         setAverageHeartRate(null);
         setFilteredHistory([]);
         return;
+      } else {
+        showNotification(t('sessionExpired'), 'error');
+        return;
       }
 
       interface HeartRateApiResponse {

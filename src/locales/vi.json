@@ -445,7 +445,21 @@
       "unexpectedError": "Đã xảy ra lỗi không xác định, vui lòng thử lại"
     }
   },
-  "signupSuccess": "Đăng ký thành công, vui lòng đăng nhập để tiếp tục"
- 
+  "signupSuccess": "Đăng ký thành công, vui lòng đăng nhập để tiếp tục",
+  "noAuthToken": "Không tìm thấy token xác thực. Vui lòng đăng nhập lại.",
+  "heartRateExists": "Bản ghi nhịp tim đã tồn tại trong hệ thống.",
+  "measureHeartRateSuccess": "Đo nhịp tim thành công!",
+  "unauthorizedError": "Bạn cần đăng nhập lại để thực hiện hành động này.",
+  "serverError": "Lỗi server. Vui lòng thử lại sau.",
+  "networkError": "Lỗi mạng. Vui lòng kiểm tra kết nối và thử lại.",
+  "measureError": "Có lỗi xảy ra khi đo nhịp tim. Vui lòng thử lại.",
+  "invalidInput": "Giá trị không hợp lệ",
+  "measureSuccess": "Đo huyết áp thành công",
+  "bloodPressureExists": "Bản ghi huyết áp đã tồn tại",
+  "measureBloodPressureSuccess": "Đo huyết áp thành công",
+  "invalidNumberInput": "Giá trị số không hợp lệ",
+  "medicineNotFound": "Không tìm thấy thuốc",
+  "requestAlreadyExists_pending": "Yêu cầu theo dõi đã tồn tại và đang chờ xử lý",
+  "requestAlreadyExists_accepted": "Bạn đã theo dõi người dùng này"
 
 }

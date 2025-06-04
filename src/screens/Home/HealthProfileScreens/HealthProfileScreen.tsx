@@ -812,86 +812,151 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleMeasureBloodPressure = async () => {
-    if (!sysValue || !diaValue || isNaN(parseInt(sysValue)) || isNaN(parseInt(diaValue))) {
+  if (!sysValue || !diaValue || isNaN(parseInt(sysValue)) || isNaN(parseInt(diaValue))) {
       showNotification(t('invalidInput'), 'error');
       return;
     }
-    setLoading(true);
-    try {
-      const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        showNotification(t('noAuthToken'), 'error');
-        return;
-      }
-      const payload: BloodPressurePayload = {
+
+  setLoading(true);
+  try {
+    // Lấy token từ AsyncStorage
+    const token = await AsyncStorage.getItem('token');
+    if (!token) {
+      showNotification(t('noAuthToken'), 'error'); // "Không tìm thấy token xác thực"
+      return;
+    }
+
+   const payload: BloodPressurePayload = {
         systolic: parseInt(sysValue),
         diastolic: parseInt(diaValue),
         createdAt: combineDateTime(measurementDate),
         userId,
       };
-      const endpoints = [
-        `${API_BASE_URL}/api/blood-pressures/measure`,
-      ];
-      await tryEndpoints(endpoints, 'post', payload, {
-        Authorization: `Bearer ${token}`,
-        'Cache-Control': 'no-cache',
-      });
-      setSysValue(null);
-      setDiaValue(null);
-      setMeasurementDate(new Date());
-      await fetchDataErrorLatestBloodPressure();
-      if (userId) {
-        await fetchDataErrorBloodPressureData(userId);
-      }
-      showNotification(t('measureSuccess'), 'success');
-    } catch (error) {
-      showNotification(t('measureError'), 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const handleMeasureHeartRate = async () => {
-    const rateValue = parseInt(inputValue);
-    if (!inputValue.trim() || isNaN(rateValue) || rateValue <= 0 || rateValue > 300) {
-      showNotification(t('invalidInput'), 'error');
+    const endpoints = [
+      `${API_BASE_URL}/api/blood-pressures/measure`,
+    ];
+
+    const response = await tryEndpoints(endpoints, 'post', payload, {
+      Authorization: `Bearer ${token}`,
+      'Cache-Control': 'no-cache',
+    });
+
+    if (response.status === 200) {
+      showNotification(t('bloodPressureExists'), 'warning'); // "Bản ghi huyết áp đã tồn tại"
+    } else if (response.status === 201) {
+      showNotification(t('measureBloodPressureSuccess'), 'success'); // "Đo huyết áp thành công"
+    }
+
+    // Cập nhật state
+    setSysValue('');
+    setDiaValue('');
+    setMeasurementDate(new Date());
+
+    // Cập nhật dữ liệu liên quan
+    await fetchDataErrorLatestBloodPressure();
+    if (userId) {
+      await fetchDataErrorBloodPressureData(userId);
+    }
+
+    setModalVisible(false);
+  } catch (error: any) {
+    // Xử lý lỗi từ backend
+    if (error.response) {
+      // Lỗi có response từ server
+      const status = error.response.status;
+      if (status === 401) {
+        showNotification(t('unauthorizedError'), 'error'); // "Không được phép"
+      } else if (status === 500) {
+        showNotification(t('serverError'), 'error'); // "Lỗi server"
+      } else {
+        showNotification(t('measureError'), 'error'); // "Lỗi khi đo huyết áp"
+      }
+    } else if (error.request) {
+      showNotification(t('networkError'), 'error'); // "Lỗi mạng"
+    } else {
+      showNotification(t('measureError'), 'error'); // "Lỗi khi đo huyết áp"
+    }
+  } finally {
+    setLoading(false);
+  }
+};
+
+  
+const handleMeasureHeartRate = async () => {
+  const rateValue = parseInt(inputValue);
+  
+  // Kiểm tra input đầu vào
+  if (!inputValue.trim() || isNaN(rateValue) || rateValue <= 0 || rateValue > 300) {
+    showNotification(t('invalidInput'), 'error'); // "Giá trị không hợp lệ"
+    return;
+  }
+
+  setLoading(true);
+  try {
+    // Lấy token từ AsyncStorage
+    const token = await AsyncStorage.getItem('token');
+    if (!token) {
+      showNotification(t('noAuthToken'), 'error'); // "Không tìm thấy token xác thực"
       return;
     }
-    setLoading(true);
-    try {
-      const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        showNotification(t('noAuthToken'), 'error');
-        return;
-      }
-      const payload: HeartRatePayload = {
-        heartRate: rateValue,
-        createdAt: combineDateTime(measurementDate),
-        userId,
-      };
-      const endpoints = [
-        `${API_BASE_URL}/api/heart-rates/measure`,
-      ];
-      const response = await tryEndpoints(endpoints, 'post', payload, {
-        Authorization: `Bearer ${token}`,
-        'Cache-Control': 'no-cache',
-      });
-      setHeartRate(response.data?.heartRate.toString() ?? rateValue.toString());
-      setHeartRateDate(response.data?.createdAt ?? combineDateTime(measurementDate));
-      setInputValue('');
-      setMeasurementDate(new Date());
-      await fetchDataErrorLatestHeartRate();
-      if (userId) {
-        await fetchDataErrorHeartRateData(userId);
-      }
-      showNotification(t('measureHeartRateSucess'), 'success');
-      setModalVisible(false);
-    } catch (error) {
-      showNotification(t('measureError'), 'error');
-    } finally {
-      setLoading(false);
+
+    // Chuẩn bị payload
+    const payload: HeartRatePayload = {
+      heartRate: rateValue,
+      createdAt: combineDateTime(measurementDate),
+      userId,
+    };
+
+    const endpoints = [
+      `${API_BASE_URL}/api/heart-rates/measure`,
+    ];
+
+    const response = await tryEndpoints(endpoints, 'post', payload, {
+      Authorization: `Bearer ${token}`,
+      'Cache-Control': 'no-cache',
+    });
+
+    if (response.status === 200) {
+      showNotification(t('heartRateExists'), 'warning'); 
+    } else if (response.status === 201) {
+      showNotification(t('measureHeartRateSuccess'), 'success'); 
     }
-  };
+
+    // Cập nhật state
+    setHeartRate(response.data?.heartRate.toString() ?? rateValue.toString());
+    setHeartRateDate(response.data?.createdAt ?? combineDateTime(measurementDate));
+    setInputValue('');
+    setMeasurementDate(new Date());
+
+    // Cập nhật dữ liệu liên quan
+    await fetchDataErrorLatestHeartRate();
+    if (userId) {
+      await fetchDataErrorHeartRateData(userId);
+    }
+
+    setModalVisible(false);
+  } catch (error: any) {
+    // Xử lý lỗi từ backend
+    if (error.response) {
+      // Lỗi có response từ server
+      const status = error.response.status;
+      if (status === 401) {
+        showNotification(t('unauthorizedError'), 'error'); 
+      } else if (status === 500) {
+        showNotification(t('serverError'), 'error'); 
+      } else {
+        showNotification(t('measureError'), 'error'); 
+      }
+    } else if (error.request) {
+      showNotification(t('networkError'), 'error'); 
+    } else {
+      showNotification(t('measureError'), 'error'); 
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleMeasurePress = () => {
     setTypeSelectModalVisible(true);

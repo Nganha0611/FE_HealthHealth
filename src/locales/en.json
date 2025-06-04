@@ -459,5 +459,21 @@
       "unexpectedError": "An unexpected error occurred, please try again"
     }
   },
-   "signupSuccess": "Sign up successful! Please log in to continue."
+   "signupSuccess": "Sign up successful! Please log in to continue.",
+  "noAuthToken": "No authentication token found. Please log in again.",
+  "heartRateExists": "This heart rate record already exists in the system.",
+  "measureHeartRateSuccess": "Heart rate measured successfully!",
+  "unauthorizedError": "You need to log in again to perform this action.",
+  "serverError": "Server error. Please try again later.",
+  "networkError": "Network error. Please check your connection and try again.",
+  "measureError": "An error occurred while measuring heart rate. Please try again.",
+  "invalidInput": "Invalid input value",
+  "measureSuccess": "Blood pressure measured successfully",
+  "bloodPressureExists": "Blood pressure record already exists",
+  "measureBloodPressureSuccess": "Blood pressure measured successfully",
+  "invalidNumberInput": "Invalid number input",
+  "medicineNotFound": "Medicine not found",
+  "requestAlreadyExists_pending": "A follow request is already pending for this user.",
+  "requestAlreadyExists_accepted": "You are already following this user."
+
 }

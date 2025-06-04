@@ -55,35 +55,48 @@ const MedicalHistoryScreen: React.FC<Props> = ({ navigation }) => {
   ];
 
   // Function to fetch medical history data from API
-  const fetchData = async () => {
-    setLoading(true);
-    try {
-      const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        showNotification(t('noToken'), 'error');
-        navigation.navigate('Login');
-        return;
-      }
-
-      const historyResponse = await axios.get<MedicalHistory[]>(
-        `${API_BASE_URL}/api/medical-history`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-
-      const fetchedHistory = historyResponse.data;
-      setMedicalHistory(fetchedHistory);
-    } catch (error: any) {
-      console.error('Error fetching data:', error.response?.data || error.message);
-      showNotification(t('fetchDataError'), 'error');
-    } finally {
-      setLoading(false);
+const fetchData = async () => {
+  setLoading(true);
+  try {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) {
+      showNotification('Không tìm thấy token. Vui lòng đăng nhập lại.', 'error');
+      navigation.navigate('Login');
+      return;
     }
-  };
+
+    const historyResponse = await axios.get<MedicalHistory[]>(
+      `${API_BASE_URL}/api/medical-history`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      }
+    );
+
+    const fetchedHistory = historyResponse.data || []; 
+    setMedicalHistory(fetchedHistory);
+    console.log('Lịch sử y tế:', fetchedHistory);
+  } catch (error: any) {
+    if (error.response) {
+      if (error.response.status === 401) {
+        showNotification(t('sessionExpired'), 'error');
+        await AsyncStorage.removeItem('token');
+        navigation.navigate('Login');
+      } else {
+        showNotification(
+          t('fetchPrescriptionError'),
+          'error'
+        );
+      }
+    } else {
+      showNotification(t('fetchPrescriptionError'), 'error');
+    }
+  } finally {
+    setLoading(false);
+  }
+};
 
   // Call fetchData when component mounts
   useEffect(() => {

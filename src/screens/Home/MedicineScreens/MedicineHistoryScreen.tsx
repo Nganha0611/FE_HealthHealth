@@ -67,41 +67,46 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
   const medicineItems = medicines.map(med => ({ label: med.name, value: med.name }));
 
   const fetchData = async () => {
-    try {
-      const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        showNotification(t('noToken'), 'error');
-        navigation.navigate('Login');
-        return;
-      }
+  try {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) {
+      showNotification(t('noAuthToken'), 'error');
+      navigation.navigate('Login');
+      return;
+    }
 
-      const [medicineResponse, historyResponse] = await Promise.all([
-        axios.get<Medicine[]>(`${API_BASE_URL}/api/prescriptions`, { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get<MedicineHistory[]>(`${API_BASE_URL}/api/medicine-history`, { headers: { Authorization: `Bearer ${token}` } }),
-      ]);
+    const [medicineResponse, historyResponse] = await Promise.all([
+      axios.get<Medicine[]>(`${API_BASE_URL}/api/prescriptions`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+      axios.get<MedicineHistory[]>(`${API_BASE_URL}/api/medicine-history`, {
+        headers: { Authorization: `Bearer ${token}` },
+      }),
+    ]);
 
-      const fetchedMedicines = medicineResponse.data;
-      const fetchedHistory = historyResponse.data.map(history => ({
-        ...history,
-        medicineName: history.medicineName?.trim(), // Chuẩn hóa medicineName
-      }));
+    const fetchedMedicines = medicineResponse.data;
+    const fetchedHistory = historyResponse.data.map(history => ({
+      ...history,
+      medicineName: history.medicineName?.trim() || t('unknownMedicine'),
+    }));
 
-      setMedicines(fetchedMedicines);
-      setMedicineHistory(fetchedHistory);
-      console.log('Fetched Medicines:', fetchedMedicines);
-      console.log('Fetched History:', fetchedHistory);
-    } catch (error: any) {
-      showNotification(t('fetchDataError'), 'error');
-      if (error.response && error.response.status === 401) {
-        showNotification(t('sessionExpired'), 'error');
+    setMedicines(fetchedMedicines);
+    setMedicineHistory(fetchedHistory);
+   
+  } catch (error: any) {
+    if (error.response) {
+      if (error.response.status === 401) {
+        showNotification(t('serverError'), 'error');
         await AsyncStorage.removeItem('token');
         navigation.navigate('Login');
       } else {
-        showNotification(t('fetchDataError'), 'error');
+        showNotification(t('serverError'), 'error');
       }
+    } else {
+      showNotification(t('networkError'), 'error');
     }
-  };
-
+  }
+};
   useEffect(() => {
     fetchData();
   }, []);
@@ -139,10 +144,9 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
       const data = {
         medicineName: selectedMedicine.trim().toLowerCase(),
         timestamp: timestampStr,
-        status: status.toUpperCase(), // Đảm bảo gửi "PENDING" lên DB
+        status: status.toUpperCase(), 
         note,
       };
-      console.log('Saving history with medicineName:', selectedMedicine);
 
       if (selectedHistoryId) {
         await axios.put(

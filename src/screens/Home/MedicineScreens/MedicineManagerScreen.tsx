@@ -138,7 +138,6 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
 
       setMedicines(data);
     } catch (error: any) {
-      console.error('Error fetching prescriptions:', error);
       if (error.response && error.response.status === 401) {
         showNotification(t('sessionExpired'), 'error');
         await AsyncStorage.removeItem('token');
@@ -250,120 +249,171 @@ const MedicineManagerScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleSavePrescription = async () => {
-    if (!name || !form || !strength || !unit || !amount || !repeatType || !repeatInterval || !startday) {
-      showNotification(t('incompleteMedicineInfo'), 'error');
+  // Kiểm tra input đầu vào
+  if (
+    !name?.trim() ||
+    !form?.trim() ||
+    !strength?.trim() ||
+    !unit?.trim() ||
+    !amount?.trim() ||
+    !repeatType?.trim() ||
+    !repeatInterval?.trim() ||
+    !startday
+  ) {
+    showNotification(t('incompleteMedicineInfo'), 'error'); // "Thông tin thuốc không đầy đủ"
+    return;
+  }
+
+  if (selectedTimesPerDay.length === 0) {
+    showNotification(t('noTimeSelected'), 'error'); // "Chưa chọn thời gian uống thuốc"
+    return;
+  }
+
+  // Kiểm tra các giá trị số
+  const strengthNum = parseFloat(strength);
+  const amountNum = parseInt(amount);
+  const repeatIntervalNum = parseInt(repeatInterval);
+  if (
+    isNaN(strengthNum) ||
+    strengthNum <= 0 ||
+    isNaN(amountNum) ||
+    amountNum <= 0 ||
+    isNaN(repeatIntervalNum) ||
+    repeatIntervalNum <= 0
+  ) {
+    showNotification(t('invalidNumberInput'), 'error'); // "Giá trị số không hợp lệ"
+    return;
+  }
+
+  const medicine: Medicine = {
+    name,
+    form,
+    strength,
+    unit,
+    amount,
+    instruction,
+    startday,
+    repeatDetails: {
+      type: repeatType,
+      interval: repeatInterval,
+      daysOfWeek: selectedDaysOfWeek,
+      daysOfMonth: selectedDaysOfMonth,
+      timePerDay: selectedTimesPerDay,
+    },
+  };
+
+  try {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) {
+      showNotification(t('noToken'), 'error'); // "Không tìm thấy token xác thực"
+      navigation.navigate('Login');
       return;
     }
 
-    if (selectedTimesPerDay.length === 0) {
-      showNotification(t('noTimeSelected'), 'error');
-      return;
+    let response:any;
+    if (currentMedicineId) {
+      // Cập nhật thuốc
+      response = await axios.put(
+        `${API_BASE_URL}/api/prescriptions/${currentMedicineId}`,
+        medicine,
+        { headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' } }
+      );
+      setMedicines((prev) =>
+        prev.map((med) => (med.id === currentMedicineId ? response.data : med))
+      );
+      showNotification(t('medicineUpdated'), 'success'); // "Cập nhật thuốc thành công"
+    } else {
+      // Thêm mới thuốc
+      response = await axios.post(
+        `${API_BASE_URL}/api/prescriptions`,
+        medicine,
+        { headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' } }
+      );
+      setMedicines((prev) => [...prev, response.data]);
+      showNotification(t('medicineAdded'), 'success'); // "Thêm thuốc thành công"
     }
 
-    const medicine: Medicine = {
-      name,
-      form,
-      strength,
-      unit,
-      amount,
-      instruction,
-      startday,
-      repeatDetails: {
-        type: repeatType,
-        interval: repeatInterval,
-        daysOfWeek: selectedDaysOfWeek,
-        daysOfMonth: selectedDaysOfMonth,
-        timePerDay: selectedTimesPerDay,
-      },
-    };
-
-    try {
-      const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        showNotification(t('noToken'), 'error');
-        navigation.navigate('Login');
-        return;
-      }
-
-      if (currentMedicineId) {
-        const response = await axios.put(
-          `${API_BASE_URL}/api/prescriptions/${currentMedicineId}`,
-          medicine,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        setMedicines(prev =>
-          prev.map(med => (med.id === currentMedicineId ? response.data : med))
-        );
-        showNotification(t('medicineUpdated'), 'success');
-      } else {
-        const response = await axios.post(
-          `${API_BASE_URL}/api/prescriptions`,
-          medicine,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        setMedicines(prev => [...prev, response.data]);
-        showNotification(t('medicineAdded'), 'success');
-      }
-
-      setModalVisible(false);
-      resetForm();
-    } catch (error: any) {
-      console.error('Error saving prescription:', error);
-      if (error.response && error.response.status === 401) {
-        showNotification(t('sessionExpired'), 'error');
+    setModalVisible(false);
+    resetForm();
+  } catch (error: any) {
+    // Xử lý lỗi từ backend
+    if (error.response) {
+      const status = error.response.status;
+      if (status === 401) {
+        showNotification(t('unauthorizedError'), 'error');
         await AsyncStorage.removeItem('token');
         navigation.navigate('Login');
+      } else if (status === 404) {
+        showNotification(t('medicineNotFound'), 'error');
+      } else if (status === 500) {
+        showNotification(t('serverError'), 'error'); 
       } else {
         showNotification(t('saveMedicineError'), 'error');
       }
+    } else if (error.request) {
+      showNotification(t('networkError'), 'error'); 
+    } else {
+      showNotification(t('saveMedicineError'), 'error'); 
     }
-  };
+  } finally {
+  }
+};
 
   const handleDeleteMedicine = async (id: string) => {
-    showNotification(
-      t('confirmDelete'),
-      'warning',
-      [
-        {
-          text: t('cancel'),
-          onPress: () => {},
-          color: 'danger',
-        },
-        {
-          text: t('delete'),
-          onPress: async () => {
-            try {
-              const token = await AsyncStorage.getItem('token');
-              if (!token) {
-                showNotification(t('noToken'), 'error');
-                navigation.navigate('Login');
-                return;
-              }
-  
-              await axios.delete(`${API_BASE_URL}/api/prescriptions/${id}`, {
-                headers: { Authorization: `Bearer ${token}` },
-              });
-  
-              setMedicines(prev => prev.filter(med => med.id !== id));
-              showNotification(t('medicineDeleted'), 'success');
-              setModalVisible(false);
-            } catch (error: any) {
-              console.error('Error deleting medicine:', error);
-              if (error.response && error.response.status === 401) {
-                showNotification(t('sessionExpired'), 'error');
-                await AsyncStorage.removeItem('token');
-                navigation.navigate('Login');
-              } else {
-                showNotification(t('deleteMedicineError'), 'error');
-              }
+  showNotification(
+    t("confirmDelete"),
+    "warning",
+    [
+      {
+        text: t("cancel"),
+        onPress: () => {},
+        color: "danger",
+      },
+      {
+        text: t("delete"),
+        onPress: async () => {
+          try {
+            const token = await AsyncStorage.getItem("token");
+            if (!token) {
+              showNotification(t("noToken"), "error"); 
+              navigation.navigate("Login");
+              return;
             }
-          },
-          color: 'primary',
-        },
-      ]
-    );
-  };
 
+            await axios.delete(`${API_BASE_URL}/api/prescriptions/${id}`, {
+              headers: { Authorization: `Bearer ${token}`, "Cache-Control": "no-cache" },
+              timeout: 20000,
+            });
+
+            setMedicines((prev) => prev.filter((med) => med.id !== id));
+            showNotification(t("medicineDeleted"), "success");
+            setModalVisible(false);
+          } catch (error: any) {
+            if (error.response) {
+              const status = error.response.status;
+              if (status === 401) {
+                showNotification(t("unauthorizedError"), "error"); 
+                await AsyncStorage.removeItem("token");
+                navigation.navigate("Login");
+              } else if (status === 404) {
+                showNotification(t("medicineNotFound"), "error"); 
+              } else if (status === 500) {
+                showNotification(t("serverError"), "error"); 
+              } else {
+                showNotification(t("deleteMedicineError"), "error"); 
+              }
+            } else if (error.request) {
+              showNotification(t("networkError"), "error"); 
+            } else {
+              showNotification(t("deleteMedicineError"), "error");
+            }
+          }
+        },
+        color: "primary",
+      },
+    ]
+  );
+};
   const getMedicineFormLabel = (value: string): string => {
     const item = medicineFormItems.find(item => item.value === value);
     return item ? item.label : value;

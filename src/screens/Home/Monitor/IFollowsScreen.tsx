@@ -176,11 +176,15 @@ const IFollowsScreen: React.FC<Props> = ({ navigation }) => {
       showNotification(t('requestSentSuccess'), 'success');
     } catch (error) {
       if (axios.isAxiosError(error)) {
-        if (error.response?.status === 404 && error.response?.data?.result === 'userNotFound') {
+        if ((error.response?.status === 404) && error.response?.data?.result === 'userNotFound') {
           showNotification(t('error.emailNotFound'), 'error');
-        } else if (error.response?.status === 409) {
-          showNotification(t('requestAlreadyExists'), 'error');
-        } else {
+        } else if (error.response?.status === 409 && error.response?.data?.result === 'pending') {
+          showNotification(t('requestAlreadyExists_pending'), 'error');
+        } else if (error.response?.status === 409 && error.response?.data?.result === 'appoved') {
+          showNotification(t('requestAlreadyExists_accepted'), 'error');
+        }else if(error.response?.status === 401) {
+          showNotification("unauthorizedError", "error")   
+         }else {
           showNotification(t('sendRequestError'), 'error');
         }
       } else {
