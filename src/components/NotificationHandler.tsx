@@ -7,7 +7,6 @@ const NotificationHandler = () => {
   const { showNotification } = useNotifee();
 
   useEffect(() => {
-    // Xử lý thông báo khi ứng dụng ở foreground
     const unsubscribe = messaging().onMessage(async (remoteMessage) => {
       console.log("Foreground message received:", remoteMessage);
 

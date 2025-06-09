@@ -4,10 +4,8 @@ import HomeScreen from '../screens/Home/HomeScreen';
 import HealthProfileScreen from '../screens/Home/HealthProfileScreens/HealthProfileScreen';
 import MedicineScreen from '../screens/Home/MedicineScreens/MedicineScreen';
 import ScheduleScreen from '../screens/Home/ScheduleScreen';
-import EatingDiaryScreen from '../screens/Home/EatingDiaryScreen';
-import NutritionScreen from '../screens/Home/NutritionScreen';
 import MedicalHistoryScreen from '../screens/Home/MedicalScreens/MedicalHistoryScreen';
-import EmergencyContactScreen from '../screens/Home/EmergencyContact';
+import EmergencyContactScreen from '../screens/Home/EmergencyContactScreen';
 import HeartRateScreen from '../screens/Home/HealthProfileScreens/HeartRateScreen';
 import BloodPressureScreen from '../screens/Home/HealthProfileScreens/BloodPressureScreen';
 import StepScreen from '../screens/Home/HealthProfileScreens/StepScreen';
@@ -58,8 +56,6 @@ const HomeStack = () => {
       <Stack.Screen name="HealthProfile" component={HealthProfileScreen} /> 
       <Stack.Screen name="Medicine" component={MedicineScreen} />
       <Stack.Screen name="Schedule" component={ScheduleScreen} />
-      <Stack.Screen name="EatingDiary" component={EatingDiaryScreen} />
-      <Stack.Screen name="Nutrition" component={NutritionScreen} />
       <Stack.Screen name="MedicalHistory" component={MedicalHistoryScreen} />
       <Stack.Screen name="EmergencyContact" component={EmergencyContactScreen} /> 
       <Stack.Screen name="HeartRate" component={HeartRateScreen} />

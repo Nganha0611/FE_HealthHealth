@@ -39,105 +39,103 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
     const { showNotification } = useNotification();
 
     const handleSendOTP = async () => {
-    // Kiểm tra dữ liệu đầu vào
-    if (!name || !email || !password || !birth || !gender || !numberPhone || !address) {
-        showNotification(t("complete_form"), "error");
-        return;
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-        showNotification(t("invalid_email"), "error");
-        return;
-    }
-
-    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    if (!passwordRegex.test(password)) {
-        showNotification(t("password_requirements"), "error");
-        return;
-    }
-
-    if (password !== rePassword) {
-        showNotification(t("password_mismatch"), "error");
-        return;
-    }
-
-    // Ngăn gửi yêu cầu nếu đang xử lý
-    if (loading) {
-        showNotification(t("request_in_progress"), "warning");
-        return;
-    }
-
-    setLoading(true);
-
-    try {
-        const response = await axios.post(
-            `${API_BASE_URL}/api/otp/send?email=${encodeURIComponent(email)}`,
-            {},
-            {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                },
-            }
-        );
-
-        // Xử lý phản hồi thành công
-        if (response.status === 200 && response.data.result === "success") {
-            showNotification(t("otp_sent_success"), "success");
-            navigation.navigate("VerifyOTP", {
-                email,
-                name,
-                password,
-                birth,
-                gender,
-                numberPhone,
-                address,
-                otpAction: "register",
-            });
-        } else {
-            // Xử lý các trường hợp lỗi từ API
-            if (response.data.result === "emailExist") {
-                showNotification(t("email_already_exists"), "error");
-            } else {
-                showNotification(response.data.message || t("otp_send_error"), "error");
-            }
+        // Kiểm tra dữ liệu đầu vào
+        if (!name || !email || !password || !birth || !gender || !numberPhone || !address) {
+            showNotification(t("complete_form"), "error");
+            return;
         }
-    } catch (error: any) {
-        // Xử lý lỗi từ axios (mạng, timeout, hoặc API trả về lỗi)
-        if (error.response) {
-            // API trả về lỗi với mã trạng thái (400, 500, v.v.)
-            const { status, data } = error.response;
-            if (status === 400) {
-                if (data.result === "emailExist") {
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            showNotification(t("invalid_email"), "error");
+            return;
+        }
+
+        const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+        if (!passwordRegex.test(password)) {
+            showNotification(t("password_requirements"), "error");
+            return;
+        }
+
+        if (password !== rePassword) {
+            showNotification(t("password_mismatch"), "error");
+            return;
+        }
+
+        // Ngăn gửi yêu cầu nếu đang xử lý
+        if (loading) {
+            return;
+        }
+
+        setLoading(true);
+
+        try {
+            const response = await axios.post(
+                `${API_BASE_URL}/api/otp/send?email=${encodeURIComponent(email)}`,
+                {},
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                    },
+                }
+            );
+
+            // Xử lý phản hồi thành công
+            if (response.status === 200 && response.data.result === "success") {
+                showNotification(t("otp_sent_success"), "success");
+                navigation.navigate("VerifyOTP", {
+                    email,
+                    name,
+                    password,
+                    birth,
+                    gender,
+                    numberPhone,
+                    address,
+                    otpAction: "register",
+                });
+            } else {
+                // Xử lý các trường hợp lỗi từ API
+                if (response.data.result === "emailExist") {
                     showNotification(t("email_already_exists"), "error");
-                } else if (data.result === "error") {
-                    showNotification(data.message || t("otp_send_error"), "error");
+                } else {
+                    showNotification(response.data.message || t("otp_send_error"), "error");
+                }
+            }
+        } catch (error: any) {
+            // Xử lý lỗi từ axios (mạng, timeout, hoặc API trả về lỗi)
+            if (error.response) {
+                // API trả về lỗi với mã trạng thái (400, 500, v.v.)
+                const { status, data } = error.response;
+                if (status === 400) {
+                    if (data.result === "emailExist") {
+                        showNotification(t("email_already_exists"), "error");
+                    } else if (data.result === "error") {
+                        showNotification(data.message || t("otp_send_error"), "error");
+                    } else {
+                        showNotification(t("otp_send_error"), "error");
+                    }
+                } else if (status === 500) {
+                    showNotification(t("server_error"), "error");
                 } else {
                     showNotification(t("otp_send_error"), "error");
                 }
-            } else if (status === 500) {
-                showNotification(t("server_error"), "error");
+            } else if (error.request) {
+                // Không nhận được phản hồi từ server (mạng lỗi)
+                showNotification(t("network_error"), "error");
             } else {
-                showNotification(t("otp_send_error"), "error");
+                // Lỗi khác (cấu hình sai, v.v.)
+                showNotification(t("unexpected_error"), "error");
             }
-        } else if (error.request) {
-            // Không nhận được phản hồi từ server (mạng lỗi)
-            showNotification(t("network_error"), "error");
-        } else {
-            // Lỗi khác (cấu hình sai, v.v.)
-            showNotification(t("unexpected_error"), "error");
+        } finally {
+            setLoading(false);
         }
-    } finally {
-        setLoading(false);
-    }
-};
+    };
 
     return (
         <View style={styles.container}>
             <Text style={styles.welcomeText}>{t("welcome_message")}</Text>
             <Text style={styles.loginText}>{t("sign_up")}</Text>
-            {/* [Rg-1] */}
             <TextInput
                 style={styles.input}
                 placeholder={t("placeholder.fullName")}
@@ -150,9 +148,10 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
                 style={styles.input}
                 placeholder={t("placeholder.email")}
                 value={email}
-                onChangeText={setEmail}
+                onChangeText={(text) => setEmail(text.toLowerCase())} // Chuyển email thành chữ thường
                 placeholderTextColor="#888"
                 keyboardType="email-address"
+                autoCapitalize="none" // Ngăn tự động viết hoa
             />
 
             <TextInput
@@ -246,7 +245,6 @@ const SignUpScreen: React.FC<Props> = ({ navigation }) => {
                     <Text style={{ fontSize: 18 }}>{isRePasswordVisible ? "👁️" : "🙈"}</Text>
                 </TouchableOpacity>
             </View>
-                            {/* Rg-2 */}
 
             <TouchableOpacity style={styles.loginButton} onPress={handleSendOTP}>
                 <Text style={styles.loginButtonText}>{t("sign_up_button")}</Text>
@@ -287,16 +285,16 @@ const styles = StyleSheet.create({
         backgroundColor: "#FFFFFF",
         borderRadius: 10,
         paddingHorizontal: 15,
-        fontSize: 18, // Tăng kích thước chữ
+        fontSize: 18,
         marginBottom: 15,
         borderWidth: 1,
         borderColor: "#ccc",
         justifyContent: "center",
-        color: "#333", // Đặt màu chữ rõ ràng
+        color: "#333",
     },
     dateText: {
-        fontSize: 18, // Tăng kích thước chữ
-        color: "#333", // Đặt màu chữ cố định để đảm bảo dễ đọc
+        fontSize: 18,
+        color: "#333",
     },
     passwordContainer: {
         flexDirection: "row",
@@ -312,8 +310,8 @@ const styles = StyleSheet.create({
     },
     input1: {
         flex: 1,
-        fontSize: 18, // Tăng kích thước chữ
-        color: "#333", // Đảm bảo màu chữ rõ ràng
+        fontSize: 18,
+        color: "#333",
         paddingRight: 40,
     },
     eyeIcon: {

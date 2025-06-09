@@ -173,7 +173,6 @@ const MedicineHistoryScreen: React.FC<Props> = ({ navigation }) => {
       setDate(new Date());
       setTime(new Date());
     } catch (error: any) {
-      console.error('Error saving history:', error.response?.data || error.message);
       showNotification(t('saveHistoryError'), 'error');
     }
   };

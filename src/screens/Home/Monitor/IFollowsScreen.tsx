@@ -6,6 +6,7 @@ import { NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { API_BASE_URL } from '../../../utils/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNotification } from '../../../contexts/NotificationContext';
+import { useAuth } from '../../../contexts/AuthContext';
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 import CustomModal from '../../../components/CustomModal';
 
@@ -37,6 +38,7 @@ const IFollowsScreen: React.FC<Props> = ({ navigation }) => {
   const [isModalVisible, setModalVisible] = useState(false);
   const [followedEmail, setFollowedEmail] = useState('');
   const { showNotification } = useNotification();
+  const { logout } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -77,12 +79,30 @@ const IFollowsScreen: React.FC<Props> = ({ navigation }) => {
     }, [])
   );
 
+  const refreshToken = async (): Promise<string | null> => {
+    try {
+      const refreshToken = await AsyncStorage.getItem('refreshToken');
+      if (!refreshToken) return null;
+      const response = await axios.post(
+        `${API_BASE_URL}/api/auth/refresh`,
+        { refreshToken },
+        { timeout: 20000 }
+      );
+      const newToken = response.data.accessToken;
+      await AsyncStorage.setItem('token', newToken);
+      return newToken;
+    } catch (error) {
+      console.warn('Lỗi khi làm mới token:', error);
+      return null;
+    }
+  };
+
   const fetchFollows = async () => {
     try {
-      const token = await AsyncStorage.getItem('token');
+      let token = await AsyncStorage.getItem('token');
       if (!token) {
         showNotification(t('noToken'), 'error');
-        navigation.navigate('Login');
+        logout();
         return;
       }
 
@@ -112,9 +132,33 @@ const IFollowsScreen: React.FC<Props> = ({ navigation }) => {
               numberPhone: followerResponse.data.numberPhone,
               url: followerResponse.data.url,
             };
-          } catch (error) {
-            console.error(`Error fetching follower user ${item.followerUserId}:`, error);
-            showNotification(t('fetchUserError', { id: item.followerUserId }), 'error');
+          } catch (error: any) {
+            console.warn(`Lỗi khi lấy thông tin người theo dõi ${item.followerUserId}:`, error);
+            if (error.response?.status === 401) {
+              token = await refreshToken();
+              if (token) {
+                try {
+                  const retryResponse = await axios.get(`${API_BASE_URL}/api/auth/users/${item.followerUserId}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                  });
+                  followerUser = {
+                    id: retryResponse.data.id,
+                    name: retryResponse.data.name,
+                    email: retryResponse.data.email,
+                    numberPhone: retryResponse.data.numberPhone,
+                    url: retryResponse.data.url,
+                  };
+                } catch (retryError) {
+                  console.warn(`Thử lại thất bại cho người theo dõi ${item.followerUserId}:`, retryError);
+                }
+              } else {
+                showNotification(t('sessionExpired'), 'error');
+                logout();
+                return null;
+              }
+            } else if (error.response?.status === 404) {
+        showNotification(t('noUserInfo'), 'error');
+            }
           }
 
           try {
@@ -128,21 +172,43 @@ const IFollowsScreen: React.FC<Props> = ({ navigation }) => {
               numberPhone: followedResponse.data.numberPhone,
               url: followedResponse.data.url,
             };
-          } catch (error) {
-            console.error(`Error fetching followed user ${item.followedUserId}:`, error);
-            showNotification(t('fetchUserError', { id: item.followedUserId }), 'error');
+          } catch (error: any) {
+            console.warn(`Lỗi khi lấy thông tin người được theo dõi ${item.followedUserId}:`, error);
+            if (error.response?.status === 401) {
+              token = await refreshToken();
+              if (token) {
+                try {
+                  const retryResponse = await axios.get(`${API_BASE_URL}/api/auth/users/${item.followedUserId}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                  });
+                  followedUser = {
+                    id: retryResponse.data.id,
+                    name: retryResponse.data.name,
+                    email: retryResponse.data.email,
+                    numberPhone: retryResponse.data.numberPhone,
+                    url: retryResponse.data.url,
+                  };
+                } catch (retryError) {
+                  console.warn(`Thử lại thất bại cho người được theo dõi ${item.followedUserId}:`, retryError);
+                }
+              } else {
+                showNotification(t('sessionExpired'), 'error');
+                logout();
+                return null;
+              }
+            } else if (error.response?.status === 404) {
+              console.warn(`Không tìm thấy người dùng ${item.followedUserId}`);
+            }
           }
 
-          return {
-            ...item,
-            followerUser,
-            followedUser,
-          };
+          return { ...item, followerUser, followedUser };
         })
       );
-      setFollows(enrichedFollows);
+
+      const validFollows = enrichedFollows.filter((item): item is FollowItem => item !== null);
+      setFollows(validFollows);
     } catch (error) {
-      console.error('Fetch follows error:', error);
+      console.error('Lỗi khi lấy danh sách theo dõi:', error);
       showNotification(t('fetchFollowsError'), 'error');
     }
   };
@@ -159,10 +225,10 @@ const IFollowsScreen: React.FC<Props> = ({ navigation }) => {
     }
 
     try {
-      const token = await AsyncStorage.getItem('token');
+      let token = await AsyncStorage.getItem('token');
       if (!token) {
         showNotification(t('noToken'), 'error');
-        navigation.navigate('Login');
+        logout();
         return;
       }
       const response = await axios.post(
@@ -174,18 +240,20 @@ const IFollowsScreen: React.FC<Props> = ({ navigation }) => {
       setFollowedEmail('');
       fetchFollows();
       showNotification(t('requestSentSuccess'), 'success');
-    } catch (error) {
+
+
+
+    } catch (error: any) {
       if (axios.isAxiosError(error)) {
-        if ((error.response?.status === 404) && error.response?.data?.result === 'userNotFound') {
+        if (error.response?.status === 404 && error.response?.data?.result === 'userNotFound') {
           showNotification(t('error.emailNotFound'), 'error');
         } else if (error.response?.status === 409 && error.response?.data?.result === 'pending') {
           showNotification(t('requestAlreadyExists_pending'), 'error');
-        } else if (error.response?.status === 409 && error.response?.data?.result === 'appoved') {
+        } else if (error.response?.status === 409 && error.response?.data?.result === 'approved') {
           showNotification(t('requestAlreadyExists_accepted'), 'error');
-        }else if(error.response?.status === 401) {
-          showNotification("unauthorizedError", "error")   
-         }else {
-          showNotification(t('sendRequestError'), 'error');
+        } else if (error.response?.status === 401) {
+          showNotification(t('noToken'), 'error');
+          logout();
         }
       } else {
         showNotification(t('sendRequestError'), 'error');
@@ -195,31 +263,52 @@ const IFollowsScreen: React.FC<Props> = ({ navigation }) => {
 
   const deleteFollow = async (id: string) => {
     try {
-      const token = await AsyncStorage.getItem('token');
+      let token = await AsyncStorage.getItem('token');
       if (!token) {
         showNotification(t('noToken'), 'error');
-        navigation.navigate('Login');
+        logout();
         return;
       }
       await axios.delete(`${API_BASE_URL}/api/tracking/cancel/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       fetchFollows();
       showNotification(t('deleteFollowSuccess'), 'success');
-      setOptionModalVisible(false); // Đóng modal sau khi xóa
-    } catch (error) {
-      console.error('Error deleting follow:', error);
-      showNotification(t('deleteFollowError'), 'error');
+      setOptionModalVisible(false);
+    } catch (error: any) {
+      console.error('Lỗi khi xóa theo dõi:', error);
+      if (error.response?.status === 401) {
+        const newToken = await refreshToken();
+        if (newToken) {
+          try {
+            await axios.delete(`${API_BASE_URL}/api/tracking/cancel/${id}`, {
+              headers: { Authorization: `Bearer ${newToken}` },
+            });
+            fetchFollows();
+            showNotification(t('deleteFollowSuccess'), 'success');
+            setOptionModalVisible(false);
+            return;
+          } catch (retryError) {
+            console.warn('Thử lại xóa theo dõi thất bại:', retryError);
+          }
+        }
+        showNotification(t('sessionExpired'), 'error');
+        logout();
+      } else if (axios.isAxiosError(error) && error.response?.status === 404) {
+        showNotification(t('requestNotFound'), 'error');
+      } 
+      else {
+        showNotification(t('deleteFollowError'), 'error');
+      }
     }
   };
 
-  // Hàm gọi API và lưu dữ liệu vào AsyncStorage
   const fetchHealthDataAndStore = async (followedUserId: string) => {
     try {
-      const token = await AsyncStorage.getItem('token');
+      let token = await AsyncStorage.getItem('token');
       if (!token) {
         showNotification(t('noToken'), 'error');
-        navigation.navigate('Login');
+        logout();
         return;
       }
 
@@ -228,14 +317,32 @@ const IFollowsScreen: React.FC<Props> = ({ navigation }) => {
       });
 
       const healthData = response.data;
-      console.log('Health Data Response:', healthData); // Log dữ liệu để kiểm tra
 
-      // Lưu dữ liệu vào AsyncStorage
       await AsyncStorage.setItem(`healthData_${followedUserId}`, JSON.stringify(healthData));
-    } catch (error) {
+    } catch (error: any) {
       if (axios.isAxiosError(error) && error.response?.status === 403) {
         showNotification(t('noPermission'), 'error');
-      } else {
+      } else if (error.response?.status === 401) {
+        const newToken = await refreshToken();
+        if (newToken) {
+          try {
+            const retryResponse = await axios.get(`${API_BASE_URL}/api/tracking/permissions/${followedUserId}/health-data`, {
+              headers: { Authorization: `Bearer ${newToken}` },
+            });
+            const healthData = retryResponse.data;
+            await AsyncStorage.setItem(`healthData_${followedUserId}`, JSON.stringify(healthData));
+            return;
+          } catch (retryError) {
+            console.warn('Thử lại lấy dữ liệu sức khỏe thất bại:', retryError);
+          }
+        }
+        showNotification(t('sessionExpired'), 'error');
+        logout();
+      } else if(axios.isAxiosError(error) && error.response?.status === 404 && error.response?.data?.result === 'userNotFound') {
+        showNotification(t('noUserInfo'), 'error');
+      } else if(axios.isAxiosError(error) && error.response?.status === 404 && error.response?.data?.result === 'noPermission') {
+        showNotification(t('noPermission'), 'error');
+      }else {
         showNotification(t('fetchHealthDataError'), 'error');
       }
     }
@@ -243,42 +350,33 @@ const IFollowsScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleItemPress = async (item: FollowItem) => {
     if (selectedTab === 'approved') {
-      // Gọi API và lưu dữ liệu vào AsyncStorage trước khi mở modal
       await fetchHealthDataAndStore(item.followedUserId);
       setSelectedItem(item);
       setOptionModalVisible(true);
     } else if (selectedTab === 'pending') {
-      showNotification(
-        t('confirmCancelRequest'),
-        'warning',
-        [
-          {
-            text: t('cancel'),
-            onPress: () => {},
-            color: 'danger'
-          },
-          {
-            text: t('confirm'),
-            onPress: () => deleteFollow(item.id),
-            color: 'primary'
-          }
-        ]
-      );
+      showNotification(t('confirmCancelRequest'), 'warning', [
+        {
+          text: t('cancel'),
+          onPress: () => {},
+          color: 'danger',
+        },
+        {
+          text: t('confirm'),
+          onPress: () => deleteFollow(item.id),
+          color: 'primary',
+        },
+      ]);
     } else if (selectedTab === 'rejected') {
-      showNotification(
-        t('requestRejected'),
-        'warning',
-        [
-          {
-            text: t('sendAgain'),
-            onPress: () => {
-              setFollowedEmail(item.followedUser?.email || '');
-              setModalVisible(true);
-            },
-            color: 'primary'
-          }
-        ]
-      );
+      showNotification(t('requestRejected'), 'warning', [
+        {
+          text: t('sendAgain'),
+          onPress: () => {
+            setFollowedEmail(item.followedUser?.email || '');
+            setModalVisible(true);
+          },
+          color: 'primary',
+        },
+      ]);
     }
   };
 
@@ -290,10 +388,7 @@ const IFollowsScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const renderItem = ({ item }: { item: FollowItem }) => (
-    <TouchableOpacity 
-      style={styles.item}
-      onPress={() => handleItemPress(item)}
-    >
+    <TouchableOpacity style={styles.item} onPress={() => handleItemPress(item)}>
       <View style={styles.avatarContainer}>
         <View style={styles.boxImage}>
           <Image
@@ -303,17 +398,13 @@ const IFollowsScreen: React.FC<Props> = ({ navigation }) => {
                 ? { uri: item.followedUser.url }
                 : require('../../../assets/avatar.jpg')
             }
-            onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
+            onError={(e) => console.warn(`Lỗi tải ảnh cho ${item.id}:`, e.nativeEvent.error)}
           />
         </View>
       </View>
       <View style={styles.infoContainer}>
-        <Text style={styles.itemText}>
-          {item.followedUser?.name || t('noName')}
-        </Text>
-        <Text style={styles.itemSubText}>
-          {item.followedUser?.email || t('noEmail')}
-        </Text>
+        <Text style={styles.itemText}>{item.followedUser?.name || t('noName')}</Text>
+        <Text style={styles.itemSubText}>{item.followedUser?.email || t('noEmail')}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -346,11 +437,11 @@ const IFollowsScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <View style={styles.headerContainer}>
         <View style={styles.headerLeft}>
           <FontAwesome
             name="chevron-left"
-            size={20}
+            size={24}
             color="#432c81"
             style={{ marginRight: 15, marginTop: 17 }}
             onPress={() => navigation.goBack()}
@@ -365,7 +456,7 @@ const IFollowsScreen: React.FC<Props> = ({ navigation }) => {
           onPress={() => setSelectedTab('approved')}
         >
           <Text style={[styles.tabText, selectedTab === 'approved' && styles.selectedTabText]}>
-            {t('following')}
+            {t('approved')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -406,10 +497,10 @@ const IFollowsScreen: React.FC<Props> = ({ navigation }) => {
         <Text style={styles.inputLabel}>{t('followedEmail')}</Text>
         <TextInput
           placeholder={t('enterFollowedEmail')}
-          placeholderTextColor="#888"
+          placeholderTextColor="#666"
           style={styles.input}
           autoCapitalize="none"
-          onChangeText={setFollowedEmail}
+          onChangeText={(text) => setFollowedEmail(text.toLowerCase())} // Chuyển thành chữ thường
           value={followedEmail}
         />
 
@@ -443,7 +534,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#f5f5f5',
   },
-  header: {
+  headerContainer: {
     flexDirection: 'row',
     marginTop: 10,
     justifyContent: 'space-between',
@@ -535,29 +626,6 @@ const styles = StyleSheet.create({
     color: '#666',
     marginTop: 2,
   },
-  modalContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    paddingHorizontal: 20,
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 20,
-    maxHeight: '80%',
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#432c81',
-    textAlign: 'center',
-  },
-  closeButton: {
-    alignSelf: 'flex-end',
-    marginBottom: 10,
-  },
   inputLabel: {
     fontSize: 14,
     color: '#444',
@@ -572,6 +640,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     fontSize: 16,
     backgroundColor: '#f9f9f9',
+    color: '#000',
   },
   buttonRow: {
     flexDirection: 'row',
@@ -618,6 +687,17 @@ const styles = StyleSheet.create({
     marginTop: 20,
     fontSize: 16,
   },
+  closeButton: {
+    alignSelf: 'flex-end',
+    marginBottom: 10,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#432c81',
+    textAlign: 'center',
+  },
   optionButton: {
     paddingVertical: 10,
     paddingHorizontal: 15,
@@ -637,13 +717,6 @@ const styles = StyleSheet.create({
   },
   deleteButton: {
     backgroundColor: '#ff4444',
-  },
-  selectOption: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    color: '#432c81',
-    textAlign: 'center',
   },
 });
 

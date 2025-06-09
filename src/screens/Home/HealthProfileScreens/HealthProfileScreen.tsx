@@ -11,7 +11,6 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTranslation } from 'react-i18next';
 import Loading from '../../../components/Loading';
 import CustomModal from '../../../components/CustomModal';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import {
   initialize,
   getSdkStatus,
@@ -24,13 +23,11 @@ import { useNotification } from '../../../contexts/NotificationContext';
 interface BloodPressurePayload {
   systolic: number;
   diastolic: number;
-  createdAt: string;
   userId?: string;
 }
 
 interface HeartRatePayload {
   heartRate: number;
-  createdAt: string;
   userId?: string;
 }
 
@@ -60,14 +57,6 @@ interface User {
   id: string;
 }
 
-interface StepsByDay {
-  [key: string]: {
-    steps: number;
-    createdAt: string;
-    time: number;
-  };
-}
-
 type Props = {
   navigation: NavigationProp<any>;
 };
@@ -81,8 +70,6 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
   const [diaValue, setDiaValue] = useState<string | null>(null);
   const [steps, setSteps] = useState<string | null>(null);
   const [stepsDate, setStepsDate] = useState<string | null>(null);
-  const [measurementDate, setMeasurementDate] = useState<Date>(new Date());
-  const [showDatePicker, setShowDatePicker] = useState(false);
   const [heartRate, setHeartRate] = useState<string | null>(null);
   const [heartRateDate, setHeartRateDate] = useState<string | null>(null);
   const [bloodPressureDate, setBloodPressureDate] = useState<string | null>(null);
@@ -238,8 +225,6 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
       const response = await tryEndpoints(endpoints, 'get', null, config.headers);
       const data = response.data;
       if (!data || data.length === 0) {
-        setHeartRate('--');
-        setHeartRateDate(null);
         setAllHeartRateData([]);
         return;
       }
@@ -437,8 +422,7 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const endTime = new Date();
       const startTime = new Date();
-      startTime.setDate(endTime.getDate() - 30); // Lấy dữ liệu 30 ngày
-
+      startTime.setDate(endTime.getDate() - 30);
       const response = await readRecords('Steps', {
         timeRangeFilter: {
           operator: 'between',
@@ -446,34 +430,24 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
           endTime: endTime.toISOString(),
         },
       });
-
       if (!response.records || response.records.length === 0) {
         console.log('[HealthConnect] No step records found in the last 30 days');
         return [];
       }
-
-      // Log dữ liệu thô từ Health Connect để kiểm tra
       console.log('[HealthConnect] Raw steps records:', response.records);
-
-      // Nhóm dữ liệu theo ngày và lấy số bước lớn nhất thay vì cộng dồn
       const dailySteps: { [date: string]: { steps: number; record: any } } = {};
       response.records.forEach((record) => {
         const recordDate = new Date(record.startTime).toDateString();
         const steps = record.count || 0;
-
         if (!dailySteps[recordDate] || steps > dailySteps[recordDate].steps) {
           dailySteps[recordDate] = { steps, record };
         }
       });
-
-      // Log dữ liệu sau khi nhóm để kiểm tra
       console.log('[HealthConnect] Grouped daily steps:', dailySteps);
-
       const stepsData: StepsData[] = Object.entries(dailySteps).map(([date, { steps }]) => ({
         steps,
         createdAt: new Date(date).toISOString(),
       }));
-
       return stepsData.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } catch (err) {
       console.error('[HealthConnect] Error fetching steps:', err);
@@ -487,26 +461,21 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const isInitialized = await initializeHealthConnect();
       if (!isInitialized) return;
-
       const granted = await requestHealthPermissions('HeartRate');
       if (!granted) return;
-
       const healthConnectData = await readHeartRateData();
       if (healthConnectData.length === 0) {
         return;
       }
-
       const token = await AsyncStorage.getItem('token');
       if (!token) {
         showNotification(t('noAuthToken'), 'error');
         return;
       }
-
       const normalizedHealthConnectData = healthConnectData.map((item) => ({
         ...item,
         createdAt: normalizeTimestamp(item.createdAt),
       }));
-
       const newData = normalizedHealthConnectData.filter((hcItem) => {
         return !allHeartRateData.some(
           (dbItem) =>
@@ -514,15 +483,12 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
             dbItem.rate === hcItem.rate
         );
       });
-
       if (newData.length === 0) {
         return;
       }
-
       const endpoints = [
         `${API_BASE_URL}/api/heart-rates/measure`,
       ];
-
       for (const hcItem of newData) {
         await tryEndpoints(endpoints, 'post', {
           heartRate: hcItem.rate,
@@ -533,7 +499,6 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
           'Cache-Control': 'no-cache',
         });
       }
-
       if (userId) {
         await fetchDataErrorHeartRateData(userId);
         await fetchDataErrorLatestHeartRate();
@@ -551,20 +516,16 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const isInitialized = await initializeHealthConnect();
       if (!isInitialized) return;
-
       const granted = await requestHealthPermissions('BloodPressure');
       if (!granted) return;
-
       const healthConnectData = await readBloodPressureData();
       if (healthConnectData.length === 0) {
         return;
       }
-
       const normalizedHealthConnectData = healthConnectData.map((item) => ({
         ...item,
         createdAt: normalizeTimestamp(item.createdAt),
       }));
-
       const newData = normalizedHealthConnectData.filter((hcItem) => {
         return !allBloodPressureData.some(
           (dbItem) =>
@@ -573,21 +534,17 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
             dbItem.diastolic === hcItem.diastolic
         );
       });
-
       if (newData.length === 0) {
         return;
       }
-
       const token = await AsyncStorage.getItem('token');
       if (!token) {
         showNotification(t('noAuthToken'), 'error');
         return;
       }
-
       const endpoints = [
         `${API_BASE_URL}/api/blood-pressures/measure`,
       ];
-
       for (const hcItem of newData) {
         await tryEndpoints(endpoints, 'post', {
           systolic: hcItem.systolic,
@@ -599,7 +556,6 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
           'Cache-Control': 'no-cache',
         });
       }
-
       if (userId) {
         await fetchDataErrorBloodPressureData(userId);
         await fetchDataErrorLatestBloodPressure();
@@ -635,33 +591,25 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         showNotification(t('healthConnectInitError'), 'error');
         return;
       }
-
       const granted = await requestHealthPermissions('Steps');
       if (!granted) {
         showNotification(t('healthConnectPermissionError'), 'error');
         return;
       }
-
       const healthConnectData = await readStepsData();
       if (healthConnectData.length === 0) {
         showNotification(t('noStepsData'), 'warning');
         return;
       }
-
-      // Log dữ liệu trước khi nhóm để kiểm tra
       console.log('[HealthConnect] Steps data before grouping:', healthConnectData);
-
-      // Nhóm dữ liệu từ Health Connect theo ngày
       const getDateKey = (dateString: string) => {
         const date = new Date(dateString);
-        return date.toISOString().split('T')[0]; // Lấy ngày dạng "2025-05-22"
+        return date.toISOString().split('T')[0];
       };
-
       const healthConnectDataByDate: { [date: string]: StepsData } = {};
       healthConnectData.forEach((item) => {
         const dateKey = getDateKey(item.createdAt);
         if (healthConnectDataByDate[dateKey]) {
-          // Lấy số bước lớn nhất thay vì cộng dồn
           healthConnectDataByDate[dateKey].steps = Math.max(
             healthConnectDataByDate[dateKey].steps,
             item.steps
@@ -670,30 +618,22 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
           healthConnectDataByDate[dateKey] = { ...item };
         }
       });
-
       console.log('[HealthConnect] Steps data after grouping:', healthConnectDataByDate);
-
       let token = await AsyncStorage.getItem('token');
       if (!token) {
         showNotification(t('noAuthToken'), 'error');
         return;
       }
-
-      // Đồng bộ dữ liệu với cơ sở dữ liệu
       for (const [dateKey, hcItem] of Object.entries(healthConnectDataByDate)) {
         try {
-          // Xóa dữ liệu cũ cho ngày đó trước khi thêm mới
           await axios.delete(`${API_BASE_URL}/api/steps/measure/delete-by-date?date=${encodeURIComponent(hcItem.createdAt)}`, {
             headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' },
           });
-
-          // Thêm dữ liệu mới từ Health Connect
           const payload: StepsPayload = {
             steps: hcItem.steps,
             createdAt: normalizeTimestamp(hcItem.createdAt),
             userId,
           };
-
           await axios.post(
             `${API_BASE_URL}/api/steps/measure`,
             payload,
@@ -707,7 +647,6 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
               showNotification(t('accessDenied'), 'error');
               return;
             }
-            // Thử lại với token mới
             await axios.delete(`${API_BASE_URL}/api/steps/measure/delete-by-date?date=${encodeURIComponent(hcItem.createdAt)}`, {
               headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' },
             });
@@ -717,12 +656,10 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
               { headers: { Authorization: `Bearer ${token}`, 'Cache-Control': 'no-cache' }, timeout: 20000 }
             );
           } else {
-            // Tiếp tục với các ngày khác nếu có lỗi
             continue;
           }
         }
       }
-
       if (userId) {
         await fetchDataErrorStepsData(userId);
         await fetchDataErrorLatestSteps();
@@ -745,13 +682,11 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
     try {
       const userId = await fetchDataErrorUser();
       if (!userId) return;
-
       await Promise.all([
         syncHeartRateFromHealthConnect(),
         syncBloodPressureFromHealthConnect(),
         syncStepsFromHealthConnect(),
       ]);
-
       await Promise.all([
         fetchDataErrorLatestHeartRate(),
         fetchDataErrorLatestBloodPressure(),
@@ -760,7 +695,6 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
         fetchDataErrorBloodPressureData(userId),
         fetchDataErrorStepsData(userId),
       ]);
-
       await AsyncStorage.setItem('lastSyncTime', new Date().getTime().toString());
     } catch (error) {
       showNotification(t('reloadError'), 'error');
@@ -782,7 +716,6 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
       try {
         const userId = await fetchDataErrorUser();
         if (!userId) return;
-
         await Promise.all([
           fetchDataErrorHeartRateData(userId),
           fetchDataErrorBloodPressureData(userId),
@@ -807,156 +740,118 @@ const HealthProfileScreen: React.FC<Props> = ({ navigation }) => {
     fetchInitialData();
   }, []);
 
-  const combineDateTime = (date: Date): string => {
-    return new Date(date).toISOString();
-  };
-
   const handleMeasureBloodPressure = async () => {
-  if (!sysValue || !diaValue || isNaN(parseInt(sysValue)) || isNaN(parseInt(diaValue))) {
+    if (!sysValue || !diaValue || isNaN(parseInt(sysValue)) || isNaN(parseInt(diaValue))) {
       showNotification(t('invalidInput'), 'error');
       return;
     }
-
-  setLoading(true);
-  try {
-    // Lấy token từ AsyncStorage
-    const token = await AsyncStorage.getItem('token');
-    if (!token) {
-      showNotification(t('noAuthToken'), 'error'); // "Không tìm thấy token xác thực"
-      return;
-    }
-
-   const payload: BloodPressurePayload = {
+    setLoading(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        showNotification(t('noAuthToken'), 'error');
+        return;
+      }
+      const payload: BloodPressurePayload = {
         systolic: parseInt(sysValue),
         diastolic: parseInt(diaValue),
-        createdAt: combineDateTime(measurementDate),
         userId,
       };
-
-    const endpoints = [
-      `${API_BASE_URL}/api/blood-pressures/measure`,
-    ];
-
-    const response = await tryEndpoints(endpoints, 'post', payload, {
-      Authorization: `Bearer ${token}`,
-      'Cache-Control': 'no-cache',
-    });
-
-    if (response.status === 200) {
-      showNotification(t('bloodPressureExists'), 'warning'); // "Bản ghi huyết áp đã tồn tại"
-    } else if (response.status === 201) {
-      showNotification(t('measureBloodPressureSuccess'), 'success'); // "Đo huyết áp thành công"
-    }
-
-    // Cập nhật state
-    setSysValue('');
-    setDiaValue('');
-    setMeasurementDate(new Date());
-
-    // Cập nhật dữ liệu liên quan
-    await fetchDataErrorLatestBloodPressure();
-    if (userId) {
-      await fetchDataErrorBloodPressureData(userId);
-    }
-
-    setModalVisible(false);
-  } catch (error: any) {
-    // Xử lý lỗi từ backend
-    if (error.response) {
-      // Lỗi có response từ server
-      const status = error.response.status;
-      if (status === 401) {
-        showNotification(t('unauthorizedError'), 'error'); // "Không được phép"
-      } else if (status === 500) {
-        showNotification(t('serverError'), 'error'); // "Lỗi server"
-      } else {
-        showNotification(t('measureError'), 'error'); // "Lỗi khi đo huyết áp"
+      const endpoints = [
+        `${API_BASE_URL}/api/blood-pressures/measure`,
+      ];
+      const response = await tryEndpoints(endpoints, 'post', payload, {
+        Authorization: `Bearer ${token}`,
+        'Cache-Control': 'no-cache',
+      });
+      if (response.status === 200) {
+        showNotification(t('bloodPressureExists'), 'warning');
+      } else if (response.status === 201) {
+        showNotification(t('measureBloodPressureSuccess'), 'success');
       }
-    } else if (error.request) {
-      showNotification(t('networkError'), 'error'); // "Lỗi mạng"
-    } else {
-      showNotification(t('measureError'), 'error'); // "Lỗi khi đo huyết áp"
+      setSysValue(null);
+      setDiaValue(null);
+      await fetchDataErrorLatestBloodPressure();
+      if (userId) {
+        await fetchDataErrorBloodPressureData(userId);
+      }
+      setModalVisible(false);
+    } catch (error: any) {
+      if (error.response) {
+        const status = error.response.status;
+        if (status === 401) {
+          showNotification(t('unauthorizedError'), 'error');
+        } else if (status === 500) {
+          showNotification(t('serverError'), 'error');
+        } else {
+          showNotification(t('measureError'), 'error');
+        }
+      } else if (error.request) {
+        showNotification(t('networkError'), 'error');
+      } else {
+        showNotification(t('measureError'), 'error');
+      }
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
-  
-const handleMeasureHeartRate = async () => {
-  const rateValue = parseInt(inputValue);
-  
-  // Kiểm tra input đầu vào
-  if (!inputValue.trim() || isNaN(rateValue) || rateValue <= 0 || rateValue > 300) {
-    showNotification(t('invalidInput'), 'error'); // "Giá trị không hợp lệ"
-    return;
-  }
-
-  setLoading(true);
-  try {
-    // Lấy token từ AsyncStorage
-    const token = await AsyncStorage.getItem('token');
-    if (!token) {
-      showNotification(t('noAuthToken'), 'error'); // "Không tìm thấy token xác thực"
+  const handleMeasureHeartRate = async () => {
+    const rateValue = parseInt(inputValue);
+    if (!inputValue.trim() || isNaN(rateValue) || rateValue <= 0 || rateValue > 300) {
+      showNotification(t('invalidInput'), 'error');
       return;
     }
-
-    // Chuẩn bị payload
-    const payload: HeartRatePayload = {
-      heartRate: rateValue,
-      createdAt: combineDateTime(measurementDate),
-      userId,
-    };
-
-    const endpoints = [
-      `${API_BASE_URL}/api/heart-rates/measure`,
-    ];
-
-    const response = await tryEndpoints(endpoints, 'post', payload, {
-      Authorization: `Bearer ${token}`,
-      'Cache-Control': 'no-cache',
-    });
-
-    if (response.status === 200) {
-      showNotification(t('heartRateExists'), 'warning'); 
-    } else if (response.status === 201) {
-      showNotification(t('measureHeartRateSuccess'), 'success'); 
-    }
-
-    // Cập nhật state
-    setHeartRate(response.data?.heartRate.toString() ?? rateValue.toString());
-    setHeartRateDate(response.data?.createdAt ?? combineDateTime(measurementDate));
-    setInputValue('');
-    setMeasurementDate(new Date());
-
-    // Cập nhật dữ liệu liên quan
-    await fetchDataErrorLatestHeartRate();
-    if (userId) {
-      await fetchDataErrorHeartRateData(userId);
-    }
-
-    setModalVisible(false);
-  } catch (error: any) {
-    // Xử lý lỗi từ backend
-    if (error.response) {
-      // Lỗi có response từ server
-      const status = error.response.status;
-      if (status === 401) {
-        showNotification(t('unauthorizedError'), 'error'); 
-      } else if (status === 500) {
-        showNotification(t('serverError'), 'error'); 
-      } else {
-        showNotification(t('measureError'), 'error'); 
+    setLoading(true);
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        showNotification(t('noAuthToken'), 'error');
+        return;
       }
-    } else if (error.request) {
-      showNotification(t('networkError'), 'error'); 
-    } else {
-      showNotification(t('measureError'), 'error'); 
+      const payload: HeartRatePayload = {
+        heartRate: rateValue,
+        userId,
+      };
+      const endpoints = [
+        `${API_BASE_URL}/api/heart-rates/measure`,
+      ];
+      const response = await tryEndpoints(endpoints, 'post', payload, {
+        Authorization: `Bearer ${token}`,
+        'Cache-Control': 'no-cache',
+      });
+      if (response.status === 200) {
+        showNotification(t('heartRateExists'), 'warning');
+      } else if (response.status === 201) {
+        showNotification(t('measureHeartRateSuccess'), 'success');
+      }
+      setHeartRate(response.data?.heartRate.toString() ?? rateValue.toString());
+      setHeartRateDate(response.data?.createdAt ?? null);
+      setInputValue('');
+      await fetchDataErrorLatestHeartRate();
+      if (userId) {
+        await fetchDataErrorHeartRateData(userId);
+      }
+      setModalVisible(false);
+    } catch (error: any) {
+      if (error.response) {
+        const status = error.response.status;
+        if (status === 401) {
+          showNotification(t('unauthorizedError'), 'error');
+        } else if (status === 500) {
+          showNotification(t('serverError'), 'error');
+        } else {
+          showNotification(t('measureError'), 'error');
+        }
+      } else if (error.request) {
+        showNotification(t('networkError'), 'error');
+      } else {
+        showNotification(t('measureError'), 'error');
+      }
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleMeasurePress = () => {
     setTypeSelectModalVisible(true);
@@ -971,18 +866,12 @@ const handleMeasureHeartRate = async () => {
         day: '2-digit',
         month: '2-digit',
         year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
       });
     } catch (error) {
       return '-/-';
     }
-  };
-
-  const formatDate = (date: Date): string => {
-    return date.toLocaleString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    });
   };
 
   const getModalContent = () => {
@@ -1013,24 +902,6 @@ const handleMeasureHeartRate = async () => {
             />
             <Text style={styles.inputUnit}>mmHg</Text>
           </View>
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>{t('measurementDate')} (Required):</Text>
-            <TouchableOpacity style={styles.datePickerButton} onPress={() => setShowDatePicker(true)}>
-              <Text style={styles.datePickerText}>{formatDate(measurementDate)}</Text>
-            </TouchableOpacity>
-            {showDatePicker && (
-              <DateTimePicker
-                value={measurementDate}
-                mode="date"
-                display="default"
-                onChange={(event, selected) => {
-                  setShowDatePicker(false);
-                  if (selected) setMeasurementDate(selected);
-                }}
-                maximumDate={new Date()}
-              />
-            )}
-          </View>
           <View style={styles.buttonContainer}>
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: '#ccc' }]}
@@ -1038,7 +909,6 @@ const handleMeasureHeartRate = async () => {
                 setModalVisible(false);
                 setSysValue(null);
                 setDiaValue(null);
-                setMeasurementDate(new Date());
               }}
             >
               <Text style={styles.actionButtonText}>{t('cancel')}</Text>
@@ -1067,31 +937,12 @@ const handleMeasureHeartRate = async () => {
             />
             <Text style={styles.inputUnit}>{t('bpm')}</Text>
           </View>
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputLabel}>{t('measurementDate')} (Required):</Text>
-            <TouchableOpacity style={styles.datePickerButton} onPress={() => setShowDatePicker(true)}>
-              <Text style={styles.datePickerText}>{formatDate(measurementDate)}</Text>
-            </TouchableOpacity>
-            {showDatePicker && (
-              <DateTimePicker
-                value={measurementDate}
-                mode="date"
-                display="default"
-                onChange={(event, selected) => {
-                  setShowDatePicker(false);
-                  if (selected) setMeasurementDate(selected);
-                }}
-                maximumDate={new Date()}
-              />
-            )}
-          </View>
           <View style={styles.buttonContainer}>
             <TouchableOpacity
               style={[styles.actionButton, { backgroundColor: '#ccc' }]}
               onPress={() => {
                 setModalVisible(false);
                 setInputValue('');
-                setMeasurementDate(new Date());
               }}
             >
               <Text style={styles.actionButtonText}>{t('cancel')}</Text>
@@ -1286,7 +1137,6 @@ const handleMeasureHeartRate = async () => {
           } else if (selectedMeasurement === 'heart_rate') {
             setInputValue('');
           }
-          setMeasurementDate(new Date());
         }}
         children={getModalContent()}
       />
@@ -1470,19 +1320,6 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
     fontSize: 20,
-  },
-  datePickerButton: {
-    borderWidth: 2,
-    borderColor: '#ccc',
-    borderRadius: 10,
-    padding: 15,
-    backgroundColor: '#f9f9f9',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  datePickerText: {
-    fontSize: 18,
-    color: '#333',
   },
   enhancedModalTitle: {
     fontSize: 26,

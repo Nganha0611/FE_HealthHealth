@@ -77,7 +77,6 @@ const fetchData = async () => {
 
     const fetchedHistory = historyResponse.data || []; 
     setMedicalHistory(fetchedHistory);
-    console.log('Lịch sử y tế:', fetchedHistory);
   } catch (error: any) {
     if (error.response) {
       if (error.response.status === 401) {
@@ -98,7 +97,6 @@ const fetchData = async () => {
   }
 };
 
-  // Call fetchData when component mounts
   useEffect(() => {
     fetchData();
   }, []);

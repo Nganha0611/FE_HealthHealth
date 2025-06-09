@@ -60,7 +60,7 @@ const HomeScreen: React.FC<Props> = ({ navigation }) => {
 
       <TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('MedicalHistory')}>
         <Text style={[styles.text, styles.boxTitle]}>{t('medicalHistory')}</Text>
-        <Image style={styles.boxImg} source={require('../../assets/medical_history.png')} />
+        <Image style={styles.boxImg} source={require('../../assets/medicalhistory.png')} />
       </TouchableOpacity>
       <TouchableOpacity style={styles.boxFeature} onPress={() => navigation.navigate('HealthMonitoring')}>
         <Text style={[styles.text, styles.boxTitle]}>{t('healthmonitor')}</Text>

@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NavigationProp } from '@react-navigation/native';
 import React, { useEffect, useState } from 'react';
-import { View, Dimensions, StyleSheet, Text, TouchableOpacity, ScrollView, Image, FlatList, Platform } from 'react-native';
+import { View, Dimensions, StyleSheet, Text, TouchableOpacity, ScrollView, Platform } from 'react-native';
 import { LineChart } from 'react-native-chart-kit';
 import FontAwesome5Icon from 'react-native-vector-icons/FontAwesome5';
 import axios from 'axios';
@@ -16,6 +16,7 @@ import {
   readRecords,
   SdkAvailabilityStatus,
 } from 'react-native-health-connect';
+import { FlatList } from 'react-native-gesture-handler';
 
 type ViewMode = 'monthly' | 'daily' | 'weekly';
 
@@ -68,6 +69,7 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
           showNotification(t('noUserInfo'), 'error');
         }
       } catch (error) {
+        console.error('Error fetching user and data:', error);
         showNotification(t('fetchUserError'), 'error');
       } finally {
         setLoading(false);
@@ -77,25 +79,29 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
     fetchUserAndData();
   }, []);
 
+  const tryEndpoints = async (endpoints: string[], config: any) => {
+    for (const endpoint of endpoints) {
+      try {
+        const response = await axios.get(endpoint, { ...config, timeout: 10000 });
+        return response;
+      } catch (error: any) {
+        console.error(`Error fetching from ${endpoint}:`, error.message);
+      }
+    }
+    throw new Error('All endpoints failed');
+  };
+
   const fetchHeartRateData = async (userId: string) => {
     try {
       const token = await AsyncStorage.getItem('token');
       const config = token ? { headers: { Authorization: `Bearer ${token}` } } : {};
-
-      let response = await axios.get(`${API_BASE_URL}/api/heart-rates/user/${userId}`, {
-        ...config,
-        timeout: 5000,
-      });
-
-      let data = response.data;
-
-      if (!data || data.length === 0) {
-        response = await axios.get(`${API_BASE_URL}/api/heart-rate/user/${userId}`, {
-          ...config,
-          timeout: 5000,
-        });
-        data = response.data;
-      }
+      const endpoints = [
+        `${API_BASE_URL}/api/heart-rates/user/${userId}`,
+        `${API_BASE_URL}/api/heart-rate/user/${userId}`,
+      ];
+      const response = await tryEndpoints(endpoints, config);
+      const data = response.data;
+      console.log('Fetched Heart Rate Data:', data);
 
       if (!data || data.length === 0) {
         setChartData({
@@ -105,9 +111,7 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         });
         setAverageHeartRate(null);
         setFilteredHistory([]);
-        return;
-      } else {
-        showNotification(t('sessionExpired'), 'error');
+        showNotification(t('noDataAvailable'), 'warning');
         return;
       }
 
@@ -134,6 +138,8 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
           typeof item.createdAt === 'string' &&
           item.createdAt
       );
+      console.log('Normalized Data:', normalizedData);
+      console.log('Valid Data:', validData);
 
       if (validData.length === 0) {
         setChartData({
@@ -152,10 +158,10 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
       setFilteredHistory(sorted);
       processHeartRateData(sorted);
     } catch (error: any) {
+      console.error('Error fetching heart rate data:', error.message, error.response?.data);
       if (error.code === 'ECONNABORTED') {
-        // Handle timeout
-      }
-      if (error.response) {
+        showNotification(t('requestTimeout'), 'error');
+      } else if (error.response) {
         if (error.response.status === 401) {
           showNotification(t('unauthorized'), 'error');
         } else if (error.response.status === 403) {
@@ -169,7 +175,11 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
           setAverageHeartRate(null);
           setFilteredHistory([]);
           return;
+        } else {
+          showNotification(t('fetchHeartRateError'), 'error');
         }
+      } else {
+        showNotification(t('networkError'), 'error');
       }
       setChartData({
         labels: [],
@@ -240,7 +250,7 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
           rate: record.samples[0]?.beatsPerMinute ?? 0,
           createdAt: record.startTime ?? '',
         }));
-
+      console.log('Health Connect Data:', heartRateData);
       return heartRateData;
     } catch (err) {
       showNotification(t('healthConnectFetchError') + (err as Error).message, 'error');
@@ -267,71 +277,58 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         setLoading(false);
         return;
       }
-
       const healthConnectData = await readHeartRateData();
-      if (healthConnectData.length === 0) {
+      const userData = await AsyncStorage.getItem('user');
+      if (!userData) {
+        showNotification(t('noUserInfo'), 'error');
         setLoading(false);
         return;
       }
-
-      const normalizedDbData = allHeartRateData.map((item) => ({
-        ...item,
-        createdAt: normalizeTimestamp(item.createdAt),
-      }));
-
-      const normalizedHealthConnectData = healthConnectData.map((item) => ({
-        ...item,
-        createdAt: normalizeTimestamp(item.createdAt),
-      }));
-
-      const newData = normalizedHealthConnectData.filter((hcItem) => {
-        return !normalizedDbData.some((dbItem) => dbItem.createdAt === hcItem.createdAt);
-      });
-
-      if (newData.length === 0) {
-        setLoading(false);
-        return;
-      }
-
-      const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        showNotification(t('unauthorized'), 'error');
-        setLoading(false);
-        return;
-      }
-
-      for (const item of newData) {
-        try {
-          console.log('Sending heart rate data:', {
-            heartRate: item.rate,
-            createdAt: item.createdAt,
-          });
-          await axios.post(
-            `${API_BASE_URL}/api/heart-rates/measure`,
-            {
+      const user: User = JSON.parse(userData);
+      if (healthConnectData.length > 0) {
+        const normalizedDbData = allHeartRateData.map((item) => ({
+          ...item,
+          createdAt: normalizeTimestamp(item.createdAt),
+        }));
+        const normalizedHealthConnectData = healthConnectData.map((item) => ({
+          ...item,
+          createdAt: normalizeTimestamp(item.createdAt),
+        }));
+        const newData = normalizedHealthConnectData.filter((hcItem) => {
+          return !normalizedDbData.some((dbItem) => dbItem.createdAt === hcItem.createdAt);
+        });
+        if (newData.length > 0) {
+          const token = await AsyncStorage.getItem('token');
+          if (!token) {
+            showNotification(t('unauthorized'), 'error');
+            setLoading(false);
+            return;
+          }
+          for (const item of newData) {
+            console.log('Sending heart rate data:', {
               heartRate: item.rate,
               createdAt: item.createdAt,
-            },
-            {
-              headers: { Authorization: `Bearer ${token}` },
-              timeout: 5000,
-            }
-          );
-        } catch (error: any) {
-          if (error.response) {
-            showNotification(t('syncHeartRateError'), 'error');
+              userId: user.id,
+            });
+            await axios.post(
+              `${API_BASE_URL}/api/heart-rates/translate`,
+              {
+                heartRate: item.rate,
+                createdAt: item.createdAt,
+                userId: user.id,
+              },
+              {
+                headers: { Authorization: `Bearer ${token}` },
+                timeout: 10000,
+              }
+            );
           }
+          showNotification(t('syncHeartRateSuccess'), 'success');
         }
       }
-
-      showNotification(t('syncHeartRateSuccess'), 'success');
-
-      const userData = await AsyncStorage.getItem('user');
-      if (userData) {
-        const user: User = JSON.parse(userData);
-        await fetchHeartRateData(user.id);
-      }
+      await fetchHeartRateData(user.id);
     } catch (error) {
+      console.error('Error syncing heart rate:', error);
       showNotification(t('syncHeartRateError'), 'error');
     } finally {
       setLoading(false);
@@ -339,6 +336,7 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const processHeartRateData = (data: HeartRateData[]) => {
+    console.log('Processing Heart Rate Data:', data);
     if (!data || data.length === 0) {
       setChartData({
         labels: [],
@@ -347,6 +345,7 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
       });
       setAverageHeartRate(null);
       setFilteredHistory([]);
+      showNotification(t('noDataForChart'), 'warning');
       return;
     }
 
@@ -354,7 +353,7 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
     let labels: string[] = [];
     let heartRateValues: number[] = [];
 
-    const referenceDate = selectedDate || new Date();
+    const referenceDate = selectedDate || (data.length > 0 ? new Date(data[0].createdAt) : new Date());
     if (viewMode === 'daily') {
       filteredData = data.filter((item) => {
         const itemDate = new Date(item.createdAt);
@@ -372,6 +371,7 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
           legend: [t('heartRate')],
         });
         setAverageHeartRate(null);
+        showNotification(t('noDataForSelectedDate'), 'warning');
         return;
       }
 
@@ -406,6 +406,7 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
           legend: [t('heartRate')],
         });
         setAverageHeartRate(null);
+        showNotification(t('noDataForSelectedDate'), 'warning');
         return;
       }
 
@@ -445,6 +446,7 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
           legend: [t('heartRate')],
         });
         setAverageHeartRate(null);
+        showNotification(t('noDataForSelectedDate'), 'warning');
         return;
       }
 
@@ -489,17 +491,23 @@ const HeartRateScreen: React.FC<Props> = ({ navigation }) => {
         datasets: [{ data: [], color: () => '#FF6384', strokeWidth: 2 }],
         legend: [t('heartRate')],
       });
-      showNotification(t('noDataForChart'), 'error');
+      showNotification(t('noDataForChart'), 'warning');
     }
     setAverageHeartRate(avgHeartRate);
+    console.log('Chart Data:', chartData);
+    console.log('Filtered History:', filteredHistory);
   };
 
   useEffect(() => {
+    if (allHeartRateData.length > 0 && selectedDate === null && !dataLoaded) {
+      setSelectedDate(new Date(allHeartRateData[0].createdAt));
+      setDataLoaded(true);
+    }
     if (allHeartRateData.length > 0) {
       processHeartRateData(allHeartRateData);
       filterHistoryByDate(selectedDate);
     }
-  }, [viewMode, t, selectedDate]);
+  }, [viewMode, t, allHeartRateData]);
 
   const filterHistoryByDate = (date: Date | null) => {
     if (!date) {
@@ -742,24 +750,21 @@ const styles = StyleSheet.create({
   text1: { fontSize: 25, color: '#432c81', fontWeight: 'bold' },
   headerLeft: { marginLeft: 10, marginTop: 5, flexDirection: 'row', justifyContent: 'flex-start' },
   headerRight: { marginRight: 15 },
-  imgProfile: { width: 45, height: 45, borderRadius: 30 },
-  title: { fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginTop: 20, marginBottom: 5 },
+  title: { fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginTop: 20, marginBottom: 5, color: '#FF6384' },
   subtitle: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 20 },
   chartOuterContainer: { marginHorizontal: 0 },
   horizontalScrollContainer: {},
   chartContainer: {
-    // alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'white',
     borderRadius: 16,
-    // padding: 16,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
-  chart: {borderRadius: 16 },
+  chart: { borderRadius: 16 },
   buttonContainer: { flexDirection: 'row', justifyContent: 'center', marginVertical: 20 },
   button: { paddingVertical: 8, paddingHorizontal: 16, borderRadius: 20, marginHorizontal: 5, backgroundColor: '#f0f0f0' },
   selectedButton: { backgroundColor: '#007AFF' },

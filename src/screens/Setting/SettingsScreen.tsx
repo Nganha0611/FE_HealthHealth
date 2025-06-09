@@ -33,6 +33,7 @@ const SettingsScreen: React.FC<Props> = ({ navigation }) => {
     email: '',
   });
   const handleLogout = () => {
+    
     showNotification(
       t('areYouSureLogout'),
       'warning',

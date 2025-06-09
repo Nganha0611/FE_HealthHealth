@@ -35,43 +35,88 @@ const ChangePasswordScreen: React.FC<Props> = ({ navigation }) => {
   const [loading, setLoading] = useState<boolean>(false);
   const { showNotification } = useNotification();
 
-  const handleChangePassword = async () => {
-    if (!currentPassword || !newPassword || !reNewPassword) {
-      showNotification(t("errorEmptyFields"), "error");
-      return;
-    }
-    if (newPassword !== reNewPassword) {
-      showNotification(t("errorPasswordMismatch"), "error");
+ const handleChangePassword = async () => {
+  // 1. Kiểm tra các trường nhập liệu
+  if (!currentPassword || !newPassword || !reNewPassword) {
+    showNotification(t("errorEmptyFields"), "error");
+    return;
+  }
 
-      return;
-    }
+  if (newPassword !== reNewPassword) {
+    showNotification(t("errorPasswordMismatch"), "error");
+    return;
+  }
 
-    const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
-    if (!passwordRegex.test(newPassword)) {
-      showNotification(t("errorPasswordInvalid"), "error");
-      return;
-    }
-    setLoading(true);
-    try {
-      const response = await axios.post(`${API_BASE_URL}/api/user/change-password`, {
-        currentPassword,
-        newPassword,
-      });
+  // 2. Kiểm tra định dạng mật khẩu mới
+  const passwordRegex = /^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+  if (!passwordRegex.test(newPassword)) {
+    showNotification(t("errorPasswordInvalid"), "error");
+    return;
+  }
 
-      if (response.data.result === "success") {
-        showNotification(t("successPasswordChanged"), "success");
-        navigation.goBack();
-      } else {
-      showNotification(t("errorGeneric"), "error");
+  // 3. Gửi yêu cầu đổi mật khẩu
+  setLoading(true);
+  try {
+    const response = await axios.post(`${API_BASE_URL}/api/user/change-password`, {
+      currentPassword,
+      newPassword,
+    });
+
+    if (response.data.result === "success") {
+      showNotification(t("successPasswordChanged"), "success");
+      navigation.goBack();
+    } else {
+      const errorMessage = response.data.message || t("errorGeneric");
+      switch (response.data.result) {
+        case "unauthorized":
+          showNotification(t("unauthorized"), "error");
+          break;
+        case "usernouFound":
+          showNotification(t("userNotFound"), "error");
+          break;
+        case "wrongPassword":
+          showNotification(t("wrongPassword"), "error");
+          break;
+        default:
+          showNotification(errorMessage, "error");
       }
-    } catch (error) {
-      const errorMessage =
-        (error as any)?.response?.data?.message || t("errorCannotChange");
-      showNotification(t("errorCannotChange"), "error");
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (error: any) {
+    if (axios.isAxiosError(error) && error.response) {
+      console.error("Error response:", error.response.status, error.response.data);
+      const errorMessage = error.response.data.message || t("errorGeneric");
+      switch (error.response.data.result) {
+        case "unauthorized":
+          showNotification(t("noToken"), "error");
+          break;
+        case "userNotFound":
+          showNotification(t("userNotFound"), "error");
+          break;
+        case "wrongPassword":
+          showNotification(t("wrongPassword"), "error");
+          break;
+        default:
+          switch (error.response.status) {
+            case 401:
+              showNotification(t("unauthorized"), "error");
+              break;
+            case 404:
+              showNotification(t("userNotFound"), "error");
+              break;
+            case 400:
+              showNotification(errorMessage, "error");
+              break;
+            default:
+              showNotification(t("errorGeneric"), "error");
+          }
+      }
+    } else {
+      showNotification(t("errorGeneric"), "error");
+    }
+  } finally {
+    setLoading(false);
+  }
+};
   return (
     <ScrollView contentContainerStyle={styles.scrollContainer}>
       {/* Header */}

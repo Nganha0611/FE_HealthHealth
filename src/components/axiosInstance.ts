@@ -27,10 +27,7 @@ axiosInstance.interceptors.response.use(
         await global.authLogout(); // đăng xuất
       }
 
-      Alert.alert(
-        'Hết phiên đăng nhập',
-        'Phiên làm việc của bạn đã hết, vui lòng đăng nhập lại.'
-      );
+      
     }
 
     return Promise.reject(error);

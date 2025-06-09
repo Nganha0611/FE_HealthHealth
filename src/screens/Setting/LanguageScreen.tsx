@@ -91,7 +91,7 @@ const LanguageScreen: React.FC<Props> = ({ navigation }) => {
           onPress={() => handleLanguageSelect('vi')}
         >
           <Image
-            source={require('../../assets/vietnam-flag.png')}
+            source={require('../../assets/vietnamflag.png')}
             style={styles.flag}
           />
           <Text style={styles.languageText}>{t('vietnamese')}</Text>
@@ -109,7 +109,7 @@ const LanguageScreen: React.FC<Props> = ({ navigation }) => {
           onPress={() => handleLanguageSelect('en')}
         >
           <Image
-            source={require('../../assets/uk-flag.png')}
+            source={require('../../assets/ukflag.png')}
             style={styles.flag}
           />
           <Text style={styles.languageText}>{t('english')}</Text>

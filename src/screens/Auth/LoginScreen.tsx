@@ -65,65 +65,61 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
   };
 
   const handleLogin = async () => {
-  if (!email || !password) {
-    showNotification(t('error.emailPasswordRequired'), 'error');
-    return;
-  }
-
-  setLoading(true);
-  // [lg-3] 
-  try {
-    const response = await axios.post(
-      `${API_BASE_URL}/api/auth/login`,
-      { email, password }
-    );
-
-    const { result, token, user, message } = response.data;
-
-    if (result === 'success') {
-      if (!token || !user) {
-        showNotification(t('error.invalidResponse'), 'error');
-        return;
-      }
-      //  [lg-16] 
-      showNotification(t('loginSuccess'), 'success');
-      await AsyncStorage.setItem('token', token);
-      await AsyncStorage.setItem('user', JSON.stringify(user));
-
-      const userId = user.id || user.userId;
-      if (userId) {
-        await AsyncStorage.setItem('userId', userId.toString());
-      } else {
-        showNotification(t('error.noUserId'), 'warning');
-      }
-
-      await saveFcmToken(token);
-      await login(token, user);
-    } else {
-      showNotification(t('error.loginFailed'), 'error');
+    if (!email || !password) {
+      showNotification(t('error.emailPasswordRequired'), 'error');
+      return;
     }
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response) {
-      const { status, data } = error.response;
-      const errorMessage = data.message || t('error.generalError'); 
 
-      if (status === 401 && data.result === 'wrongPassword') {
-        // [lg-18]
-        showNotification(errorMessage || t('error.incorrectPassword'), 'error');
-      } else if (status === 404 && data.result === 'emailNotExist') {
-        // [lg-11]
-        showNotification(t('error.emailNotFound'), 'error');
+    setLoading(true);
+    try {
+      const response = await axios.post(
+        `${API_BASE_URL}/api/auth/login`,
+        { email, password }
+      );
+
+      const { result, token, user, message } = response.data;
+
+      if (result === 'success') {
+        if (!token || !user) {
+          showNotification(t('error.invalidResponse'), 'error');
+          return;
+        }
+        showNotification(t('loginSuccess'), 'success');
+        await AsyncStorage.setItem('token', token);
+        await AsyncStorage.setItem('user', JSON.stringify(user));
+
+        const userId = user.id || user.userId;
+        if (userId) {
+          await AsyncStorage.setItem('userId', userId.toString());
+        } else {
+          showNotification(t('error.noUserId'), 'warning');
+        }
+
+        await saveFcmToken(token);
+        await login(token, user);
       } else {
-        showNotification(errorMessage || t('error.authError'), 'error');
+        showNotification(t('error.loginFailed'), 'error');
       }
-    } else {
-      showNotification(t('error.networkError'), 'error');
-      console.error('Login - Network or unexpected error:', error);
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response) {
+        const { status, data } = error.response;
+        const errorMessage = data.message || t('error.generalError'); 
+
+        if (status === 401 && data.result === 'wrongPassword') {
+          showNotification(errorMessage || t('error.incorrectPassword'), 'error');
+        } else if (status === 404 && data.result === 'emailNotExist') {
+          showNotification(t('error.emailNotFound'), 'error');
+        } else {
+          showNotification(errorMessage || t('error.authError'), 'error');
+        }
+      } else {
+        showNotification(t('error.networkError'), 'error');
+        console.error('Login - Network or unexpected error:', error);
+      }
+    } finally {
+      setLoading(false);
     }
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   React.useEffect(() => {
     const unsubscribe = messaging().onTokenRefresh(async (newToken) => {
@@ -144,7 +140,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      {loading && <Loading message={t('loading.login')} />}
+      {loading && <Loading message={t('processing')} />}
 
       <Text style={styles.welcomeText}>{t('welcomeBackMessage')}</Text>
       <Text style={styles.loginText}>{t('login')}</Text>
@@ -153,13 +149,13 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
         source={require('../../assets/login.png')}
         style={styles.illustration}
       />
-    {/* [lg] 1: Nhập email và mật khẩu */}
+
       <TextInput
         style={styles.input}
         placeholder={t('placeholder.email')}
         placeholderTextColor="#888"
         value={email}
-        onChangeText={setEmail}
+        onChangeText={(text) => setEmail(text.toLowerCase())} // Chuyển email thành chữ thường
         keyboardType="email-address"
         autoCapitalize="none"
       />
@@ -193,7 +189,7 @@ const LoginScreen: React.FC<Props> = ({ navigation }) => {
           </Text>
         </TouchableOpacity>
       </View>
-      {/* [lg] 2. Nhấn "Đăng nhập" */}
+
       <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
         <Text style={styles.loginButtonText}>{t('loginButton')}</Text>
       </TouchableOpacity>
@@ -239,11 +235,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderRadius: 10,
     paddingHorizontal: 15,
-    fontSize: 18, // Tăng kích thước chữ để dễ đọc hơn
+    fontSize: 18,
     marginBottom: 15,
     borderWidth: 1,
     borderColor: '#ccc',
-    color: '#333', // Đặt màu chữ rõ ràng
+    color: '#333',
   },
   passwordContainer: {
     flexDirection: 'row',
@@ -260,8 +256,8 @@ const styles = StyleSheet.create({
   },
   input1: {
     flex: 1,
-    fontSize: 18, // Tăng kích thước chữ
-    color: '#333', // Đảm bảo màu chữ rõ ràng
+    fontSize: 18,
+    color: '#333',
     paddingRight: 40,
   },
   eyeIcon: {
@@ -281,7 +277,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#4D2D7D',
     borderRadius: 10,
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'center', 
     marginTop: 10,
   },
   loginButtonText: {

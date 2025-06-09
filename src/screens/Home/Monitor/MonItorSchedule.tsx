@@ -625,6 +625,7 @@ const styles = StyleSheet.create({
   eventName: {
     fontSize: 16,
     flex: 1,
+    color: '#333',
   },
   noEventContainer: {
     padding: 20,

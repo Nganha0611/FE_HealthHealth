@@ -14,7 +14,7 @@ export type AuthStackParamList = {
   VerifyOTP: {
     phoneNumber: string;
     otpAction: "verify" | "register";
-    verificationId?: string; // Thêm verificationId để hỗ trợ điều hướng từ AccountScreen
+    verificationId?: string;
   };
 };
 

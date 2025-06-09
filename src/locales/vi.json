@@ -28,6 +28,7 @@
   "errorGeneric": "Đã xảy ra lỗi. Vui lòng thử lại.",
   "successPasswordChanged": "Đổi mật khẩu thành công!",
   "errorCannotChange": "Không thể đổi mật khẩu.",
+  "wrongPassword": "Mật khẩu hiện tại không đúng.",
   "processing": "Đang xử lý...",
   "noAccount": "Chưa có tài khoản?",
   "tab": {
@@ -106,21 +107,7 @@
       "otpSendError": "Đã xảy ra lỗi khi gửi OTP.",
       "generalError": "Không thể gửi OTP, vui lòng thử lại!"
     }
-  },
-  "verifyOTP": {
-    "title": "Xác minh OTP",
-    "subtitle": "Nhập OTP được gửi đến email của bạn",
-    "otpPlaceholder": "Nhập OTP",
-    "resendButton": "Gửi lại OTP",
-    "resendAfter": "Gửi lại sau {{seconds}} giây",
-    "verifyButton": "Xác minh",
-    "loadingMessage": "Đang xử lý...",
-    "notification": {
-      "otpSentSuccess": "Gửi OTP thành công!",
-      "otpSentError": "Đã xảy ra lỗi khi gửi OTP.",
-      "otpInvalid": "OTP không hợp lệ!",
-      "otpExpired": "OTP đã hết hạn."
-    }
+  
   },
   "sign_up": "Đăng ký",
   "gender_placeholder": "Chọn giới tính",
@@ -339,8 +326,8 @@
   "followedEmail": "Email người được theo dõi",
   "enterFollowedEmail": "Nhập email của người bạn muốn theo dõi",
   "send": "Gửi",
-  "pending": "Đang yêu cầu",
-  "rejected": "Đã bị từ chối",
+  "pending": "Đang chờ",
+  "rejected": "Đã từ chối",
   "requestSentSuccess": "Yêu cầu theo dõi đã được gửi thành công!",
   "sendRequestError": "Lỗi khi gửi yêu cầu theo dõi. Vui lòng thử lại.",
   "fetchFollowsError": "Lỗi khi lấy danh sách theo dõi. Vui lòng thử lại.",
@@ -434,17 +421,24 @@
 
   "verification_success": "Xác thực thành công, đang chuyển hướng...",
   "verifyOTP": {
+    "title": "Xác minh OTP",
+    "subtitle": "Nhập OTP được gửi đến email của bạn",
+    "otpPlaceholder": "Nhập OTP",
+    "resendButton": "Gửi lại OTP",
+    "resendAfter": "Gửi lại sau {{seconds}} giây",
+    "verifyButton": "Xác minh",
+    "loadingMessage": "Đang xử lý...",
     "notification": {
-      "otpInvalid": "Mã OTP không hợp lệ",
+      "otpSentSuccess": "Gửi OTP thành công!",
+      "otpSentError": "Đã xảy ra lỗi khi gửi OTP.",
+      "otpInvalid": "OTP không hợp lệ!",    
       "otpNotExist": "Mã OTP không tồn tại, vui lòng gửi lại mã mới",
       "otpExpired": "Mã OTP đã hết hạn, vui lòng gửi lại mã mới",
-      "otpSentSuccess": "Xác thực OTP thành công",
-      "otpSentError": "Không thể xác thực OTP, vui lòng thử lại",
       "serverError": "Lỗi server, vui lòng thử lại sau",
       "networkError": "Lỗi mạng, vui lòng kiểm tra kết nối internet",
       "unexpectedError": "Đã xảy ra lỗi không xác định, vui lòng thử lại"
-    }
-  },
+    
+  }},
   "signupSuccess": "Đăng ký thành công, vui lòng đăng nhập để tiếp tục",
   "noAuthToken": "Không tìm thấy token xác thực. Vui lòng đăng nhập lại.",
   "heartRateExists": "Bản ghi nhịp tim đã tồn tại trong hệ thống.",
@@ -460,6 +454,27 @@
   "invalidNumberInput": "Giá trị số không hợp lệ",
   "medicineNotFound": "Không tìm thấy thuốc",
   "requestAlreadyExists_pending": "Yêu cầu theo dõi đã tồn tại và đang chờ xử lý",
-  "requestAlreadyExists_accepted": "Bạn đã theo dõi người dùng này"
-
+  "requestAlreadyExists_accepted": "Bạn đã theo dõi người dùng này",
+  "approved": "Đã duyệt",
+  "requestNotFound": "Không tìm thấy yêu cầu theo dõi",
+  "address_placeholder": "Nhập địa chỉ",
+  "addEmergencyContact": "Thêm liên hệ khẩn cấp",
+  "enterName": "Nhập tên",
+  "phoneNumber": "Số điện thoại",
+  "enterPhoneNumber": "Nhập số điện thoại",
+  "call": "Gọi",
+  "confirmCall": "Xác nhận cuộc gọi",
+  "callTo": "Gọi đến",
+  "deleteContactConfirm": "Bạn có chắc muốn xóa liên hệ",
+  "fetchContactsError": "Lỗi khi tải danh sách liên hệ",
+  "incompleteContactInfo": "Vui lòng điền đầy đủ thông tin",
+  "invalidPhoneNumber": "Số điện thoại không hợp lệ",
+  "contactAdded": "Thêm liên hệ thành công",
+  "phoneExists": "Số điện thoại đã tồn tại",
+  "addContactError": "Lỗi khi thêm liên hệ",
+  "contactDeleted": "Xóa liên hệ thành công",
+  "contactNotFound": "Không tìm thấy liên hệ",
+  "deleteContactError": "Lỗi khi xóa liên hệ",
+  "server_error": "Lỗi máy chủ, vui lòng thử lại sau",
+  "email_already_exists": "Email đã tồn tại"
 }

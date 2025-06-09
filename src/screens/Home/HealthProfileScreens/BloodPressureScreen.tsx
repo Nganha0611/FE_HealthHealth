@@ -815,7 +815,7 @@ const styles = StyleSheet.create({
   text1: { fontSize: 25, color: '#432c81', fontWeight: 'bold' },
   headerLeft: { marginLeft: 10, marginTop: 5, flexDirection: 'row', justifyContent: 'flex-start' },
   headerRight: { marginRight: 15 },
-  title: { fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginTop: 20, marginBottom: 5 },
+  title: { fontSize: 20, fontWeight: 'bold', textAlign: 'center', marginTop: 20, marginBottom: 5, color: '#36A2EB' },
   subtitle: { fontSize: 16, color: '#666', textAlign: 'center', marginBottom: 20 },
   chartOuterContainer: { marginHorizontal: 0 },
   horizontalScrollContainer: {},

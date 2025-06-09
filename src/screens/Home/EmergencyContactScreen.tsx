@@ -10,7 +10,7 @@ import { API_BASE_URL } from '../../utils/config';
 import Modal from '../../components/CustomModal';
 import { useTranslation } from 'react-i18next';
 import { useNotification } from '../../contexts/NotificationContext';
-import Communications from 'react-native-communications'; // Import thư viện thay thế
+import Communications from 'react-native-communications';
 
 type Props = {
   navigation: NavigationProp<any>;
@@ -21,7 +21,6 @@ type EmergencyContact = {
   name: string;
   phoneNumber: string;
 };
-
 
 const EmergencyContactScreen: React.FC<Props> = ({ navigation }) => {
   const { t } = useTranslation();
@@ -62,22 +61,22 @@ const EmergencyContactScreen: React.FC<Props> = ({ navigation }) => {
 
   const handleAddContact = async () => {
     if (!name || !phoneNumber) {
-      showNotification(t('incompleteContactInfo'), 'error');
+      showNotification(t('incompleteContactInfo') || 'Vui lòng điền đầy đủ thông tin', 'error');
       return;
     }
 
     const phoneRegex = /^0\d{9}$/;
     if (!phoneRegex.test(phoneNumber)) {
-      showNotification(t('invalidPhoneNumber'), 'error');
+      showNotification(t('invalidPhoneNumber') || 'Số điện thoại không hợp lệ', 'error');
       return;
     }
 
-    const newContact: EmergencyContact = { name, phoneNumber };
+    const newContact = { name, phoneNumber };
 
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
-        showNotification(t('noToken'), 'error');
+        showNotification(t('noToken') || 'Vui lòng đăng nhập', 'error');
         navigation.navigate('Login');
         return;
       }
@@ -87,13 +86,58 @@ const EmergencyContactScreen: React.FC<Props> = ({ navigation }) => {
         newContact,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
       setContacts([...contacts, response.data]);
       setModalVisible(false);
       setName('');
       setPhoneNumber('');
       showNotification(t('contactAdded'), 'success');
     } catch (error: any) {
-      showNotification(t('addContactError'), 'error');
+      if (error.response) {
+        const { status } = error.response;
+        if (status === 401) {
+          showNotification(t('unauthorized') || 'Vui lòng đăng nhập lại', 'error');
+          navigation.navigate('Login');
+        } else if (status === 409) {
+          showNotification(t('phoneExists') || 'Số điện thoại đã tồn tại', 'error');
+        } else {
+          showNotification(t('addContactError') || 'Lỗi khi thêm liên hệ', 'error');
+        }
+      } else {
+        showNotification(t('addContactError') || 'Lỗi khi thêm liên hệ', 'error');
+      }
+    }
+  };
+
+  const handleDeleteContact = async (id: string) => {
+    try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        showNotification(t('noToken') || 'Vui lòng đăng nhập', 'error');
+        navigation.navigate('Login');
+        return;
+      }
+
+      await axios.delete(`${API_BASE_URL}/api/emergency-contacts/${id}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setContacts(contacts.filter(contact => contact.id !== id));
+      showNotification(t('contactDeleted') || 'Xóa liên hệ thành công', 'success');
+    } catch (error: any) {
+      if (error.response) {
+        const { status } = error.response;
+        if (status === 401) {
+          showNotification(t('unauthorized') || 'Vui lòng đăng nhập lại', 'error');
+          navigation.navigate('Login');
+        } else if (status === 404) {
+          showNotification(t('contactNotFound') || 'Không tìm thấy liên hệ', 'error');
+        } else {
+          showNotification(t('deleteContactError') || 'Lỗi khi xóa liên hệ', 'error');
+        }
+      } else {
+        showNotification(t('deleteContactError') || 'Lỗi khi xóa liên hệ', 'error');
+      }
     }
   };
 
@@ -112,13 +156,13 @@ const EmergencyContactScreen: React.FC<Props> = ({ navigation }) => {
           {
             text: t('call'),
             onPress: () => {
-              Communications.phonecall(phoneNumber, true); // Sử dụng Communications thay vì call
+              Communications.phonecall(phoneNumber, true);
             },
           },
         ]
       );
     } else {
-      Communications.phonecall(phoneNumber, true); // Gọi trực tiếp trên Android
+      Communications.phonecall(phoneNumber, true);
     }
   };
 
@@ -147,13 +191,34 @@ const EmergencyContactScreen: React.FC<Props> = ({ navigation }) => {
                 <Text style={styles.contactName}>{contact.name}</Text>
                 <Text style={styles.contactPhone}>{contact.phoneNumber}</Text>
               </View>
-              <TouchableOpacity
-                style={styles.callButton}
-                onPress={() => handleCall(contact.phoneNumber)}
-              >
-                <FontAwesome name="phone" size={20} color="#fff" />
-                <Text style={styles.callButtonText}>{t('call')}</Text>
-              </TouchableOpacity>
+              <View style={styles.buttonContainer}>
+                <TouchableOpacity
+                  style={styles.callButton}
+                  onPress={() => handleCall(contact.phoneNumber)}
+                >
+                  <FontAwesome name="phone" size={20} color="#fff" />
+                  <Text style={styles.callButtonText}>{t('call')}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => {
+                    Alert.alert(
+                      t('confirmDelete'),
+                      `${t('deleteContactConfirm')} ${contact.name}?`,
+                      [
+                        { text: t('cancel'), style: 'cancel' },
+                        {
+                          text: t('delete'),
+                          style: 'destructive',
+                          onPress: () => contact.id ? handleDeleteContact(contact.id) : null,
+                        },
+                      ]
+                    );
+                  }}
+                >
+                  <FontAwesome name="trash" size={20} color="#fff" />
+                </TouchableOpacity>
+              </View>
             </View>
           ))
         )}
@@ -244,17 +309,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#432c81',
   },
+  buttonContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   callButton: {
     flexDirection: 'row',
     backgroundColor: '#28a745',
     padding: 10,
     borderRadius: 5,
     alignItems: 'center',
+    marginRight: 10,
   },
   callButtonText: {
     color: '#fff',
     fontSize: 14,
     marginLeft: 5,
+  },
+  deleteButton: {
+    backgroundColor: '#ff4444',
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
   },
   fab: {
     position: 'absolute',
@@ -291,6 +367,7 @@ const styles = StyleSheet.create({
     padding: 10,
     marginBottom: 15,
     fontSize: 16,
+    color: '#333',
   },
   saveButton: {
     backgroundColor: '#432c81',

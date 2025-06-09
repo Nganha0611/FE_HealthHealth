@@ -205,13 +205,7 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
       const parsedUser = JSON.parse(storedUser);
       const currentEmail = parsedUser.email;
 
-      console.log('Sending data to update:', {
-        currentEmail,
-        name,
-        email,
-        numberPhone: phone,
-        address,
-      });
+      
 
       const response = await fetch(`${API_BASE_URL}/api/auth/update-info`, {
         method: 'PUT',
@@ -228,6 +222,8 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
         }),
       });
 
+      
+
       const responseData = await response.json();
       console.log('Update info response:', responseData);
 
@@ -241,7 +237,6 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
           address,
         };
         await AsyncStorage.setItem('user', JSON.stringify(updatedUser));
-        console.log('User data updated in storage');
         showNotification(t('successUpdate') || 'Cập nhật thành công', 'success');
       } else {
         console.error('Error message from API:', message);
@@ -281,12 +276,7 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
 
       if (confirmationResult.verificationId) {
         setVerificationId(confirmationResult.verificationId);
-        console.log('Verification ID set:', confirmationResult.verificationId);
-
-        // Đặt isLoggedIn về false để chuyển sang AuthStack
         setIsLoggedIn(false);
-
-        // Reset navigator với delay để đảm bảo isLoggedIn được cập nhật
         setTimeout(() => {
           navigation.dispatch(
             CommonActions.reset({
@@ -297,7 +287,7 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
                   params: {
                     screen: 'VerifyOTP',
                     params: {
-                      numberPhone: phoneNumber, // Sử dụng numberPhone để khớp với VerifyOTPScreen
+                      numberPhone: phoneNumber, 
                       otpAction: 'verify',
                       verificationId: confirmationResult.verificationId,
                     },
@@ -306,12 +296,10 @@ const AccountScreen: React.FC<Props> = ({ navigation }) => {
               ],
             })
           );
-        }, 100); // Delay 100ms để đảm bảo re-render
+        }, 100); 
       }
-    } catch (error) {
-      console.error('Lỗi khi gửi OTP:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Đã xảy ra lỗi';
-      Alert.alert('Lỗi', `Không thể gửi mã OTP: ${errorMessage}`);
+    } catch (error) {  
+      showNotification(t('generalError'), 'error');
     } finally {
       setLoading(false);
     }

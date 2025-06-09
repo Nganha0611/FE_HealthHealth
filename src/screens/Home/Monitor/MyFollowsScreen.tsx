@@ -6,6 +6,7 @@ import { NavigationProp } from '@react-navigation/native';
 import { API_BASE_URL } from '../../../utils/config';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNotification } from '../../../contexts/NotificationContext';
+import { useAuth } from '../../../contexts/AuthContext'; // Thêm useAuth
 import FontAwesome from 'react-native-vector-icons/FontAwesome';
 
 interface UserInfo {
@@ -32,17 +33,36 @@ const MyFollowsScreen: React.FC<Props> = ({ navigation }) => {
   const [followers, setFollowers] = useState<FollowItem[]>([]);
   const [selectedTab, setSelectedTab] = useState<'approved' | 'pending'>('approved');
   const { showNotification } = useNotification();
+  const { logout } = useAuth(); // Thêm logout
 
   useEffect(() => {
     fetchFollowers();
   }, []);
 
+  const refreshToken = async (): Promise<string | null> => {
+    try {
+      const refreshToken = await AsyncStorage.getItem('refreshToken');
+      if (!refreshToken) return null;
+      const response = await axios.post(
+        `${API_BASE_URL}/api/auth/refresh`,
+        { refreshToken },
+        { timeout: 20000 }
+      );
+      const newToken = response.data.accessToken;
+      await AsyncStorage.setItem('token', newToken);
+      return newToken;
+    } catch (error) {
+      console.warn('Error refreshing token:', error);
+      return null;
+    }
+  };
+
   const fetchFollowers = async () => {
     try {
-      const token = await AsyncStorage.getItem('token');
+      let token = await AsyncStorage.getItem('token');
       if (!token) {
         showNotification(t('noToken'), 'error');
-        navigation.navigate('Login');
+        logout();
         return;
       }
 
@@ -70,18 +90,44 @@ const MyFollowsScreen: React.FC<Props> = ({ navigation }) => {
               numberPhone: followerResponse.data.numberPhone,
               url: followerResponse.data.url,
             };
-          } catch (error) {
-            console.error(`Error fetching follower user ${item.followerUserId}:`, error);
-            showNotification(t('fetchUserError', { id: item.followerUserId }), 'error');
+          } catch (error: any) {
+            console.warn(`Error fetching follower user ${item.followerUserId}:`, error);
+            if (error.response?.status === 401) {
+              token = await refreshToken();
+              if (token) {
+                try {
+                  const retryResponse = await axios.get(`${API_BASE_URL}/api/auth/users/${item.followerUserId}`, {
+                    headers: { Authorization: `Bearer ${token}` },
+                  });
+                  followerUser = {
+                    id: retryResponse.data.id,
+                    name: retryResponse.data.name,
+                    email: retryResponse.data.email,
+                    numberPhone: retryResponse.data.numberPhone,
+                    url: retryResponse.data.url,
+                  };
+                } catch (retryError) {
+                  console.warn(`Retry failed for follower user ${item.followerUserId}:`, retryError);
+                }
+              } else {
+                showNotification(t('sessionExpired'), 'error');
+                logout();
+                return null; // Bỏ qua item này
+              }
+            } else if (error.response?.status === 404) {
+              // Người dùng không tồn tại, để followerUser là undefined
+              console.warn(`User ${item.followerUserId} not found`);
+            }
+            // Không hiển thị thông báo lỗi cho người dùng
           }
 
-          return {
-            ...item,
-            followerUser,
-          };
+          return followerUser ? { ...item, followerUser } : { ...item, followerUser: undefined };
         })
       );
-      setFollowers(enrichedFollowers);
+
+      // Lọc bỏ các item null (do logout)
+      const validFollowers = enrichedFollowers.filter((item): item is FollowItem => item !== null);
+      setFollowers(validFollowers);
     } catch (error) {
       console.error('Error fetching followers:', error);
       showNotification(t('fetchFollowersError'), 'error');
@@ -90,104 +136,161 @@ const MyFollowsScreen: React.FC<Props> = ({ navigation }) => {
 
   const deleteFollow = async (id: string) => {
     try {
-      const token = await AsyncStorage.getItem('token');
+      let token = await AsyncStorage.getItem('token');
       if (!token) {
         showNotification(t('noToken'), 'error');
-        navigation.navigate('Login');
+        logout();
         return;
       }
       await axios.delete(`${API_BASE_URL}/api/tracking/cancel/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
+        headers: { Authorization: `Bearer ${token}` },
       });
       fetchFollowers();
       showNotification(t('deleteFollowSuccess'), 'success');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting follow:', error);
-      showNotification(t('deleteFollowError'), 'error');
+      if (error.response?.status === 401) {
+        const newToken = await refreshToken();
+        if (newToken) {
+          try {
+            await axios.delete(`${API_BASE_URL}/api/tracking/cancel/${id}`, {
+              headers: { Authorization: `Bearer ${newToken}` },
+            });
+            fetchFollowers();
+            showNotification(t('deleteFollowSuccess'), 'success');
+            return;
+          } catch (retryError) {
+            console.warn('Retry delete follow failed:', retryError);
+          }
+        }
+        showNotification(t('sessionExpired'), 'error');
+        logout();
+      }else if (axios.isAxiosError(error) && error.response?.status === 404) {
+        showNotification(t('noUserInfo'), 'error');
+      }  else {
+        showNotification(t('deleteFollowError'), 'error');
+      }
     }
   };
 
   const acceptRequest = async (id: string) => {
     try {
-      const token = await AsyncStorage.getItem('token');
+      let token = await AsyncStorage.getItem('token');
       if (!token) {
         showNotification(t('noToken'), 'error');
-        navigation.navigate('Login');
+        logout();
         return;
       }
       const response = await axios.put(
         `${API_BASE_URL}/api/tracking/update-status/${id}`,
-        { status: "approved" },
+        { status: 'approved' },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (response.status === 200 && response.data.result === 'success') {
         fetchFollowers();
         showNotification(t('acceptRequestSuccess'), 'success');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error accepting request:', error);
-      showNotification(t('acceptRequestError'), 'error');
+      if (error.response?.status === 401) {
+        const newToken = await refreshToken();
+        if (newToken) {
+          try {
+            const retryResponse = await axios.put(
+              `${API_BASE_URL}/api/tracking/update-status/${id}`,
+              { status: 'approved' },
+              { headers: { Authorization: `Bearer ${newToken}` } }
+            );
+            if (retryResponse.status === 200 && retryResponse.data.result === 'success') {
+              fetchFollowers();
+              showNotification(t('acceptRequestSuccess'), 'success');
+              return;
+            }
+          } catch (retryError) {
+            console.warn('Retry accept request failed:', retryError);
+          }
+        }
+        showNotification(t('sessionExpired'), 'error');
+        logout();
+      } else if( error.response?.status === 404) {
+        showNotification(t('requestNotFound'), 'error');
+      }
+      else {
+        showNotification(t('acceptRequestError'), 'error');
+      }
     }
   };
 
   const rejectRequest = async (id: string) => {
     try {
-      const token = await AsyncStorage.getItem('token');
+      let token = await AsyncStorage.getItem('token');
       if (!token) {
         showNotification(t('noToken'), 'error');
-        navigation.navigate('Login');
+        logout();
         return;
       }
       await axios.put(
         `${API_BASE_URL}/api/tracking/update-status/${id}`,
-        { status: "rejected" },
+        { status: 'rejected' },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
       fetchFollowers();
       showNotification(t('rejectRequestSuccess'), 'success');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error rejecting request:', error);
-      showNotification(t('rejectRequestError'), 'error');
+      if (error.response?.status === 401) {
+        const newToken = await refreshToken();
+        if (newToken) {
+          try {
+            await axios.put(
+              `${API_BASE_URL}/api/tracking/update-status/${id}`,
+              { status: 'rejected' },
+              { headers: { Authorization: `Bearer ${newToken}` } }
+            );
+            fetchFollowers();
+            showNotification(t('rejectRequestSuccess'), 'success');
+            return;
+          } catch (retryError) {
+            console.warn('Retry reject request failed:', retryError);
+          }
+        }
+        showNotification(t('sessionExpired'), 'error');
+        logout();
+      }else if( error.response?.status === 404) {
+        showNotification(t('requestNotFound'), 'error');
+      } else {
+        showNotification(t('rejectRequestError'), 'error');
+      }
     }
   };
 
   const handleItemPress = (item: FollowItem) => {
     if (selectedTab === 'approved') {
-      showNotification(
-        t('confirmDeleteFollow'),
-        'warning',
-        [
-          {
-            text: t('cancel'),
-            onPress: () => {},
-            color: 'danger'
-          },
-          {
-            text: t('delete'),
-            onPress: () => deleteFollow(item.id),
-            color: 'primary'
-          }
-        ]
-      );
+      showNotification(t('confirmDeleteFollow'), 'warning', [
+        {
+          text: t('cancel'),
+          onPress: () => {},
+          color: 'danger',
+        },
+        {
+          text: t('delete'),
+          onPress: () => deleteFollow(item.id),
+          color: 'primary',
+        },
+      ]);
     } else if (selectedTab === 'pending') {
-      showNotification(
-        t('confirmFollowRequest'),
-        'warning',
-        [
-         
-          {
-            text: t('reject'),
-            onPress: () => rejectRequest(item.id),
-            color: 'danger'
-          },
-          {
-            text: t('accept'),
-            onPress: () => acceptRequest(item.id),
-            color: 'primary'
-          },
-        ]
-      );
+      showNotification(t('confirmFollowRequest'), 'warning', [
+        {
+          text: t('reject'),
+          onPress: () => rejectRequest(item.id),
+          color: 'danger',
+        },
+        {
+          text: t('accept'),
+          onPress: () => acceptRequest(item.id),
+          color: 'primary',
+        },
+      ]);
     }
   };
 
@@ -202,7 +305,7 @@ const MyFollowsScreen: React.FC<Props> = ({ navigation }) => {
                 ? { uri: item.followerUser.url }
                 : require('../../../assets/avatar.jpg')
             }
-            onError={(e) => console.log('Image load error:', e.nativeEvent.error)}
+            onError={(e) => console.warn(`Image load error for ${item.id}:`, e.nativeEvent.error)}
           />
         </View>
       </View>
@@ -263,6 +366,7 @@ const MyFollowsScreen: React.FC<Props> = ({ navigation }) => {
   );
 };
 
+// Giữ nguyên styles như cũ
 const styles = StyleSheet.create({
   container: {
     flex: 1,
